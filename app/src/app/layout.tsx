@@ -49,6 +49,9 @@ export default function RootLayout({
               <Link href="/portfolio" className="text-muted transition-colors hover:text-ink">
                 Portfolio
               </Link>
+              <Link href="/verified" className="text-muted transition-colors hover:text-ink">
+                Verified ONE
+              </Link>
               <span className="hidden items-center gap-2 text-faint sm:flex">
                 <span aria-hidden className="h-1.5 w-1.5 rounded-full bg-accent/60" />
                 Monad Mainnet

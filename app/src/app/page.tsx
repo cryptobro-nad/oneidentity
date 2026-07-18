@@ -121,24 +121,21 @@ export default function LandingPage() {
                 Need to prove the wallets are yours?
               </h2>
               <p className="mt-2.5 text-sm leading-relaxed text-muted">
-                Verified ONE will let you sign from each wallet and create one public identity
-                address.
+                Verified ONE lets you sign from each wallet and create one public identity address.
+                The result is public: the wallets and their relationship are visible onchain.
               </p>
             </div>
 
             <div className="flex flex-col items-start gap-2">
-              <button
-                type="button"
-                disabled
-                aria-disabled="true"
-                className="inline-flex cursor-not-allowed items-center gap-2.5 rounded-full border border-line bg-raised px-5 py-2.5 text-sm text-faint"
+              <Link
+                href="/verified"
+                className="inline-flex items-center rounded-full border border-accent/40 bg-accent-soft px-5 py-2.5 text-sm font-medium text-accent transition-opacity hover:opacity-90"
               >
                 Create a Verified ONE
-                <span className="rounded-full bg-accent-soft px-2 py-0.5 text-[11px] font-medium text-accent">
-                  Coming next
-                </span>
-              </button>
-              <p className="text-xs text-faint">Not available yet.</p>
+              </Link>
+              <p className="text-xs text-faint">
+                Two to five wallets. One onchain transaction.
+              </p>
             </div>
           </div>
         </div>
