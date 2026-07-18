@@ -1,0 +1,97 @@
+@import "tailwindcss";
+
+/*
+ * ONE — restrained Monad-inspired palette.
+ * One purple accent, used sparingly. Everything else is neutral so the
+ * balance figures carry the hierarchy rather than competing with decoration.
+ */
+
+@theme inline {
+  --color-canvas: var(--canvas);
+  --color-surface: var(--surface);
+  --color-raised: var(--raised);
+  --color-line: var(--line);
+  --color-line-strong: var(--line-strong);
+  --color-ink: var(--ink);
+  --color-muted: var(--muted);
+  --color-faint: var(--faint);
+  --color-accent: var(--accent);
+  --color-accent-ink: var(--accent-ink);
+  --color-accent-soft: var(--accent-soft);
+  --color-warn: var(--warn);
+  --color-warn-soft: var(--warn-soft);
+  --color-danger: var(--danger);
+  --color-danger-soft: var(--danger-soft);
+
+  --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, "SFMono-Regular", monospace;
+}
+
+:root {
+  --canvas: #fbfaff;
+  --surface: #ffffff;
+  --raised: #f6f4fd;
+  --line: #e8e4f4;
+  --line-strong: #d6d0e8;
+  --ink: #15111f;
+  --muted: #635c78;
+  --faint: #8d86a3;
+  --accent: #6244e5;
+  --accent-ink: #ffffff;
+  --accent-soft: #f0ecff;
+  --warn: #8a5a00;
+  --warn-soft: #fdf3e0;
+  --danger: #a3232c;
+  --danger-soft: #fdeded;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --canvas: #0a0810;
+    --surface: #120f1c;
+    --raised: #191426;
+    --line: #241d36;
+    --line-strong: #332a49;
+    --ink: #f4f2fb;
+    --muted: #a29ab8;
+    --faint: #7d7593;
+    --accent: #9b87fc;
+    --accent-ink: #14102a;
+    --accent-soft: #1c1631;
+    --warn: #f0c07a;
+    --warn-soft: #241b0d;
+    --danger: #f4a0a4;
+    --danger-soft: #2a1215;
+  }
+}
+
+html {
+  color-scheme: light dark;
+}
+
+body {
+  background: var(--canvas);
+  color: var(--ink);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Tabular figures keep balance columns aligned as values change. */
+.tnum {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum";
+}
+
+*:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
