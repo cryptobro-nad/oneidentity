@@ -1,10 +1,15 @@
 # ONE — Monad Mainnet Deployment
 
-Deployment runbook for `ONERegistry`. Nothing in this document has been
-broadcast. Everything below was rehearsed against a local chain pinned to
-chain ID 143 and simulated against live Monad Mainnet.
+Deployment runbook and record for `ONERegistry`.
 
-**Status: prepared and simulated. Not deployed.**
+> ## ✅ Status: DEPLOYED AND SOURCE-VERIFIED
+>
+> **Registry: [`0xf8E62d8D16acB49eeEeCF13DE48f1f6898c2F915`](https://monadscan.com/address/0xf8E62d8D16acB49eeEeCF13DE48f1f6898c2F915)**
+> on Monad Mainnet (chain 143), block 88,632,853.
+> Sourcify reports **`exact_match`** on both creation and runtime bytecode.
+> See [§16 Deployment record](#16-deployment-record).
+>
+> No ONE identity has been created. `totalOnes()` is 0.
 
 ---
 
@@ -119,17 +124,38 @@ to the `forge test --gas-report` figure). Forge sets a gas *limit* of 3,019,282.
 Monad Mainnet base fee was a flat **100 gwei** across every sample taken during
 preparation; `eth_gasPrice` returned **102 gwei**.
 
-| Scenario | Gas price | Cost at gas used | Cost at gas limit |
-|---|---|---|---|
-| Current network price | 102 gwei | **0.2369 MON** | 0.3080 MON |
-| Forge estimate (2× base) | 202 gwei | **0.4692 MON** | 0.6099 MON |
-| Stress: 3× base | 300 gwei | 0.6968 MON | 0.9058 MON |
-| Stress: 5× base | 500 gwei | 1.1613 MON | 1.5096 MON |
+> ## ⚠️ Monad charges the gas LIMIT, not gas used
+>
+> This is a real behavioural difference from Ethereum and it changes every cost
+> estimate. From the official docs:
+>
+> > *"Transactions are charged based on gas limit rather than gas usage, i.e.
+> > total gas deducted from the sender's balance is `value + gas_bid * gas_limit`."*
+> > — <https://docs.monad.xyz/developer-essentials/differences>
+>
+> The actual deployment confirms it. The EVM consumed **2,322,525** gas, but the
+> receipt reports `gasUsed = 3,043,418` — exactly the gas *limit* Forge set — and
+> the charge was `3,043,418 × 102 gwei = 0.310428636 MON`.
+>
+> **Consequence: an over-generous gas limit costs real money on Monad.** Budget
+> against the limit, never against expected consumption. This matters most for
+> Phase 2, where `createOne()` ranges 23k–1.16M gas depending on member count;
+> a fixed worst-case limit would overcharge every small ONE.
+
+Cost is `gas_limit × gas_price`. Forge sets the limit at ~3,043,418 for this
+deployment.
+
+| Scenario | Gas price | Charged (limit × price) |
+|---|---|---|
+| **Actual deployment** | **102 gwei** | **0.310428636 MON** ✅ |
+| Forge estimate (2× base) | 202 gwei | 0.6148 MON |
+| Stress: 3× base | 300 gwei | 0.9130 MON |
+| Stress: 5× base | 500 gwei | 1.5217 MON |
 
 > ### Recommended minimum deployer balance: **2 MON**
 >
-> Expected cost is ~0.24–0.47 MON. 2 MON covers a 5× fee spike with room for a
-> retry, and avoids a failed deployment from an underfunded account.
+> Actual cost was 0.3104 MON. 2 MON covers a 5× fee spike with room for a retry.
+> The wallet was funded with 5 MON and retained ~4.69 MON.
 
 ## 9. Dry-run command
 
@@ -284,7 +310,66 @@ node script/check-runtime-bytecode.mjs <REGISTRY_ADDRESS> https://rpc.monad.xyz
 > sides, compares the remainder, and prints the recovered immutable values.
 > The address-independent integrity check is the **creation** bytecode hash.
 >
-> This was validated end-to-end against a real deployment during rehearsal.
+> This was validated end-to-end against the real deployment. The on-chain
+> immutables decode exactly as expected: `_cachedThis` =
+> `0x…f8e62d8d16acb49eeeecf13de48f1f6898c2f915` (the registry itself),
+> `_cachedChainId` = `0x8f` (143), and `_cachedDomainSeparator` =
+> `0x960c5a75…1141e184`, matching the value read live from `eip712Domain()`.
+
+#### Windows: libuv assertion after PASS (fixed)
+
+An earlier revision of the checker printed `PASS` and then died with:
+
+```text
+Assertion failed: !(handle->flags & UV_HANDLE_CLOSING), file src\win\async.c, line 76
+```
+
+**It exited `-1073740791` (`0xC0000409`, Windows fail-fast) despite passing** —
+a green result with a red exit status, which CI would score as a failure and a
+human would likely miss.
+
+Root cause, isolated with a minimal reproduction on Node v24.14.1 / Windows:
+
+| Requests | Exit method | Result |
+|---|---|---|
+| 2 | `process.exit(0)` | assertion, exit `-1073740791` |
+| 2 | `process.exitCode = 0` | clean exit `0` |
+| 1 | `process.exit(0)` | clean exit `0` |
+
+Node's built-in `fetch` (undici) returns sockets to a **keep-alive pool**, so
+from the *second* request onward a pooled socket owns a live libuv async handle.
+`process.exit()` tears the loop down synchronously, hitting the handle mid-close
+and tripping libuv's assertion. One request never populates the pool, so it does
+not reproduce — which is why this only appeared against a real deployment
+(`eth_chainId` + `eth_getCode`) and not in simpler tests.
+
+**Attribution:** the assertion/abort is an upstream Node/libuv defect on Windows
+— a clean `process.exit()` should not fault. But the trigger was ours and was
+trivially avoidable, so it is fixed in our script rather than merely documented.
+
+**Fix:** `check-runtime-bytecode.mjs` now sets `process.exitCode` and lets the
+event loop drain; it never calls `process.exit()`. All paths were re-verified:
+PASS → `0`, no-bytecode → `1`, bad usage → `1`. Do not reintroduce
+`process.exit()` there.
+
+**Alternative that avoids Node entirely.** If you hit any variant of this, the
+same runtime bytecode can be compared with `cast` plus the artifact:
+
+```bash
+# On-chain runtime code
+cast code 0xf8E62d8D16acB49eeEeCF13DE48f1f6898c2F915 --rpc-url https://rpc.monad.xyz > onchain.hex
+
+# Local artifact runtime code
+jq -r '.deployedBytecode.object' out/ONERegistry.sol/ONERegistry.json > local.hex
+
+# Sizes must match (10458 bytes). Bytes differ only in the 7 immutable slots,
+# so a raw diff is EXPECTED to show differences at offsets 4447/4496/4862/
+# 4904/4946/5027/5067 and nowhere else.
+```
+
+The strongest single check needs no tooling at all: **Sourcify already reports
+`exact_match` on both creation and runtime bytecode** (§16), which is a superset
+of what this script proves.
 
 ## 13. Rollback limitations
 
@@ -305,24 +390,28 @@ the last reversible point.
 
 ## 14. Required frontend environment variables
 
-Only **after** a successful, verified deployment. Do not point the frontend at a
-guessed or predicted address.
+Recorded, now that deployment and source verification are complete.
+
+The address is committed as a default in `app/src/lib/chain.ts`
+(`ONE_REGISTRY_ADDRESS`), alongside the pinned EIP-712 domain
+(`ONE_REGISTRY_DOMAIN`). `app/.env.example` documents the public overrides:
 
 ```bash
-# app/.env.local
+# app/.env.local — all values PUBLIC, no secrets
 NEXT_PUBLIC_MONAD_CHAIN_ID=143
 NEXT_PUBLIC_MONAD_RPC_URL=https://rpc.monad.xyz
 NEXT_PUBLIC_MONAD_FALLBACK_RPC_URL=https://rpc3.monad.xyz
-NEXT_PUBLIC_ONE_REGISTRY_ADDRESS=<REGISTRY_ADDRESS>
+NEXT_PUBLIC_ONE_REGISTRY_ADDRESS=0xf8E62d8D16acB49eeEeCF13DE48f1f6898c2F915
 ```
 
-The Phase 1 portfolio does **not** read the registry — it needs no registry
-address. These variables are for Verified ONE (Phase 2). Chain, RPC and
-Multicall3 values already live in `app/src/lib/chain.ts`.
+**Phase 1 does not read the registry.** The unverified portfolio only reads
+wallet balances, so nothing in the shipped app calls this address yet. It is
+configured now so Verified ONE starts from a reviewed constant rather than a
+pasted literal. `ONE_REGISTRY_DOMAIN.expectedSeparator` is there to be
+*asserted against the chain* before any signature is requested — treat it as a
+value to verify, not to trust.
 
 ## 15. Deployment record template
-
-Fill in immediately after broadcast and commit it to this file.
 
 ```text
 Network:
@@ -340,23 +429,85 @@ Source verified:
 Deployment time:
 ```
 
-Pre-filled with what is already known:
+## 16. Deployment record
+
+**Final. Every field below was read back from the chain, not copied from
+console output.**
 
 ```text
 Network:            Monad Mainnet
 Chain ID:           143
-Deployer:           <pending — keystore not yet created>
-Registry address:   <pending broadcast>
-Transaction hash:   <pending broadcast>
-Block number:       <pending broadcast>
-Gas used:           2322525 (measured in rehearsal; confirm from receipt)
-MON cost:           <pending — ~0.24 MON at 102 gwei>
+Deployer:           0xF361d6aD3d25Ed5fA797FF2B40cCDB7842c0DA86
+Registry address:   0xf8E62d8D16acB49eeEeCF13DE48f1f6898c2F915
+Transaction hash:   0x317153a9131d77d77f65714d70b98caf212f49f8ca6e031c5f8eed461ac932f2
+Block number:       88632853
+Gas used:           3043418 (receipt; = gas LIMIT — Monad charges the limit)
+MON cost:           0.310428636 MON  (3043418 x 102 gwei)
 Compiler:           solc 0.8.28+commit.7893614a, optimizer 200 runs, evm shanghai
-Commit:             <HEAD at broadcast time>
-Explorer:           https://monadvision.com/address/<REGISTRY_ADDRESS>
-Source verified:    <pending>
-Deployment time:    <pending>
+Commit:             471f9a98bf190bb3dcb5274f20b9dbb246fcb588
+Explorer:           https://monadscan.com/address/0xf8E62d8D16acB49eeEeCF13DE48f1f6898c2F915
+Source verified:    YES - Sourcify exact_match (creation + runtime)
+Deployment time:    2026-07-18T20:43:53Z (source verified at)
 ```
+
+### Receipt (read from chain)
+
+| Field | Value |
+|---|---|
+| `status` | **1 (success)** |
+| `blockNumber` | 88,632,853 |
+| `gasUsed` | 3,043,418 |
+| `effectiveGasPrice` | 102 gwei (`102000000000`) |
+| `cumulativeGasUsed` | 10,459,478 |
+| `contractAddress` | `0xf8E62d8D16acB49eeEeCF13DE48f1f6898c2F915` |
+| `from` | `0xF361d6aD3d25Ed5fA797FF2B40cCDB7842c0DA86` |
+| Deployer nonce after | 1 |
+
+The deployed address matches the pre-computed prediction from
+`cast compute-address <deployer> --nonce 0` exactly.
+
+### Post-deployment verification
+
+| Check | Result |
+|---|---|
+| Runtime bytecode present | 10,458 bytes ✅ |
+| Runtime vs local artifact (immutables masked) | **PASS**, exit 0 ✅ |
+| Creation bytecode | `0x6c858964…d47059e` ✅ |
+| EIP-712 name / version | `ONE` / `1` ✅ |
+| EIP-712 chainId | 143 ✅ |
+| EIP-712 verifyingContract | = registry ✅ |
+| Domain separator | `0x960c5a75782e99137e7ed08ee5f3b96ce7f2a37516829ba3541f78e21141e184` |
+| `JOIN_ONE_TYPEHASH` | `0xb374db42013b92adfb78ac6714742925733494dfad7bb318eed19df9edeee2ba` |
+| `totalOnes()` | 0 — **no ONE identity created** ✅ |
+| Probe `exists()` / `activeOneOf()` / `nonces()` | `false` / `0x0` / `0` ✅ |
+
+### Source verification result
+
+Verified via the **Sourcify / MonadVision** path — no API key required.
+
+```text
+Verification Job ID : 4c18e75a-603b-4c14-afe8-b0fe433451ba
+match               : exact_match
+creationMatch       : exact_match
+runtimeMatch        : exact_match
+matchId             : 543769
+verifiedAt          : 2026-07-18T20:43:53Z
+compilationTime     : 420 ms
+```
+
+- Sourcify record:
+  <https://sourcify-api-monad.blockvision.org/v2/contract/143/0xf8E62d8D16acB49eeEeCF13DE48f1f6898c2F915>
+- Explorer: <https://monadscan.com/address/0xf8E62d8D16acB49eeEeCF13DE48f1f6898c2F915>
+- MonadVision: <https://monadvision.com/address/0xf8E62d8D16acB49eeEeCF13DE48f1f6898c2F915>
+  (the HTML page returns 403 to scripted requests due to bot protection; the
+  Sourcify API above is the authoritative record)
+
+**`exact_match` was achieved with the compiler settings unchanged.** The Monad
+docs' suggested `metadata_hash = "none"` was *not* required — it would have
+altered the emitted bytecode for no benefit here. Monadscan/Etherscan
+verification was not run because Sourcify already produced a full match and
+requires no API key; the command remains available in §11 if a Monadscan-native
+badge is wanted later.
 
 ---
 

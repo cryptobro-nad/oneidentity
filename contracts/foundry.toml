@@ -21,13 +21,15 @@ remappings = [
 monad = "${MONAD_MAINNET_RPC_URL:-https://rpc.monad.xyz}"
 monad_fallback = "${MONAD_MAINNET_FALLBACK_RPC_URL:-https://rpc3.monad.xyz}"
 
-# Monadscan is Etherscan-V2 compatible and serves Monad Mainnet under
-# chainid 143 (confirmed present in the Etherscan V2 chainlist with status 1).
-# Foundry has no built-in alias for chain 143 — `cast chain` reports "unknown" —
-# so the API URL must be given explicitly rather than inferred from --chain.
-# The Sourcify/MonadVision path needs no key and is configured on the CLI.
-[etherscan]
-monad = {key = "${EXPLORER_API_KEY}", chain = 143, url = "https://api.etherscan.io/v2/api?chainid=143"}
+# NOTE: deliberately no [etherscan] section.
+#
+# Foundry resolves every `${VAR}` in that block eagerly, for ANY verify
+# invocation. A block referencing EXPLORER_API_KEY therefore aborts even the
+# keyless `--verifier sourcify` path with "environment variable not found", and
+# the `${VAR:-default}` form is not supported for that field. Both verification
+# paths pass their settings explicitly on the command line instead — see
+# docs/MAINNET_DEPLOYMENT.md. Foundry has no built-in alias for chain 143
+# (`cast chain` reports "unknown"), so --verifier-url is always given.
 
 [fmt]
 line_length = 110
