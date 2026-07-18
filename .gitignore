@@ -1,0 +1,16 @@
+# Foundry
+contracts/out/
+contracts/cache/
+contracts/broadcast/
+contracts/.env
+
+# Node (frontend, not built yet)
+node_modules/
+.next/
+.env
+.env.local
+
+# Editors / OS
+.DS_Store
+.idea/
+.vscode/
