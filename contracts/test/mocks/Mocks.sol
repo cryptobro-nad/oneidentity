@@ -40,3 +40,28 @@ contract MalformedERC721 {
         }
     }
 }
+
+/// @dev A contract that answers balanceOf with no return data at all.
+contract EmptyReturnERC721 {
+    fallback() external {
+        assembly {
+            return(0, 0)
+        }
+    }
+}
+
+/// @dev Hostile collection: returns 64 KiB of returndata, the first word of which is a
+///      plausible balance. A caller that copied all returndata would pay for ~2048 words
+///      of memory expansion; a caller that only checked the first word would accept the
+///      forged balance. The bounded reader must do neither.
+contract HugeReturndataERC721 {
+    uint256 public constant RETURN_BYTES = 65_536;
+
+    fallback() external {
+        assembly {
+            // First word looks like a balance of 1_000_000.
+            mstore(0x00, 1000000)
+            return(0x00, 65536)
+        }
+    }
+}

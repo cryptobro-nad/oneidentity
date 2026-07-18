@@ -121,13 +121,7 @@ abstract contract ONEBase is Test {
             address member = sortedMembers[i];
             if (member == primary) continue;
             bytes32 digest = _digest(
-                address(registry),
-                member,
-                primary,
-                membersHash,
-                salt,
-                registry.nonces(member),
-                deadline
+                address(registry), member, primary, membersHash, salt, registry.nonces(member), deadline
             );
             auths[k] = ONERegistry.JoinAuth({deadline: deadline, signature: _sign(_pkOf(member), digest)});
             ++k;

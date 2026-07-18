@@ -52,8 +52,7 @@ contract ONERegistryTest is ONEBase {
         address[] memory members = _sorted(_addrs(3));
         address predicted = registry.predictOneAddress(primary, members, SALT_A);
 
-        ONERegistry.JoinAuth[] memory auths =
-            _buildAuths(members, primary, SALT_A, block.timestamp + 1 hours);
+        ONERegistry.JoinAuth[] memory auths = _buildAuths(members, primary, SALT_A, block.timestamp + 1 hours);
         vm.prank(primary);
         address one = registry.createOne(members, SALT_A, auths);
 
@@ -179,16 +178,13 @@ contract ONERegistryTest is ONEBase {
         address[] memory members = _sorted(_addrs(2));
         uint256 deadline = block.timestamp + 1 hours;
 
-        bytes32 digest = _digest(
-            address(registry), secondary, primary, _membersHash(members), SALT_A, 0, deadline
-        );
+        bytes32 digest =
+            _digest(address(registry), secondary, primary, _membersHash(members), SALT_A, 0, deadline);
         // Correct digest, wrong key.
         ONERegistry.JoinAuth memory auth =
             ONERegistry.JoinAuth({deadline: deadline, signature: _sign(pks[2], digest)});
 
-        vm.expectRevert(
-            abi.encodeWithSelector(ONERegistry.InvalidSignature.selector, secondary, impostor)
-        );
+        vm.expectRevert(abi.encodeWithSelector(ONERegistry.InvalidSignature.selector, secondary, impostor));
         _createTwoWith(auth, SALT_A);
     }
 
@@ -198,9 +194,8 @@ contract ONERegistryTest is ONEBase {
         address[] memory members = _sorted(_addrs(2));
         uint256 deadline = block.timestamp + 1 hours;
 
-        bytes32 digest = _digest(
-            address(registry), secondary, wrongPrimary, _membersHash(members), SALT_A, 0, deadline
-        );
+        bytes32 digest =
+            _digest(address(registry), secondary, wrongPrimary, _membersHash(members), SALT_A, 0, deadline);
         ONERegistry.JoinAuth memory auth =
             ONERegistry.JoinAuth({deadline: deadline, signature: _sign(pks[1], digest)});
 
@@ -215,9 +210,8 @@ contract ONERegistryTest is ONEBase {
         address[] memory otherMembers = _sorted(_addrs(3));
         uint256 deadline = block.timestamp + 1 hours;
 
-        bytes32 digest = _digest(
-            address(registry), secondary, primary, _membersHash(otherMembers), SALT_A, 0, deadline
-        );
+        bytes32 digest =
+            _digest(address(registry), secondary, primary, _membersHash(otherMembers), SALT_A, 0, deadline);
         ONERegistry.JoinAuth memory auth =
             ONERegistry.JoinAuth({deadline: deadline, signature: _sign(pks[1], digest)});
 
@@ -233,9 +227,8 @@ contract ONERegistryTest is ONEBase {
         uint256 deadline = block.timestamp + 1 hours;
 
         // Signed over SALT_B, submitted with SALT_A.
-        bytes32 digest = _digest(
-            address(registry), secondary, primary, _membersHash(members), SALT_B, 0, deadline
-        );
+        bytes32 digest =
+            _digest(address(registry), secondary, primary, _membersHash(members), SALT_B, 0, deadline);
         ONERegistry.JoinAuth memory auth =
             ONERegistry.JoinAuth({deadline: deadline, signature: _sign(pks[1], digest)});
 
@@ -250,9 +243,8 @@ contract ONERegistryTest is ONEBase {
         uint256 deadline = block.timestamp + 1 hours;
 
         // Current nonce is 0; sign over 1.
-        bytes32 digest = _digest(
-            address(registry), secondary, primary, _membersHash(members), SALT_A, 1, deadline
-        );
+        bytes32 digest =
+            _digest(address(registry), secondary, primary, _membersHash(members), SALT_A, 1, deadline);
         ONERegistry.JoinAuth memory auth =
             ONERegistry.JoinAuth({deadline: deadline, signature: _sign(pks[1], digest)});
 
@@ -266,15 +258,12 @@ contract ONERegistryTest is ONEBase {
         address[] memory members = _sorted(_addrs(2));
         uint256 deadline = block.timestamp - 1;
 
-        bytes32 digest = _digest(
-            address(registry), secondary, primary, _membersHash(members), SALT_A, 0, deadline
-        );
+        bytes32 digest =
+            _digest(address(registry), secondary, primary, _membersHash(members), SALT_A, 0, deadline);
         ONERegistry.JoinAuth memory auth =
             ONERegistry.JoinAuth({deadline: deadline, signature: _sign(pks[1], digest)});
 
-        vm.expectRevert(
-            abi.encodeWithSelector(ONERegistry.SignatureExpired.selector, secondary, deadline)
-        );
+        vm.expectRevert(abi.encodeWithSelector(ONERegistry.SignatureExpired.selector, secondary, deadline));
         _createTwoWith(auth, SALT_A);
     }
 
@@ -286,9 +275,8 @@ contract ONERegistryTest is ONEBase {
 
         // Signed against a different registry address: same struct, different domain.
         address foreignRegistry = address(new ONERegistry());
-        bytes32 digest = _digest(
-            foreignRegistry, secondary, primary, _membersHash(members), SALT_A, 0, deadline
-        );
+        bytes32 digest =
+            _digest(foreignRegistry, secondary, primary, _membersHash(members), SALT_A, 0, deadline);
         ONERegistry.JoinAuth memory auth =
             ONERegistry.JoinAuth({deadline: deadline, signature: _sign(pks[1], digest)});
 
@@ -304,8 +292,7 @@ contract ONERegistryTest is ONEBase {
         vm.prank(secondary);
         registry.removeMember(one, secondary);
 
-        ONERegistry.JoinAuth[] memory auths =
-            _buildAuths(members, primary, SALT_A, block.timestamp + 1 hours);
+        ONERegistry.JoinAuth[] memory auths = _buildAuths(members, primary, SALT_A, block.timestamp + 1 hours);
         vm.prank(primary);
         vm.expectRevert(abi.encodeWithSelector(ONERegistry.CreationSaltAlreadyUsed.selector, SALT_A));
         registry.createOne(members, SALT_A, auths);
@@ -325,9 +312,8 @@ contract ONERegistryTest is ONEBase {
 
         uint256 deadline = block.timestamp + 1 hours;
         // Re-sign everything correctly for a fresh salt but with the already-spent nonce 0.
-        bytes32 digest = _digest(
-            address(registry), secondary, primary, _membersHash(members), SALT_B, 0, deadline
-        );
+        bytes32 digest =
+            _digest(address(registry), secondary, primary, _membersHash(members), SALT_B, 0, deadline);
         ONERegistry.JoinAuth[] memory auths = new ONERegistry.JoinAuth[](1);
         auths[0] = ONERegistry.JoinAuth({deadline: deadline, signature: _sign(_pkOf(secondary), digest)});
 
@@ -348,9 +334,7 @@ contract ONERegistryTest is ONEBase {
         two = _sorted(two);
 
         vm.prank(newPrimary);
-        vm.expectRevert(
-            abi.encodeWithSelector(ONERegistry.WalletAlreadyInActiveOne.selector, taken, one)
-        );
+        vm.expectRevert(abi.encodeWithSelector(ONERegistry.WalletAlreadyInActiveOne.selector, taken, one));
         registry.createOne(two, SALT_B, _emptyAuths(1));
     }
 
@@ -487,8 +471,7 @@ contract ONERegistryTest is ONEBase {
         two[1] = newPartner;
         two = _sorted(two);
 
-        ONERegistry.JoinAuth[] memory auths =
-            _buildAuths(two, primary, SALT_B, block.timestamp + 1 hours);
+        ONERegistry.JoinAuth[] memory auths = _buildAuths(two, primary, SALT_B, block.timestamp + 1 hours);
         vm.prank(primary);
         address newOne = registry.createOne(two, SALT_B, auths);
 

@@ -12,6 +12,25 @@ import {ONEIdentity} from "./ONEIdentity.sol";
 /// @dev Identities are deployed by this registry and hold no member list of their own;
 ///      they read back through {membersOf}. Creation requires an EIP-712 `JoinOne`
 ///      signature from every secondary wallet, submitted by the primary wallet.
+///
+///      Lifecycle rules, fixed at creation and enforced throughout:
+///
+///      - A ONE is created with two to five wallets: one primary and one to four
+///        secondaries. Every secondary signs; the primary submits.
+///      - Membership only ever shrinks. There is no way to add a wallet to an existing
+///        ONE — {createOne} is the sole entrypoint that writes a member list.
+///      - A secondary may leave at any time by calling {removeMember} on itself.
+///      - The primary may remove any secondary.
+///      - The primary can never remove itself, so a ONE always retains its primary and
+///        can never be left ownerless.
+///      - When the last secondary leaves, the ONE drops to one member and becomes
+///        permanently inactive. Reactivation is not possible.
+///      - Deactivation frees every wallet, including the primary, so the primary may
+///        immediately create a new ONE.
+///      - The inactive record is never deleted: {exists}, {primaryOf}, {membersOf},
+///        {memberCountOf} and {isActive} keep answering for it forever.
+///      - A wallet belongs to at most one *active* ONE at a time; historical membership
+///        of inactive ONEs places no restriction on it.
 contract ONERegistry is IONERegistry, EIP712 {
     // ---------------------------------------------------------------------
     // Types
@@ -137,7 +156,9 @@ contract ONERegistry is IONERegistry, EIP712 {
         bytes32 initCodeHash =
             keccak256(abi.encodePacked(type(ONEIdentity).creationCode, abi.encode(address(this))));
         return address(
-            uint160(uint256(keccak256(abi.encodePacked(bytes1(0xff), address(this), creationSalt, initCodeHash))))
+            uint160(
+                uint256(keccak256(abi.encodePacked(bytes1(0xff), address(this), creationSalt, initCodeHash)))
+            )
         );
     }
 
@@ -145,9 +166,22 @@ contract ONERegistry is IONERegistry, EIP712 {
     // Removal
     // ---------------------------------------------------------------------
 
-    /// @notice Remove a secondary wallet. Callable by that wallet itself or by the primary.
-    /// @dev The primary can never be removed; when the last secondary leaves the ONE
-    ///      goes inactive and every wallet — including the primary — is freed.
+    /// @notice Remove a secondary wallet from a ONE.
+    /// @dev Authorised for the wallet itself (a secondary leaving) or the primary
+    ///      (evicting a secondary). One secondary may not remove another.
+    ///
+    ///      The primary is never removable: {CannotRemovePrimary} rejects it outright,
+    ///      so no ONE can be left without its primary and this is not a route to
+    ///      transferring or renouncing ownership.
+    ///
+    ///      Removing the last secondary takes the ONE to a single member. At that point
+    ///      it is permanently inactive — {isActive} returns false forever, further
+    ///      removals revert with {OneNotActive}, and there is no path back to active
+    ///      because members can only ever be added by {createOne}. Every wallet,
+    ///      the primary included, is unbound so it may join or create a new ONE, while
+    ///      the old record stays queryable indefinitely.
+    /// @param one    The ONE identity to remove from.
+    /// @param wallet The secondary wallet to remove.
     function removeMember(address one, address wallet) external {
         One storage record = _ones[one];
         if (!record.exists) revert UnknownOne(one);
