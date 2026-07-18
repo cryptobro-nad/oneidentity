@@ -9,6 +9,8 @@ node_modules/
 .next/
 .env
 .env.local
+.env.*
+!.env.example
 
 # Editors / OS
 .DS_Store

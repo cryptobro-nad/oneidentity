@@ -1,0 +1,19 @@
+{
+  "name": "one-spike-mainnet-data",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Read-only Monad Mainnet data-infrastructure spike for ONE. No keys, no writes, no deploys.",
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "spike": "tsx src/run.ts"
+  },
+  "dependencies": {
+    "viem": "^2.21.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.7.0"
+  }
+}
