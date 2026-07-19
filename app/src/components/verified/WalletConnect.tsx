@@ -20,6 +20,19 @@ function isLikelyMobile(): boolean {
 }
 
 export function WalletConnect({ wallet }: { wallet: Wallet }) {
+  // Checking for a saved session first. Without this the page briefly shows
+  // "Connect a wallet" to someone who is in fact still connected, which reads
+  // as the session having been lost.
+  if (wallet.restoring && !wallet.address) {
+    return (
+      <div className="rounded-xl border border-line bg-surface p-5">
+        <p role="status" className="text-sm text-muted">
+          Restoring wallet session…
+        </p>
+      </div>
+    );
+  }
+
   if (!wallet.address) {
     const mobile = isLikelyMobile();
     const hasInjected = wallet.wallets.length > 0;
@@ -129,15 +142,58 @@ export function WalletConnect({ wallet }: { wallet: Wallet }) {
             This wallet is on chain {wallet.chainId ?? "unknown"}. Verified ONE requires Monad
             Mainnet (chain {MONAD_CHAIN_ID}).
           </p>
-          <button
-            type="button"
-            onClick={() => void wallet.switchNetwork()}
-            className="mt-3 rounded-lg bg-accent px-4 py-2 text-sm font-medium text-accent-ink transition-opacity hover:opacity-90"
-          >
-            Switch to Monad Mainnet
-          </button>
+
+          <div className="mt-3 flex flex-wrap items-center gap-2">
+            <button
+              type="button"
+              onClick={() => void wallet.switchNetwork()}
+              disabled={wallet.switching}
+              className="rounded-lg bg-accent px-4 py-2 text-sm font-medium text-accent-ink transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {wallet.switching ? "Switching network…" : "Switch to Monad Mainnet"}
+            </button>
+            <button
+              type="button"
+              onClick={() => void wallet.checkNetwork()}
+              disabled={wallet.switching}
+              className="rounded-lg border border-line-strong bg-surface px-4 py-2 text-sm text-ink transition-colors hover:bg-raised disabled:opacity-50"
+            >
+              Check network again
+            </button>
+          </div>
+
+          {/* Mobile wallets often do not surface the prompt automatically. */}
+          {wallet.switching && isWalletConnectSession(wallet) ? (
+            <p role="status" className="mt-2 text-sm text-muted">
+              Approve the network change in your wallet app.
+            </p>
+          ) : null}
+
+          {/* Errors raised while connected were previously stored but never
+              rendered, which is why the button appeared to do nothing. */}
+          {wallet.error ? (
+            <div role="alert" className="mt-3 text-sm">
+              <p className="text-danger">{wallet.error}</p>
+              <p className="mt-1 text-muted">
+                Open your wallet app, switch to Monad Mainnet, then return to ONE and tap
+                &ldquo;Check network again&rdquo;.
+              </p>
+            </div>
+          ) : null}
         </div>
+      ) : null}
+
+      {/* A connected wallet on the right network can still hit errors. */}
+      {wallet.isOnMonad && wallet.error ? (
+        <p role="alert" className="mt-3 text-sm text-danger">
+          {wallet.error}
+        </p>
       ) : null}
     </div>
   );
+}
+
+/** True when the active connection came through WalletConnect. */
+function isWalletConnectSession(wallet: Wallet): boolean {
+  return wallet.selected?.info.uuid === "walletconnect";
 }

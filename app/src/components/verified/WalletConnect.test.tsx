@@ -30,15 +30,20 @@ function walletState(over: Partial<Wallet> = {}): Wallet {
     error: null,
     isOnMonad: false,
     walletConnectAvailable: false,
+    restoring: false,
+    switching: false,
     connect: vi.fn(),
     connectWalletConnect: vi.fn(),
     disconnect: vi.fn(),
     switchNetwork: vi.fn(),
+    checkNetwork: vi.fn(),
     refreshAccount: vi.fn(),
     getWalletClient: vi.fn(),
     ...over,
   } as unknown as Wallet;
 }
+
+const wcWallet = { info: { uuid: "walletconnect", name: "WalletConnect", icon: "", rdns: "org.walletconnect" }, provider: {} as never };
 
 /** Overrides the UA so the mobile/desktop wording can be exercised. */
 function setUserAgent(ua: string) {
@@ -144,6 +149,145 @@ describe("guidance never misleads by device", () => {
   it("does suggest an extension on desktop with no wallet", () => {
     render(<WalletConnect wallet={walletState()} />);
     expect(screen.getByText(/install MetaMask or Rabby/i)).toBeTruthy();
+  });
+});
+
+describe("session restoration", () => {
+  it("shows a restoring message instead of a false Connect-wallet flash", () => {
+    render(<WalletConnect wallet={walletState({ restoring: true })} />);
+
+    expect(screen.getByText(/restoring wallet session/i)).toBeTruthy();
+    // The bug this prevents: a still-connected user briefly seeing "Connect a
+    // wallet" and concluding the session was lost.
+    expect(screen.queryByText(/^Connect a wallet$/)).toBeNull();
+  });
+
+  it("shows the connect UI once restoration finds nothing", () => {
+    render(<WalletConnect wallet={walletState({ restoring: false })} />);
+    expect(screen.getByText(/connect a wallet/i)).toBeTruthy();
+    expect(screen.queryByText(/restoring wallet session/i)).toBeNull();
+  });
+
+  it("shows no error when there was simply no session to restore", () => {
+    render(<WalletConnect wallet={walletState({ restoring: false })} />);
+    expect(screen.queryByRole("alert")).toBeNull();
+  });
+
+  it("shows the connected wallet immediately when a session was restored", () => {
+    render(
+      <WalletConnect
+        wallet={walletState({
+          restoring: false,
+          address: ADDRESS,
+          chainId: 143,
+          isOnMonad: true,
+          selected: wcWallet,
+        })}
+      />,
+    );
+    expect(screen.getByText(/0x017F…0D8B/)).toBeTruthy();
+    expect(screen.getByText(/via WalletConnect/)).toBeTruthy();
+  });
+
+  it("keeps a restored WRONG-NETWORK session visibly connected", () => {
+    render(
+      <WalletConnect
+        wallet={walletState({
+          address: ADDRESS,
+          chainId: 1,
+          isOnMonad: false,
+          selected: wcWallet,
+        })}
+      />,
+    );
+
+    // Connected AND warned — network state must not decide connectedness.
+    expect(screen.getByText(/0x017F…0D8B/)).toBeTruthy();
+    expect(screen.getByText(/wrong network/i)).toBeTruthy();
+    expect(screen.queryByText(/^Connect a wallet$/)).toBeNull();
+  });
+});
+
+describe("network switching UI", () => {
+  const wrongNetwork = (over = {}) =>
+    walletState({ address: ADDRESS, chainId: 1, isOnMonad: false, selected: wcWallet, ...over });
+
+  it("renders errors raised while connected", () => {
+    // Previously these were stored but never rendered, so the button looked
+    // like it did nothing at all.
+    render(<WalletConnect wallet={wrongNetwork({ error: "You declined the network change in your wallet." })} />);
+    expect(screen.getByRole("alert").textContent).toMatch(/declined the network change/i);
+  });
+
+  it("shows actionable manual instructions alongside the error", () => {
+    render(<WalletConnect wallet={wrongNetwork({ error: "Your wallet is still on a different network." })} />);
+    expect(screen.getByRole("alert").textContent).toMatch(/open your wallet app/i);
+  });
+
+  it("disables both buttons and relabels while switching", () => {
+    render(<WalletConnect wallet={wrongNetwork({ switching: true })} />);
+
+    const switchBtn = screen.getByRole("button", { name: /switching network/i }) as HTMLButtonElement;
+    const checkBtn = screen.getByRole("button", { name: /check network again/i }) as HTMLButtonElement;
+    expect(switchBtn.disabled).toBe(true);
+    expect(checkBtn.disabled).toBe(true);
+  });
+
+  it("tells WalletConnect users to approve in their wallet app", () => {
+    render(<WalletConnect wallet={wrongNetwork({ switching: true })} />);
+    expect(screen.getByText(/approve the network change in your wallet app/i)).toBeTruthy();
+  });
+
+  it("does not show the wallet-app prompt for an injected wallet", () => {
+    render(
+      <WalletConnect
+        wallet={wrongNetwork({
+          switching: true,
+          selected: injectedWallet("MetaMask", "mm"),
+        })}
+      />,
+    );
+    expect(screen.queryByText(/approve the network change in your wallet app/i)).toBeNull();
+  });
+
+  it("calls checkNetwork from the manual fallback button", async () => {
+    const checkNetwork = vi.fn();
+    const user = userEvent.setup();
+
+    render(<WalletConnect wallet={wrongNetwork({ checkNetwork })} />);
+    await user.click(screen.getByRole("button", { name: /check network again/i }));
+
+    expect(checkNetwork).toHaveBeenCalled();
+  });
+
+  it("keeps the wallet connected after a failed switch", async () => {
+    render(<WalletConnect wallet={wrongNetwork({ error: "The network change request failed." })} />);
+    // Still connected, still showing the address, still offering a retry.
+    expect(screen.getByText(/0x017F…0D8B/)).toBeTruthy();
+    expect(screen.getByRole("button", { name: /switch to monad mainnet/i })).toBeTruthy();
+  });
+
+  it("renders an error even when on the correct network", () => {
+    render(
+      <WalletConnect
+        wallet={walletState({
+          address: ADDRESS,
+          chainId: 143,
+          isOnMonad: true,
+          error: "Something went wrong.",
+        })}
+      />,
+    );
+    expect(screen.getByRole("alert").textContent).toMatch(/something went wrong/i);
+  });
+
+  it("shows no network warning once on Monad", () => {
+    render(
+      <WalletConnect
+        wallet={walletState({ address: ADDRESS, chainId: 143, isOnMonad: true })}
+      />,
+    );
+    expect(screen.queryByText(/wrong network/i)).toBeNull();
   });
 });
 

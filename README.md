@@ -6,7 +6,7 @@
 
 **[Open the app](https://oneidentity.app)** · **[See a real Verified ONE](https://oneidentity.app/one/0x1139dec3A681C96807D8C277601655A707494AaA)** · **[Watch-only portfolio](https://oneidentity.app/portfolio)**
 
-Live on **Monad Mainnet** · Registry [`0xf8E6…F915`](https://monadscan.com/address/0xf8E62d8D16acB49eeEeCF13DE48f1f6898c2F915) · Source-verified · 457 automated tests · [MIT](LICENSE)
+Live on **Monad Mainnet** · Registry [`0xf8E6…F915`](https://monadscan.com/address/0xf8E62d8D16acB49eeEeCF13DE48f1f6898c2F915) · Source-verified · 511 automated tests · [MIT](LICENSE)
 
 > No wallet needed to look around. The portfolio and every public ONE profile are read-only.
 
@@ -536,12 +536,12 @@ NEXT_PUBLIC_ONE_REGISTRY_ADDRESS=0xf8E62d8D16acB49eeEeCF13DE48f1f6898c2F915
 
 | Suite | Count |
 |---|---|
-| Frontend (Vitest) | **394** |
+| Frontend (Vitest) | **448** |
 | Contracts (Foundry) | **63** |
-| **Total** | **457** |
+| **Total** | **511** |
 
 ```bash
-cd app && npm run test          # 394 passing
+cd app && npm run test          # 448 passing
 cd contracts && forge test      # 63 passing
 ```
 

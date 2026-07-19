@@ -92,29 +92,163 @@ export async function getChainId(provider: EIP1193Provider): Promise<number> {
   return Number.parseInt(hex, 16);
 }
 
+/** EIP-1193 / EIP-3085 codes we act on. */
+export const ERROR_USER_REJECTED = 4001;
+export const ERROR_UNRECOGNIZED_CHAIN = 4902;
+export const ERROR_UNSUPPORTED_METHOD = 4200;
+
 /**
- * Switches the wallet to Monad Mainnet, adding the chain if unknown.
+ * Digs an RPC error code out of a provider error.
  *
- * 4902 means "unrecognized chain"; that is the only case where adding is
- * appropriate. Any other error is surfaced rather than swallowed.
+ * WalletConnect does not surface RPC errors at the top level the way an
+ * injected wallet does — it wraps the wallet's response, so a 4902 commonly
+ * arrives as `error.cause.code`, `error.data.originalError.code`, or only
+ * inside the message text. Checking `error.code` alone (the previous
+ * behaviour) silently missed those, which is why "add the chain" never fired
+ * for mobile users and the switch appeared to do nothing.
  */
-export async function switchToMonad(provider: EIP1193Provider): Promise<void> {
-  try {
-    await provider.request({
-      method: "wallet_switchEthereumChain",
-      params: [{ chainId: MONAD_CHAIN_PARAMS.chainId }],
-    });
-  } catch (error) {
-    const code = (error as { code?: number }).code;
-    if (code === 4902) {
-      await provider.request({
-        method: "wallet_addEthereumChain",
-        params: [MONAD_CHAIN_PARAMS],
-      });
-      return;
+export function extractRpcErrorCode(error: unknown): number | null {
+  const seen = new Set<unknown>();
+
+  const walk = (node: unknown, depth: number): number | null => {
+    if (!node || depth > 6 || seen.has(node)) return null;
+    seen.add(node);
+
+    if (typeof node === "object") {
+      const code = (node as { code?: unknown }).code;
+      if (typeof code === "number") return code;
+      // Some wallets send the code as a numeric string.
+      if (typeof code === "string" && /^-?\d+$/.test(code)) return Number.parseInt(code, 10);
+
+      for (const key of ["cause", "data", "originalError", "error", "innerError"] as const) {
+        const found = walk((node as Record<string, unknown>)[key], depth + 1);
+        if (found !== null) return found;
+      }
     }
-    throw error;
+    return null;
+  };
+
+  const direct = walk(error, 0);
+  if (direct !== null) return direct;
+
+  // Last resort: some providers only report the code in the message string.
+  const message = error instanceof Error ? error.message : String(error ?? "");
+  const match = message.match(/\b(4001|4902|4200)\b/);
+  return match ? Number.parseInt(match[1]!, 10) : null;
+}
+
+export function isUserRejection(error: unknown): boolean {
+  if (extractRpcErrorCode(error) === ERROR_USER_REJECTED) return true;
+  const message = error instanceof Error ? error.message : String(error ?? "");
+  return /user rejected|user denied|rejected the request|user disapproved/i.test(message);
+}
+
+export type SwitchOutcome =
+  | { ok: true; chainId: number }
+  | {
+      ok: false;
+      reason: "rejected" | "unsupported-method" | "unsupported-chain" | "still-wrong-chain" | "failed";
+      chainId: number | null;
+      message: string;
+    };
+
+/**
+ * Switches the wallet to Monad Mainnet and VERIFIES the result.
+ *
+ * Three things the previous implementation got wrong, all of which made the
+ * mobile button appear to do nothing:
+ *
+ *  1. It only inspected `error.code`, so WalletConnect's wrapped 4902 was
+ *     never recognised and the chain was never added.
+ *  2. After adding the chain it returned immediately. Adding a chain does not
+ *     switch to it in most wallets, so the user stayed on the wrong network.
+ *  3. It never re-read `eth_chainId`, so a silently-ignored request looked
+ *     like success.
+ *
+ * Success now means one thing only: the provider reports chain 143.
+ */
+export async function switchToMonad(provider: EIP1193Provider): Promise<SwitchOutcome> {
+  const readChain = async (): Promise<number | null> => {
+    try {
+      return await getChainId(provider);
+    } catch {
+      return null;
+    }
+  };
+
+  const request = async (method: string, params: unknown[]) =>
+    provider.request({ method, params } as Parameters<EIP1193Provider["request"]>[0]);
+
+  try {
+    await request("wallet_switchEthereumChain", [{ chainId: MONAD_CHAIN_PARAMS.chainId }]);
+  } catch (error) {
+    if (isUserRejection(error)) {
+      // Never follow a rejection with an add-chain prompt: the user just said
+      // no, and prompting again is the wrong response to that answer.
+      return {
+        ok: false,
+        reason: "rejected",
+        chainId: await readChain(),
+        message: "You declined the network change in your wallet.",
+      };
+    }
+
+    const code = extractRpcErrorCode(error);
+
+    if (code === ERROR_UNRECOGNIZED_CHAIN) {
+      try {
+        await request("wallet_addEthereumChain", [MONAD_CHAIN_PARAMS]);
+      } catch (addError) {
+        if (isUserRejection(addError)) {
+          return {
+            ok: false,
+            reason: "rejected",
+            chainId: await readChain(),
+            message: "You declined adding Monad Mainnet to your wallet.",
+          };
+        }
+        return {
+          ok: false,
+          reason: "unsupported-chain",
+          chainId: await readChain(),
+          message: "Your wallet could not add Monad Mainnet.",
+        };
+      }
+
+      // Adding is not switching. Ask explicitly, and tolerate a wallet that
+      // already switched as part of adding.
+      try {
+        await request("wallet_switchEthereumChain", [{ chainId: MONAD_CHAIN_PARAMS.chainId }]);
+      } catch {
+        // Verified below rather than trusted either way.
+      }
+    } else if (code === ERROR_UNSUPPORTED_METHOD) {
+      return {
+        ok: false,
+        reason: "unsupported-method",
+        chainId: await readChain(),
+        message: "This wallet does not support switching networks from a website.",
+      };
+    } else {
+      return {
+        ok: false,
+        reason: "failed",
+        chainId: await readChain(),
+        message: "The network change request failed.",
+      };
+    }
   }
+
+  // The only proof that matters.
+  const chainId = await readChain();
+  if (chainId === MONAD_CHAIN_ID) return { ok: true, chainId };
+
+  return {
+    ok: false,
+    reason: "still-wrong-chain",
+    chainId,
+    message: "Your wallet is still on a different network.",
+  };
 }
 
 export function walletClientFor(

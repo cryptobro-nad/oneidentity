@@ -26,6 +26,7 @@ import {
   disconnectWalletConnect,
   isWalletConnectConfigured,
   walletConnectEntry,
+  restoreWalletConnectSession,
   WALLETCONNECT_UUID,
 } from "./walletconnect";
 
@@ -39,6 +40,10 @@ export type WalletState = {
   isOnMonad: boolean;
   /** True when this deployment has a WalletConnect project id configured. */
   walletConnectAvailable: boolean;
+  /** True while a saved WalletConnect session is being checked on mount. */
+  restoring: boolean;
+  /** True while a network switch or manual re-check is in flight. */
+  switching: boolean;
 };
 
 export function useWallet() {
@@ -48,8 +53,49 @@ export function useWallet() {
   const [chainId, setChainId] = useState<number | null>(null);
   const [connecting, setConnecting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Starts true only when there is something that could be restored, so the UI
+  // never flashes "Connect a wallet" mid-check — and never shows a restoring
+  // state on a deployment that has no WalletConnect at all.
+  const [restoring, setRestoring] = useState(() => isWalletConnectConfigured());
+  const [switching, setSwitching] = useState(false);
 
   useEffect(() => subscribeToWallets(setWallets), []);
+
+  /**
+   * Restores a previously approved WalletConnect session on mount.
+   *
+   * Without this the app forgot every mobile connection on refresh: the module
+   * cache does not survive a reload, and the provider was only ever created
+   * when the user pressed Connect. `init()` rehydrates the persisted session
+   * internally, so this opens no modal and prompts no wallet.
+   *
+   * State is written only after the await, so this never cascades a render.
+   */
+  useEffect(() => {
+    // Nothing to restore, and `restoring` already initialised to false.
+    if (!isWalletConnectConfigured()) return;
+
+    let cancelled = false;
+    const run = async () => {
+      try {
+        const restored = await restoreWalletConnectSession();
+        if (cancelled) return;
+        if (restored) {
+          setSelected(restored.wallet);
+          setAddress(getAddress(restored.accounts[0]!) as PortfolioAddress);
+          // The real chain, whatever it is. A wrong network is still connected.
+          setChainId(restored.chainId);
+        }
+      } finally {
+        if (!cancelled) setRestoring(false);
+      }
+    };
+    void run();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   // Track account and chain changes for the connected provider.
   useEffect(() => {
@@ -116,14 +162,44 @@ export function useWallet() {
     setError(null);
   }, [selected]);
 
+  /**
+   * Switches to Monad and reports the verified outcome.
+   *
+   * The chain is updated from what the provider actually reports afterwards,
+   * so a request the wallet silently ignored can no longer look like success.
+   */
   const switchNetwork = useCallback(async () => {
     if (!selected) return;
+    setSwitching(true);
     setError(null);
     try {
-      await switchToMonad(selected.provider);
-      setChainId(await getChainId(selected.provider));
+      const outcome = await switchToMonad(selected.provider);
+      if (outcome.chainId !== null) setChainId(outcome.chainId);
+      setError(outcome.ok ? null : outcome.message);
     } catch (err) {
       setError(err instanceof Error ? err.message.split("\n")[0]! : String(err));
+    } finally {
+      setSwitching(false);
+    }
+  }, [selected]);
+
+  /**
+   * Re-reads the chain without reconnecting, signing or transacting.
+   *
+   * The manual fallback for wallets that cannot switch programmatically: the
+   * user changes network in the wallet app, comes back, and taps this.
+   */
+  const checkNetwork = useCallback(async () => {
+    if (!selected) return;
+    setSwitching(true);
+    try {
+      const id = await getChainId(selected.provider);
+      setChainId(id);
+      setError(id === MONAD_CHAIN_ID ? null : "Your wallet is still on a different network.");
+    } catch {
+      setError("Could not read the current network from your wallet.");
+    } finally {
+      setSwitching(false);
     }
   }, [selected]);
 
@@ -161,8 +237,10 @@ export function useWallet() {
       isOnMonad: chainId === MONAD_CHAIN_ID,
       // Whether this deployment can offer a mobile/QR connection at all.
       walletConnectAvailable: isWalletConnectConfigured(),
+      restoring,
+      switching,
     }),
-    [wallets, selected, address, chainId, connecting, error],
+    [wallets, selected, address, chainId, connecting, error, restoring, switching],
   );
 
   return {
@@ -171,6 +249,7 @@ export function useWallet() {
     connectWalletConnect,
     disconnect,
     switchNetwork,
+    checkNetwork,
     refreshAccount,
     getWalletClient,
   };

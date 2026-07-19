@@ -50,11 +50,23 @@ export function isWalletConnectConfigured(): boolean {
   return walletConnectProjectId() !== undefined;
 }
 
-/** Minimal surface we rely on, beyond plain EIP-1193. */
+/**
+ * The documented public surface of EthereumProvider that we rely on.
+ *
+ * Verified against the installed @walletconnect/ethereum-provider@2.23.10 type
+ * declarations — every member here is public. Notably `loadPersistedSession()`
+ * and `switchEthereumChain()` are `protected` in this version and are therefore
+ * NOT used, and `setDefaultChain` does not exist in this version at all.
+ */
 type WalletConnectProvider = EIP1193Provider & {
   connect: (opts?: unknown) => Promise<unknown>;
   disconnect: () => Promise<void>;
+  /** Public getter. Defined only once a session has been established. */
   session?: unknown;
+  /** Public property, populated by init() from any persisted session. */
+  accounts?: string[];
+  /** Public property: the provider's view of the current chain. */
+  chainId?: number;
 };
 
 let cached: WalletConnectProvider | null = null;
@@ -134,9 +146,94 @@ export async function disconnectWalletConnect(): Promise<void> {
   }
 }
 
-/** True when a WalletConnect session is currently established. */
+/**
+ * True when a WalletConnect session is currently established.
+ *
+ * Deliberately checks `session`, NOT the `connected` getter. In this version
+ * `connected` returns `relayer.connected` — websocket connectivity to the
+ * relay, which is false while the socket is still coming up even when a
+ * perfectly good session exists. Using it here would drop valid sessions.
+ */
 export function hasWalletConnectSession(): boolean {
   return Boolean(cached?.session);
+}
+
+export type RestoredSession = {
+  wallet: DiscoveredWallet;
+  accounts: string[];
+  chainId: number;
+};
+
+/**
+ * Restores a previously approved session, if one exists.
+ *
+ * `EthereumProvider.init()` already calls `loadPersistedSession()` internally
+ * (verified in the installed 2.23.10 source), so simply initialising is enough
+ * to rehydrate `session`, `accounts` and `chainId` from storage. Nothing here
+ * calls `connect()` or `enable()`, so no modal opens and the wallet is never
+ * prompted.
+ *
+ * Returns null when there is nothing to restore — including after a deliberate
+ * disconnect, because the provider's own `disconnect()` removes the persisted
+ * session. That is why no custom "remember me" flag is needed, and why one
+ * would be wrong: it could claim a connection the wallet no longer honours.
+ *
+ * A session that exists but yields no accounts is treated as unusable and
+ * cleared, rather than shown as a connection with no address.
+ */
+export async function restoreWalletConnectSession(): Promise<RestoredSession | null> {
+  if (!isWalletConnectConfigured()) return null;
+
+  try {
+    const provider = await getWalletConnectProvider();
+
+    if (!provider.session) return null;
+
+    // Prefer the live account list over the cached property.
+    let accounts: string[] = [];
+    try {
+      accounts = ((await provider.request({ method: "eth_accounts" })) as string[]) ?? [];
+    } catch {
+      accounts = provider.accounts ?? [];
+    }
+    if (accounts.length === 0) accounts = provider.accounts ?? [];
+
+    if (accounts.length === 0) {
+      // A session with no usable account is stale. Clear it so the user gets a
+      // clean connect prompt instead of a connected-looking dead end.
+      await disconnectWalletConnect();
+      return null;
+    }
+
+    // Read the chain from the provider, never assume Monad. A wrong network is
+    // a connected wallet that needs switching, not a failed restoration.
+    let chainId: number;
+    try {
+      const hex = (await provider.request({ method: "eth_chainId" })) as string;
+      chainId = Number.parseInt(hex, 16);
+    } catch {
+      chainId = provider.chainId ?? 0;
+    }
+    if (!Number.isFinite(chainId) || chainId === 0) chainId = provider.chainId ?? 0;
+
+    return {
+      wallet: {
+        info: {
+          uuid: WALLETCONNECT_UUID,
+          name: "WalletConnect",
+          icon: "",
+          rdns: "org.walletconnect",
+        },
+        provider: provider as EIP1193Provider,
+      },
+      accounts,
+      chainId,
+    };
+  } catch {
+    // Restoration is best-effort: a failure here must fall through to the
+    // normal connect UI, never surface as an error the user cannot act on.
+    return null;
+  }
 }
 
 /** Test-only: drops the cached provider. */
