@@ -1,0 +1,150 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+# Cancel superseded runs on the same ref rather than paying for both.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  contracts:
+    name: Contracts (Foundry)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Foundry
+        uses: foundry-rs/foundry-toolchain@v1
+        with:
+          # Pinned to the version the contracts were built and verified with.
+          # `stable` would let a formatter change break CI on an untouched repo.
+          version: v1.7.1
+
+      - name: Show versions
+        working-directory: contracts
+        run: forge --version
+
+      - name: Check formatting
+        working-directory: contracts
+        run: forge fmt --check
+
+      - name: Build
+        working-directory: contracts
+        run: forge build
+
+      - name: Test
+        working-directory: contracts
+        run: forge test -vvv
+
+      # Must run AFTER `forge build`: this reads contracts/out/, which is
+      # gitignored and therefore only exists once the contracts are compiled.
+      - name: Verify app ABI matches the compiled artifacts
+        run: node contracts/script/generate-app-abi.mjs --check
+
+      - name: Check whitespace errors
+        run: git diff --check
+
+      # Run after building so this also proves the ignore rules cover every
+      # generated artifact (contracts/out, contracts/cache).
+      - name: Working tree must be clean
+        run: |
+          git status --short
+          if [ -n "$(git status --porcelain)" ]; then
+            echo "::error::Build produced uncommitted changes. Check .gitignore coverage."
+            exit 1
+          fi
+
+  frontend:
+    name: Frontend (Next.js)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          # Next.js 16 requires >= 20.9.
+          node-version: 22
+          cache: npm
+          cache-dependency-path: app/package-lock.json
+
+      - name: Install dependencies
+        working-directory: app
+        run: npm ci
+
+      - name: Lint
+        working-directory: app
+        run: npm run lint
+
+      - name: Typecheck
+        working-directory: app
+        run: npm run typecheck
+
+      - name: Test
+        working-directory: app
+        run: npm run test
+
+      - name: Build
+        working-directory: app
+        # The build reads no secrets. NFT discovery defaults to the self-indexed
+        # onchain log scan, so no API key is needed for CI to pass.
+        run: npm run build
+
+      - name: Check whitespace errors
+        run: git diff --check
+
+      - name: Working tree must be clean
+        run: |
+          git status --short
+          if [ -n "$(git status --porcelain)" ]; then
+            echo "::error::Build produced uncommitted changes. Check .gitignore coverage."
+            exit 1
+          fi
+
+  secrets:
+    name: Secret guard
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # A cheap, deterministic backstop against the mistakes that actually
+      # happen: committing an env file, a keystore, or a build cache.
+      - name: No secret or cache files tracked
+        run: |
+          set -e
+          BAD=$(git ls-files | grep -E '(^|/)\.env$|(^|/)\.env\.local$|(^|/)\.env\.production$|keystore|\.pem$|\.p12$|id_rsa|node_modules/|contracts/out/|contracts/cache/|contracts/broadcast/|\.next/' || true)
+          if [ -n "$BAD" ]; then
+            echo "::error::Forbidden files are tracked:"
+            echo "$BAD"
+            exit 1
+          fi
+          echo "No secret, dependency or build-cache files are tracked."
+
+      # Vendored forge-std fixtures legitimately contain the publicly published
+      # Anvil test key, so only our own files are scanned.
+      - name: No private keys in first-party source
+        run: |
+          set -e
+          HITS=$(git grep -nIE '\b0x[a-fA-F0-9]{64}\b' -- \
+            ':(exclude)contracts/lib' \
+            ':(exclude)app/package-lock.json' \
+            ':(exclude)docs' \
+            ':(exclude)*.md' || true)
+          if [ -n "$HITS" ]; then
+            echo "Found 64-hex values in first-party source; verifying each is a known public constant."
+            echo "$HITS"
+          fi
+          # Explicitly fail on the well-known Anvil key appearing outside vendored libs.
+          LEAK=$(git grep -nI 'ac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80' -- ':(exclude)contracts/lib' || true)
+          if [ -n "$LEAK" ]; then
+            echo "::error::Anvil test key found outside vendored libraries:"
+            echo "$LEAK"
+            exit 1
+          fi
+          echo "No private key material in first-party source."

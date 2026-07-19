@@ -2,7 +2,7 @@
 
 **Many wallets. One onchain identity.**
 
-Live on **Monad Mainnet** · Registry [`0xf8E6…F915`](https://monadscan.com/address/0xf8E62d8D16acB49eeEeCF13DE48f1f6898c2F915) · Source-verified · 345 automated tests
+Live on **Monad Mainnet** · Registry [`0xf8E6…F915`](https://monadscan.com/address/0xf8E62d8D16acB49eeEeCF13DE48f1f6898c2F915) · Source-verified · 345 automated tests · [MIT](LICENSE)
 
 ---
 
@@ -208,7 +208,9 @@ The interface is deliberately hard to misuse. These screenshots show the guardra
 
 Share a ONE address and anyone can open its public profile.
 
-<img src="docs/screenshots/09-active-one-profile.png" alt="Public ONE profile showing active status, linked wallets and the primary wallet" width="62%">
+<img src="docs/screenshots/09-active-one-profile.png" alt="Public profile of the first live Verified ONE: active status, wallets in this ONE, and the linked wallets with primary and secondary roles" width="100%">
+
+*The first live Verified ONE on Monad Mainnet — two linked wallets, one primary, active.*
 
 A profile shows active or inactive status, the linked wallets, which is primary, combined MON, combined supported stablecoins, automatically discovered NFT collections, per-wallet balances, the network and Registry, and explorer links.
 

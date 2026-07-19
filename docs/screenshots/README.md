@@ -30,9 +30,3 @@ material.
 The guardrail screenshots (06, 07, 08) show the application **refusing to
 proceed**. They are included deliberately: they are evidence that the rules are
 enforced in the interface, not just in the contracts.
-
-## Known discrepancy
-
-`09-active-one-profile.png` was captured before the interface copy changed from
-"Members" to "Linked wallets" / "Wallets in this ONE". The underlying behaviour
-is unchanged; only the heading text differs from the current build.
