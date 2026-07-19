@@ -18,7 +18,11 @@ import { getAddress, parseAbi, type Address, type PublicClient } from "viem";
 import { MONAD_CHAIN_ID } from "@/lib/chain";
 import { errorText } from "@/lib/rpc";
 import type { PortfolioAddress } from "@/lib/types";
-import type { DiscoveredCollection, NftDiscoveryProvider } from "./discovery";
+import type {
+  DiscoveredCollection,
+  DiscoveryBlockReason,
+  NftDiscoveryProvider,
+} from "./discovery";
 
 const ERC721_ABI = parseAbi([
   "function balanceOf(address owner) view returns (uint256)",
@@ -54,7 +58,12 @@ export type HybridResult = {
   collections: VerifiedCollection[];
   blockNumber: bigint;
   /** Wallets whose discovery failed — their collections may be missing entirely. */
-  discoveryFailures: { wallet: PortfolioAddress; error: string; blocked: boolean }[];
+  discoveryFailures: {
+    wallet: PortfolioAddress;
+    error: string;
+    blocked: boolean;
+    reason: DiscoveryBlockReason;
+  }[];
   /** True when discovery failed for any wallet, so the list may be incomplete. */
   discoveryPartial: boolean;
   /** True when any on-chain read failed. */
@@ -105,6 +114,7 @@ export async function loadHybridNftHoldings(
         wallet: outcome.wallet,
         error: outcome.error,
         blocked: outcome.blocked,
+        reason: outcome.reason,
       });
       continue;
     }

@@ -6,6 +6,7 @@ import { createPublicClient, http } from "viem";
 import { AddressChip } from "@/components/AddressChip";
 import { ErrorNotice } from "@/components/Notices";
 import { NftCollectionChecker } from "@/components/NftCollectionChecker";
+import { NftHoldings } from "@/components/NftHoldings";
 import { PortfolioResult } from "@/components/PortfolioResult";
 import { ErrorPanel } from "@/components/verified/ReviewStep";
 import { WalletConnect } from "@/components/verified/WalletConnect";
@@ -175,7 +176,7 @@ export function OneProfileClient({ initial }: { initial: WireProfile }) {
 
         <dl className="mt-6 grid gap-4 sm:grid-cols-3">
           <div>
-            <dt className="text-xs text-faint">Members</dt>
+            <dt className="text-xs text-faint">Wallets in this ONE</dt>
             <dd className="tnum mt-1 text-2xl font-semibold text-ink">{profile.memberCount}</dd>
           </div>
           <div>
@@ -196,7 +197,7 @@ export function OneProfileClient({ initial }: { initial: WireProfile }) {
       {/* Members */}
       <section aria-labelledby="members-heading" className="space-y-4">
         <h2 id="members-heading" className="text-lg font-medium text-ink">
-          Members
+          Linked wallets
         </h2>
 
         <ul className="divide-y divide-line overflow-hidden rounded-xl border border-line bg-surface">
@@ -284,6 +285,12 @@ export function OneProfileClient({ initial }: { initial: WireProfile }) {
           </p>
         </section>
       )}
+
+      {mayAggregateNow ? (
+        <section className="border-t border-line pt-10">
+          <NftHoldings addresses={profile.members} />
+        </section>
+      ) : null}
 
       {mayAggregateNow ? (
         <section className="border-t border-line pt-10">

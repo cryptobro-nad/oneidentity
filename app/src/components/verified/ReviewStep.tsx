@@ -116,7 +116,7 @@ export function ReviewStep({
         </div>
 
         <div className="px-4 py-3">
-          <dt className="text-sm text-faint">Members (canonical order)</dt>
+          <dt className="text-sm text-faint">Linked wallets (canonical order)</dt>
           <dd className="mt-2 space-y-1.5">
             {sortedMembers.map((m, i) => (
               <div key={m} className="flex items-center gap-3">

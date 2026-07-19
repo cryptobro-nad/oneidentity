@@ -28,9 +28,19 @@ export type DiscoveredCollection = {
   claimedQty: number | null;
 };
 
+/** Why discovery could not run, when it could not. */
+export type DiscoveryBlockReason = "no-key" | "tier-required" | "rate-limited" | "error";
+
 export type DiscoveryOutcome =
   | { ok: true; wallet: PortfolioAddress; collections: DiscoveredCollection[] }
-  | { ok: false; wallet: PortfolioAddress; error: string; blocked: boolean };
+  | {
+      ok: false;
+      wallet: PortfolioAddress;
+      error: string;
+      blocked: boolean;
+      /** Distinguishes "needs a paid plan" from "transient failure". */
+      reason: DiscoveryBlockReason;
+    };
 
 export interface NftDiscoveryProvider {
   readonly name: string;
@@ -56,12 +66,34 @@ export const BLOCKVISION_NFT_ENDPOINT =
  * Requires an API key. One wallet per request — there is no documented bulk
  * form, so N wallets cost N request chains.
  *
- * Auth header: `x-api-key` is used here. BlockVision's docs render their code
- * samples client-side so the header name could not be confirmed from the
- * published reference; if a key returns 401/403, check the dashboard's sample
- * and adjust this one constant.
+ * Auth header: **`x-api-key`**, confirmed empirically against the live API.
+ * With `x-api-key` the API returns a *tier* error (proving the key
+ * authenticated); with `apikey`, `Authorization: Bearer`, or a query parameter
+ * it returns "apikey must" (missing credential). Case-insensitive.
  */
 export const BLOCKVISION_AUTH_HEADER = "x-api-key";
+
+/**
+ * "This endpoint needs a higher tier."
+ *
+ * Measured 2026-07-19 with a valid free-tier key:
+ *
+ *   /v2/monad/account/nfts    -> 403 code -32609
+ *     "Your 30 trial requests have been used. The Monad Mainnet Indexing API
+ *      is available only to Pro-tier users."
+ *   /v2/monad/account/tokens  -> 403 code -32609 (same)
+ *   /v2/monad/contract/detail -> 200 code 0 OK   (key valid; not gated)
+ *
+ * The Monad Mainnet *account indexing* endpoints — the ones that enumerate a
+ * wallet's NFTs — sit behind the Pro plan after 30 trial calls. The generic
+ * "10M CU free tier" on the pricing page does not cover them.
+ *
+ * Tracked as its own state so the UI can say "discovery requires a paid plan"
+ * instead of the misleading "no NFTs found".
+ */
+export const BLOCKVISION_TIER_ERROR_CODE = -32609;
+/** Missing or unrecognised credential. */
+export const BLOCKVISION_NO_KEY_ERROR_CODE = -32002;
 
 type BlockVisionItem = {
   name?: string;
@@ -89,6 +121,7 @@ export class BlockVisionDiscovery implements NftDiscoveryProvider {
   constructor(
     private readonly apiKey: string | undefined,
     private readonly maxPages = 20,
+    private readonly timeoutMs = 12_000,
   ) {}
 
   get configured(): boolean {
@@ -106,6 +139,7 @@ export class BlockVisionDiscovery implements NftDiscoveryProvider {
         wallet,
         error: "BLOCKVISION_API_KEY is not set.",
         blocked: true,
+        reason: "no-key",
       };
     }
 
@@ -120,27 +154,53 @@ export class BlockVisionDiscovery implements NftDiscoveryProvider {
       // a malformed nextPageIndex from looping forever.
       while (pageIndex !== null && pages < this.maxPages) {
         const url = `${BLOCKVISION_NFT_ENDPOINT}?address=${wallet}&pageIndex=${pageIndex}`;
-        const res = await fetch(url, {
-          headers: { [BLOCKVISION_AUTH_HEADER]: this.apiKey! },
-        });
 
+        // Bound every call: a hung indexer must not hang the whole page.
+        const controller = new AbortController();
+        const timer = setTimeout(() => controller.abort(), this.timeoutMs);
+        let res: Response;
+        try {
+          res = await fetch(url, {
+            headers: { [BLOCKVISION_AUTH_HEADER]: this.apiKey!, accept: "application/json" },
+            signal: controller.signal,
+          });
+        } finally {
+          clearTimeout(timer);
+        }
+
+        // Parse the body even on a non-2xx: BlockVision returns 403 with a
+        // machine-readable code that distinguishes "wrong tier" from "no key".
+        const text = await res.text();
+        let json: BlockVisionResponse = {};
+        try {
+          json = JSON.parse(text) as BlockVisionResponse;
+        } catch {
+          json = {};
+        }
+
+        const code = json.code;
+        const message = json.message ?? json.reason ?? `HTTP ${res.status} from BlockVision`;
+
+        if (code === BLOCKVISION_TIER_ERROR_CODE) {
+          return { ok: false, wallet, error: message, blocked: true, reason: "tier-required" };
+        }
+        if (code === BLOCKVISION_NO_KEY_ERROR_CODE) {
+          return { ok: false, wallet, error: message, blocked: true, reason: "no-key" };
+        }
+        if (res.status === 429) {
+          return { ok: false, wallet, error: message, blocked: false, reason: "rate-limited" };
+        }
         if (!res.ok) {
           return {
             ok: false,
             wallet,
-            error: `HTTP ${res.status} from BlockVision`,
+            error: message,
             blocked: res.status === 401 || res.status === 403,
+            reason: "error",
           };
         }
-
-        const json = (await res.json()) as BlockVisionResponse;
-        if (typeof json.code === "number" && json.code !== 0 && json.code !== 200) {
-          return {
-            ok: false,
-            wallet,
-            error: json.message ?? json.reason ?? `BlockVision code ${json.code}`,
-            blocked: false,
-          };
+        if (typeof code === "number" && code !== 0 && code !== 200) {
+          return { ok: false, wallet, error: message, blocked: false, reason: "error" };
         }
 
         for (const item of json.result?.data ?? []) {
@@ -172,11 +232,17 @@ export class BlockVisionDiscovery implements NftDiscoveryProvider {
 
       return { ok: true, wallet, collections: [...byAddress.values()] };
     } catch (error) {
+      const aborted = error instanceof Error && error.name === "AbortError";
       return {
         ok: false,
         wallet,
-        error: error instanceof Error ? error.message.split("\n")[0]! : String(error),
+        error: aborted
+          ? `BlockVision did not respond within ${this.timeoutMs}ms`
+          : error instanceof Error
+            ? error.message.split("\n")[0]!
+            : String(error),
         blocked: false,
+        reason: "error",
       };
     }
   }

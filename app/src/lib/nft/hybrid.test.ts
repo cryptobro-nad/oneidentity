@@ -5,6 +5,8 @@ import {
   BlockVisionDiscovery,
   CuratedDiscovery,
   type DiscoveredCollection,
+  type DiscoveryBlockReason,
+  type DiscoveryOutcome,
   type NftDiscoveryProvider,
 } from "./discovery";
 import { MONAD_CHAIN_ID } from "@/lib/chain";
@@ -27,18 +29,29 @@ const collection = (
 });
 
 function stubProvider(
-  outcomes: Record<string, DiscoveredCollection[] | { error: string; blocked?: boolean }>,
+  outcomes: Record<
+    string,
+    DiscoveredCollection[] | { error: string; blocked?: boolean; reason?: DiscoveryBlockReason }
+  >,
 ): NftDiscoveryProvider {
+  const discover = async (wallet: PortfolioAddress): Promise<DiscoveryOutcome> => {
+    const entry = outcomes[wallet.toLowerCase()];
+    if (!entry) return { ok: true, wallet, collections: [] };
+    if (Array.isArray(entry)) return { ok: true, wallet, collections: entry };
+    return {
+      ok: false,
+      wallet,
+      error: entry.error,
+      blocked: entry.blocked ?? false,
+      reason: entry.reason ?? "error",
+    };
+  };
+
   return {
     name: "stub",
     configured: true,
     reproduceCommand: () => "stub",
-    discover: vi.fn(async (wallet: PortfolioAddress) => {
-      const entry = outcomes[wallet.toLowerCase()];
-      if (!entry) return { ok: true as const, wallet, collections: [] };
-      if (Array.isArray(entry)) return { ok: true as const, wallet, collections: entry };
-      return { ok: false as const, wallet, error: entry.error, blocked: entry.blocked ?? false };
-    }),
+    discover: vi.fn(discover),
   };
 }
 
@@ -288,6 +301,89 @@ describe("BlockVisionDiscovery", () => {
     expect(outcome.collections).toHaveLength(2);
     // Two entries for the same contract collapse into one candidate.
     expect(outcome.collections[0]!.claimedQty).toBe(3);
+    vi.unstubAllGlobals();
+  });
+
+  it("distinguishes a Pro-tier requirement from an empty wallet", async () => {
+    // Measured live: code -32609 with a valid free-tier key. This must never be
+    // rendered as "this wallet holds no NFTs".
+    const provider = new BlockVisionDiscovery("key");
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(
+        async () =>
+          new Response(
+            JSON.stringify({
+              code: -32609,
+              message:
+                "Your 30 trial requests have been used. The Monad Mainnet Indexing API is available only to Pro-tier users.",
+            }),
+            { status: 403 },
+          ),
+      ),
+    );
+
+    const outcome = await provider.discover(W1);
+    expect(outcome.ok).toBe(false);
+    if (outcome.ok) return;
+    expect(outcome.reason).toBe("tier-required");
+    expect(outcome.blocked).toBe(true);
+    vi.unstubAllGlobals();
+  });
+
+  it("reports a missing credential distinctly from a tier problem", async () => {
+    const provider = new BlockVisionDiscovery("key");
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(
+        async () =>
+          new Response(JSON.stringify({ code: -32002, message: "apikey must" }), { status: 403 }),
+      ),
+    );
+
+    const outcome = await provider.discover(W1);
+    expect(outcome.ok).toBe(false);
+    if (outcome.ok) return;
+    expect(outcome.reason).toBe("no-key");
+    vi.unstubAllGlobals();
+  });
+
+  it("reports rate limiting as retryable, not blocked", async () => {
+    const provider = new BlockVisionDiscovery("key");
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => new Response(JSON.stringify({ message: "slow down" }), { status: 429 })),
+    );
+
+    const outcome = await provider.discover(W1);
+    expect(outcome.ok).toBe(false);
+    if (outcome.ok) return;
+    expect(outcome.reason).toBe("rate-limited");
+    expect(outcome.blocked).toBe(false);
+    vi.unstubAllGlobals();
+  });
+
+  it("times out rather than hanging the page", async () => {
+    const provider = new BlockVisionDiscovery("key", 20, 50);
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(
+        (_url: string, init?: { signal?: AbortSignal }) =>
+          new Promise((_resolve, reject) => {
+            init?.signal?.addEventListener("abort", () => {
+              const err = new Error("aborted");
+              err.name = "AbortError";
+              reject(err);
+            });
+          }),
+      ),
+    );
+
+    const outcome = await provider.discover(W1);
+    expect(outcome.ok).toBe(false);
+    if (outcome.ok) return;
+    expect(outcome.error).toMatch(/did not respond within/);
+    expect(outcome.reason).toBe("error");
     vi.unstubAllGlobals();
   });
 

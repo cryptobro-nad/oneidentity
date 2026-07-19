@@ -2,6 +2,7 @@
 
 import { useCallback, useState, useSyncExternalStore } from "react";
 import { NftCollectionChecker } from "@/components/NftCollectionChecker";
+import { NftHoldings } from "@/components/NftHoldings";
 import { ErrorNotice, UnverifiedNotice } from "@/components/Notices";
 import { PortfolioResult } from "@/components/PortfolioResult";
 import { WalletList } from "@/components/WalletList";
@@ -82,6 +83,12 @@ export function PortfolioClient() {
       {portfolio ? (
         <div className="border-t border-line pt-12">
           <PortfolioResult portfolio={portfolio} />
+        </div>
+      ) : null}
+
+      {addresses.length > 0 ? (
+        <div className="border-t border-line pt-12">
+          <NftHoldings addresses={addresses} />
         </div>
       ) : null}
 
