@@ -57,11 +57,15 @@ export function NftCollectionChecker({ addresses }: { addresses: PortfolioAddres
     <section aria-labelledby="nft-heading" className="space-y-5">
       <div>
         <h2 id="nft-heading" className="text-lg font-medium text-ink">
-          Check an NFT collection
+          Advanced: Check a specific NFT collection
         </h2>
         <p className="mt-1.5 text-sm text-muted">
-          Enter an ERC-721 collection address to see the combined balance across your wallets.
-          ONE does not browse or list your NFTs.
+          Enter an ERC-721 collection contract address to check how many NFTs from that collection
+          are held by the wallets in this portfolio. This field does not accept a wallet address.
+        </p>
+        <p className="mt-1.5 text-sm text-faint">
+          Optional. It is separate from loading the portfolio, and ONE does not browse or list your
+          NFTs.
         </p>
       </div>
 
@@ -73,7 +77,7 @@ export function NftCollectionChecker({ addresses }: { addresses: PortfolioAddres
               setDraft(e.target.value);
               if (error) setError(null);
             }}
-            placeholder="0x… collection contract"
+            placeholder="0x… NFT collection contract"
             spellCheck={false}
             autoComplete="off"
             disabled={disabled}
@@ -88,9 +92,7 @@ export function NftCollectionChecker({ addresses }: { addresses: PortfolioAddres
             {loading ? "Checking…" : "Check combined holdings"}
           </button>
         </div>
-        {disabled ? (
-          <p className="text-sm text-faint">Add at least one wallet first.</p>
-        ) : null}
+        {disabled ? <p className="text-sm text-faint">Add at least one wallet first.</p> : null}
       </form>
 
       {error ? <ErrorNotice title="Could not check that collection">{error}</ErrorNotice> : null}
@@ -140,8 +142,8 @@ export function NftCollectionChecker({ addresses }: { addresses: PortfolioAddres
 
           {result.partial ? (
             <p className="rounded-lg border border-warn/30 bg-warn-soft px-3 py-2 text-sm text-muted">
-              <span className="font-medium text-ink">Partial data loaded</span> — some wallets
-              could not be read. They are excluded from the total rather than counted as zero.
+              <span className="font-medium text-ink">Partial data loaded</span> — some wallets could
+              not be read. They are excluded from the total rather than counted as zero.
             </p>
           ) : null}
 

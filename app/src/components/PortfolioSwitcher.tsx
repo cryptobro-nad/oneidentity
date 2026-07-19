@@ -6,10 +6,14 @@ import { MAX_NAME_LENGTH, PERSONAL_ID, type Portfolio } from "@/lib/portfolios/t
 /**
  * Portfolio selector and management.
  *
- * A `<select>` rather than a row of tabs: a user may accumulate many
- * portfolios, and tabs would either overflow a narrow screen or need
- * horizontal scrolling. A native select stays compact at any count, is
- * keyboard-usable for free, and handles long names without breaking layout.
+ * A vertical list of rows rather than tabs or a dropdown. Tabs would overflow
+ * or need horizontal scrolling once a user accumulates portfolios, and a
+ * dropdown hides the wallet counts. Rows stack cleanly at any width and any
+ * name length.
+ *
+ * Each row is a button (selects the portfolio) with Edit/Delete as SIBLING
+ * buttons, never nested inside it — nesting interactive elements is invalid
+ * HTML and would make a click on Edit also fire selection.
  */
 export function PortfolioSwitcher({
   portfolios,
@@ -26,37 +30,34 @@ export function PortfolioSwitcher({
   onRename: (id: string, name: string) => { ok: boolean; message?: string };
   onDelete: (id: string) => void;
 }) {
-  const selectId = useId();
+  const headingId = useId();
   const nameInputId = useId();
 
   const [mode, setMode] = useState<"idle" | "create" | "rename" | "confirm-delete">("idle");
+  /** Which portfolio the rename/delete form is acting on. */
+  const [targetId, setTargetId] = useState<string | null>(null);
   const [draftName, setDraftName] = useState("");
   const [error, setError] = useState<string | null>(null);
 
   const inputRef = useRef<HTMLInputElement>(null);
-  const selectRef = useRef<HTMLSelectElement>(null);
 
-  const active = portfolios.find((p) => p.id === activeId) ?? portfolios[0]!;
-  const isDefault = active.id === PERSONAL_ID;
+  const target = portfolios.find((p) => p.id === targetId) ?? null;
 
-  // Move focus into the form when it opens, so keyboard users are not left
-  // behind on the trigger button.
   useEffect(() => {
     if (mode === "create" || mode === "rename") inputRef.current?.focus();
   }, [mode]);
 
   const close = useCallback(() => {
     setMode("idle");
+    setTargetId(null);
     setDraftName("");
     setError(null);
-    selectRef.current?.focus();
   }, []);
 
   const submit = useCallback(
     (event: FormEvent) => {
       event.preventDefault();
-      const result =
-        mode === "create" ? onCreate(draftName) : onRename(active.id, draftName);
+      const result = mode === "create" ? onCreate(draftName) : onRename(targetId ?? "", draftName);
 
       if (!result.ok) {
         setError(result.message ?? "That name could not be used.");
@@ -64,86 +65,110 @@ export function PortfolioSwitcher({
       }
       close();
     },
-    [mode, draftName, onCreate, onRename, active.id, close],
+    [mode, draftName, onCreate, onRename, targetId, close],
   );
 
   return (
-    <section aria-labelledby={`${selectId}-label`} className="rounded-xl border border-line bg-surface p-4 sm:p-5">
-      <div className="flex flex-wrap items-end gap-3">
-        <div className="min-w-0 flex-1">
-          <label id={`${selectId}-label`} htmlFor={selectId} className="block text-xs text-faint">
-            Portfolio
-          </label>
-          <select
-            id={selectId}
-            ref={selectRef}
-            value={active.id}
-            onChange={(e) => {
-              setMode("idle");
-              setError(null);
-              onSelect(e.target.value);
-            }}
-            className="mt-1 w-full max-w-full truncate rounded-lg border border-line bg-canvas px-3 py-2.5 text-sm text-ink"
-          >
-            {portfolios.map((p) => (
-              // The full name stays in the option text, so assistive tech and
-              // the native dropdown always expose it even when truncated.
-              <option key={p.id} value={p.id}>
-                {p.name}
-                {p.addresses.length > 0 ? ` (${p.addresses.length})` : ""}
-              </option>
-            ))}
-          </select>
-        </div>
-
-        <div className="flex flex-wrap gap-2">
-          <button
-            type="button"
-            onClick={() => {
-              setMode("create");
-              setDraftName("");
-              setError(null);
-            }}
-            className="rounded-lg border border-line-strong bg-surface px-3.5 py-2.5 text-sm text-ink transition-colors hover:bg-raised"
-          >
-            New portfolio
-          </button>
-
-          {!isDefault ? (
-            <>
-              <button
-                type="button"
-                onClick={() => {
-                  setMode("rename");
-                  setDraftName(active.name);
-                  setError(null);
-                }}
-                className="rounded-lg border border-line-strong bg-surface px-3.5 py-2.5 text-sm text-ink transition-colors hover:bg-raised"
-                aria-label={`Rename portfolio ${active.name}`}
-              >
-                Rename
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  setMode("confirm-delete");
-                  setError(null);
-                }}
-                className="rounded-lg border border-line-strong bg-surface px-3.5 py-2.5 text-sm text-muted transition-colors hover:bg-raised hover:text-danger"
-                aria-label={`Delete portfolio ${active.name}`}
-              >
-                Delete
-              </button>
-            </>
-          ) : null}
-        </div>
+    <section
+      aria-labelledby={headingId}
+      className="rounded-xl border border-line bg-surface p-4 sm:p-5"
+    >
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <h2 id={headingId} className="text-sm font-medium text-ink">
+          Your portfolios
+        </h2>
+        <button
+          type="button"
+          onClick={() => {
+            setMode("create");
+            setTargetId(null);
+            setDraftName("");
+            setError(null);
+          }}
+          className="rounded-lg border border-line-strong bg-surface px-3.5 py-2 text-sm text-ink transition-colors hover:bg-raised"
+        >
+          New portfolio
+        </button>
       </div>
 
-      {/* Create / rename share one inline form — no modal for a single field. */}
+      <ul className="mt-3 space-y-2">
+        {portfolios.map((p) => {
+          const isActive = p.id === activeId;
+          const isDefault = p.id === PERSONAL_ID;
+          return (
+            <li
+              key={p.id}
+              className={`flex flex-wrap items-center gap-x-3 gap-y-2 rounded-lg border px-3 py-2.5 transition-colors ${
+                isActive
+                  ? "border-accent/50 bg-accent-soft"
+                  : "border-line bg-canvas hover:bg-raised"
+              }`}
+            >
+              {/* The row body selects. min-w-0 lets a long name truncate
+                  instead of pushing the action buttons off a narrow screen. */}
+              <button
+                type="button"
+                onClick={() => onSelect(p.id)}
+                aria-current={isActive ? "true" : undefined}
+                className="min-w-0 flex-1 text-left"
+              >
+                <span className="flex items-center gap-2">
+                  <span className={`truncate text-sm ${isActive ? "text-ink" : "text-muted"}`}>
+                    {p.name}
+                  </span>
+                  {isActive ? (
+                    <span className="shrink-0 rounded-full bg-accent px-2 py-0.5 text-[10px] font-medium text-accent-ink">
+                      Selected
+                    </span>
+                  ) : null}
+                </span>
+                <span className="mt-0.5 block text-xs text-faint">
+                  {p.addresses.length} {p.addresses.length === 1 ? "wallet" : "wallets"}
+                </span>
+              </button>
+
+              <div className="flex shrink-0 items-center gap-1.5">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMode("rename");
+                    setTargetId(p.id);
+                    setDraftName(p.name);
+                    setError(null);
+                  }}
+                  className="rounded-md px-2.5 py-1.5 text-xs text-muted transition-colors hover:bg-surface hover:text-ink"
+                  aria-label={`Rename ${p.name}`}
+                >
+                  Edit
+                </button>
+                {/* The default portfolio is renamable but permanent — it is
+                    where deleting any other portfolio lands. */}
+                {!isDefault ? (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setMode("confirm-delete");
+                      setTargetId(p.id);
+                      setError(null);
+                    }}
+                    className="rounded-md px-2.5 py-1.5 text-xs text-muted transition-colors hover:bg-surface hover:text-danger"
+                    aria-label={`Delete ${p.name}`}
+                  >
+                    Delete
+                  </button>
+                ) : null}
+              </div>
+            </li>
+          );
+        })}
+      </ul>
+
       {mode === "create" || mode === "rename" ? (
         <form onSubmit={submit} noValidate className="mt-4 border-t border-line pt-4">
           <label htmlFor={nameInputId} className="block text-xs text-faint">
-            {mode === "create" ? "Name for the new portfolio" : `New name for “${active.name}”`}
+            {mode === "create"
+              ? "Name for the new portfolio"
+              : `New name for “${target?.name ?? ""}”`}
           </label>
           <div className="mt-1 flex flex-col gap-2 sm:flex-row">
             <input
@@ -185,14 +210,14 @@ export function PortfolioSwitcher({
         </form>
       ) : null}
 
-      {mode === "confirm-delete" ? (
+      {mode === "confirm-delete" && target ? (
         <div
           role="alertdialog"
-          aria-labelledby={`${selectId}-delete-heading`}
+          aria-labelledby={`${headingId}-delete`}
           className="mt-4 rounded-lg border border-danger/30 bg-danger-soft px-4 py-3.5"
         >
-          <p id={`${selectId}-delete-heading`} className="text-sm font-medium text-ink">
-            Delete “{active.name}”?
+          <p id={`${headingId}-delete`} className="text-sm font-medium text-ink">
+            Delete “{target.name}”?
           </p>
           <p className="mt-1 text-sm text-muted">
             This removes the watchlist from this browser. It does not affect the wallets or any
@@ -202,7 +227,7 @@ export function PortfolioSwitcher({
             <button
               type="button"
               onClick={() => {
-                onDelete(active.id);
+                onDelete(target.id);
                 close();
               }}
               className="rounded-lg bg-danger px-4 py-2 text-sm font-medium text-canvas transition-opacity hover:opacity-90"

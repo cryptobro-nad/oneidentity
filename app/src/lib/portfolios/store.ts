@@ -22,7 +22,11 @@ import {
 const SERVER_SNAPSHOT: PortfolioState = Object.freeze({
   version: 2,
   portfolios: Object.freeze([
-    Object.freeze({ id: PERSONAL_ID, name: "Personal", addresses: Object.freeze([]) }),
+    Object.freeze({
+      id: PERSONAL_ID,
+      name: "Personal",
+      addresses: Object.freeze([]),
+    }),
   ]),
   activeId: PERSONAL_ID,
 }) as unknown as PortfolioState;
@@ -75,8 +79,7 @@ export function getActive(): Portfolio {
 // ---------------------------------------------------------------------------
 
 export type PortfolioActionResult =
-  | { ok: true; state: PortfolioState; id: string }
-  | { ok: false; message: string };
+  { ok: true; state: PortfolioState; id: string } | { ok: false; message: string };
 
 export function createPortfolio(name: string): PortfolioActionResult {
   const state = current();
@@ -100,12 +103,16 @@ export function createPortfolio(name: string): PortfolioActionResult {
   return { ok: true, state: next, id: portfolio.id };
 }
 
+/**
+ * Renames any portfolio, including the default one.
+ *
+ * The default is renamable but not deletable: its identity is the fixed
+ * PERSONAL_ID, not the label "Personal". Renaming it to "Main" keeps every
+ * address and keeps it as the fallback target when another portfolio is
+ * deleted, so nothing depends on the displayed name.
+ */
 export function renamePortfolio(id: string, name: string): PortfolioActionResult {
   const state = current();
-  // Personal is fixed, so there is no rename affordance and no way to reach one.
-  if (id === PERSONAL_ID) {
-    return { ok: false, message: "The Personal portfolio cannot be renamed." };
-  }
   if (!state.portfolios.some((p) => p.id === id)) {
     return { ok: false, message: "That portfolio no longer exists." };
   }
@@ -116,9 +123,7 @@ export function renamePortfolio(id: string, name: string): PortfolioActionResult
   const next = commit({
     ...state,
     // Same id, same addresses — only the label changes.
-    portfolios: state.portfolios.map((p) =>
-      p.id === id ? { ...p, name: validation.name } : p,
-    ),
+    portfolios: state.portfolios.map((p) => (p.id === id ? { ...p, name: validation.name } : p)),
   });
 
   return { ok: true, state: next, id };
@@ -126,8 +131,10 @@ export function renamePortfolio(id: string, name: string): PortfolioActionResult
 
 export function deletePortfolio(id: string): PortfolioActionResult {
   const state = current();
+  // The default portfolio is permanent — it is where deletion of any other
+  // portfolio lands, so there must always be one. It may still be renamed.
   if (id === PERSONAL_ID) {
-    return { ok: false, message: "The Personal portfolio cannot be deleted." };
+    return { ok: false, message: "The default portfolio cannot be deleted." };
   }
   if (!state.portfolios.some((p) => p.id === id)) {
     return { ok: false, message: "That portfolio no longer exists." };
@@ -193,9 +200,7 @@ export function clearAddressesIn(portfolioId: string): void {
   const state = current();
   commit({
     ...state,
-    portfolios: state.portfolios.map((p) =>
-      p.id === portfolioId ? { ...p, addresses: [] } : p,
-    ),
+    portfolios: state.portfolios.map((p) => (p.id === portfolioId ? { ...p, addresses: [] } : p)),
   });
 }
 

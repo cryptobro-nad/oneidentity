@@ -1,5 +1,6 @@
 "use client";
 
+import { useMemo, useState } from "react";
 import {
   formatAmount,
   formatBlockNumber,
@@ -7,7 +8,7 @@ import {
   shortenAddress,
   walletLabel,
 } from "@/lib/format";
-import { NATIVE_DECIMALS, NATIVE_SYMBOL, SUPPORTED_STABLECOINS } from "@/lib/tokens";
+import { ALL_BALANCE_TOKENS, NATIVE_DECIMALS, NATIVE_SYMBOL, isMemeSymbol } from "@/lib/tokens";
 import { collectFailedReads, type AggregatedPortfolio, type AssetReadResult } from "@/lib/types";
 import { AddressChip } from "./AddressChip";
 import { PartialNotice } from "./Notices";
@@ -31,10 +32,7 @@ function BalanceCell({
 }) {
   if (!result || !result.success) {
     return (
-      <span
-        className="tnum text-sm text-danger"
-        title={result?.error ?? "No result returned"}
-      >
+      <span className="tnum text-sm text-danger" title={result?.error ?? "No result returned"}>
         Failed
       </span>
     );
@@ -82,10 +80,35 @@ function TotalCard({
 }
 
 export function PortfolioResult({ portfolio }: { portfolio: AggregatedPortfolio }) {
+  const [showZero, setShowZero] = useState(false);
   const failures = collectFailedReads(portfolio);
 
   // A token is "incomplete" when at least one wallet's read for it failed.
   const symbolFailed = (symbol: string) => failures.some((f) => f.symbol === symbol);
+
+  /**
+   * Which ERC-20 columns to render.
+   *
+   * MON is handled separately and always shows. Everything else — stablecoins
+   * and community tokens alike — is hidden at zero, because a wallet holding
+   * none of thirteen assets would otherwise be a wall of zeroes that also
+   * overflows a phone.
+   *
+   * A token whose read FAILED is never hidden. Hiding it would present an RPC
+   * failure as "you don't hold this", which is the one confusion this whole
+   * codebase is built to avoid.
+   */
+  const visibleTokens = useMemo(() => {
+    if (showZero) return ALL_BALANCE_TOKENS;
+    return ALL_BALANCE_TOKENS.filter(
+      (t) => (portfolio.totals[t.symbol] ?? 0n) > 0n || symbolFailed(t.symbol),
+    );
+    // symbolFailed derives from `failures`, which derives from `portfolio`.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [portfolio, showZero]);
+
+  const hiddenCount = ALL_BALANCE_TOKENS.length - visibleTokens.length;
+  const heldMemes = visibleTokens.filter((t) => isMemeSymbol(t.symbol));
 
   return (
     <section aria-labelledby="combined-heading" className="space-y-6">
@@ -120,12 +143,16 @@ export function PortfolioResult({ portfolio }: { portfolio: AggregatedPortfolio 
 
       {portfolio.failedEndpoints.length > 0 ? (
         <p className="text-xs text-warn">
-          Primary RPC failed ({portfolio.failedEndpoints.map((f) => f.url).join(", ")}). Served
-          from fallback {portfolio.endpointUsed}.
+          Primary RPC failed ({portfolio.failedEndpoints.map((f) => f.url).join(", ")}). Served from
+          fallback {portfolio.endpointUsed}.
         </p>
       ) : null}
 
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+      <div
+        role="group"
+        aria-label="Combined totals"
+        className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4"
+      >
         <TotalCard
           symbol={NATIVE_SYMBOL}
           raw={portfolio.totals[NATIVE_SYMBOL] ?? 0n}
@@ -133,7 +160,7 @@ export function PortfolioResult({ portfolio }: { portfolio: AggregatedPortfolio 
           incomplete={symbolFailed(NATIVE_SYMBOL)}
           emphasis
         />
-        {SUPPORTED_STABLECOINS.map((token) => (
+        {visibleTokens.map((token) => (
           <TotalCard
             key={token.symbol}
             symbol={token.symbol}
@@ -143,6 +170,29 @@ export function PortfolioResult({ portfolio }: { portfolio: AggregatedPortfolio 
           />
         ))}
       </div>
+
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+        <button
+          type="button"
+          onClick={() => setShowZero((v) => !v)}
+          aria-pressed={showZero}
+          className="rounded-lg border border-line-strong bg-surface px-3.5 py-2 text-sm text-ink transition-colors hover:bg-raised"
+        >
+          {showZero ? "Hide zero balances" : "Show zero balances"}
+        </button>
+        {!showZero && hiddenCount > 0 ? (
+          <p className="text-xs text-faint">
+            {hiddenCount} asset{hiddenCount === 1 ? "" : "s"} with a zero balance hidden.
+          </p>
+        ) : null}
+      </div>
+
+      {heldMemes.length > 0 || showZero ? (
+        <p className="text-xs leading-relaxed text-faint">
+          Curated community-token balances. Contract addresses are verified, but inclusion is not an
+          endorsement.
+        </p>
+      ) : null}
 
       <div>
         <h3 className="mb-3 text-sm font-medium text-ink">Per-wallet breakdown</h3>
@@ -157,7 +207,7 @@ export function PortfolioResult({ portfolio }: { portfolio: AggregatedPortfolio 
                 <th scope="col" className="px-4 py-3 text-right text-xs font-medium text-faint">
                   {NATIVE_SYMBOL}
                 </th>
-                {SUPPORTED_STABLECOINS.map((t) => (
+                {visibleTokens.map((t) => (
                   <th
                     key={t.symbol}
                     scope="col"
@@ -178,10 +228,10 @@ export function PortfolioResult({ portfolio }: { portfolio: AggregatedPortfolio 
                   <td className="px-4 py-3 text-right">
                     <BalanceCell result={wallet.mon} decimals={NATIVE_DECIMALS} />
                   </td>
-                  {SUPPORTED_STABLECOINS.map((t) => (
+                  {visibleTokens.map((t) => (
                     <td key={t.symbol} className="px-4 py-3 text-right">
                       <BalanceCell
-                        result={wallet.stablecoins[t.symbol]}
+                        result={wallet.tokens[t.symbol]}
                         decimals={t.decimals}
                         maxFractionDigits={2}
                       />

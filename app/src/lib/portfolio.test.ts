@@ -4,7 +4,7 @@ import { loadPortfolio, loadPortfolioWithClient } from "./portfolio";
 import { AllEndpointsFailedError } from "./rpc";
 import { collectFailedReads } from "./types";
 import type { PortfolioAddress } from "./types";
-import type { SupportedStablecoin } from "./tokens";
+import { ALL_BALANCE_TOKENS, type SupportedStablecoin } from "./tokens";
 import { MONAD_CHAIN_ID } from "./chain";
 
 const A = "0xB09684f5486d1af80699BbC27f14dd5A905da873" as PortfolioAddress;
@@ -27,9 +27,7 @@ const TOKENS: readonly SupportedStablecoin[] = [
   },
 ];
 
-type MulticallEntry =
-  | { status: "success"; result: bigint }
-  | { status: "failure"; error: Error };
+type MulticallEntry = { status: "success"; result: bigint } | { status: "failure"; error: Error };
 
 /**
  * A fake viem client. `multicallResults` is ordered exactly as
@@ -57,8 +55,14 @@ function mockClient(opts: {
   } as unknown as PublicClient;
 }
 
-const success = (result: bigint): MulticallEntry => ({ status: "success", result });
-const failure = (msg: string): MulticallEntry => ({ status: "failure", error: new Error(msg) });
+const success = (result: bigint): MulticallEntry => ({
+  status: "success",
+  result,
+});
+const failure = (msg: string): MulticallEntry => ({
+  status: "failure",
+  error: new Error(msg),
+});
 
 describe("loadPortfolioWithClient", () => {
   it("aggregates a single wallet", async () => {
@@ -125,10 +129,10 @@ describe("loadPortfolioWithClient", () => {
 
     const result = await loadPortfolioWithClient(client, [A, B], TOKENS);
 
-    expect(result.wallets[0]?.stablecoins.USDC?.rawValue).toBe(111n);
-    expect(result.wallets[1]?.stablecoins.USDC?.rawValue).toBe(222n);
-    expect(result.wallets[0]?.stablecoins.USDT0?.rawValue).toBe(333n);
-    expect(result.wallets[1]?.stablecoins.USDT0?.rawValue).toBe(444n);
+    expect(result.wallets[0]?.tokens.USDC?.rawValue).toBe(111n);
+    expect(result.wallets[1]?.tokens.USDC?.rawValue).toBe(222n);
+    expect(result.wallets[0]?.tokens.USDT0?.rawValue).toBe(333n);
+    expect(result.wallets[1]?.tokens.USDT0?.rawValue).toBe(444n);
   });
 
   it("treats a successful zero balance as success, not failure", async () => {
@@ -141,7 +145,10 @@ describe("loadPortfolioWithClient", () => {
 
     expect(result.partial).toBe(false);
     expect(result.wallets[0]?.mon).toEqual({ success: true, rawValue: 0n });
-    expect(result.wallets[0]?.stablecoins.USDC).toEqual({ success: true, rawValue: 0n });
+    expect(result.wallets[0]?.tokens.USDC).toEqual({
+      success: true,
+      rawValue: 0n,
+    });
     expect(result.totals.USDC).toBe(0n);
   });
 
@@ -159,9 +166,9 @@ describe("loadPortfolioWithClient", () => {
     const result = await loadPortfolioWithClient(client, [A, B], TOKENS);
 
     expect(result.partial).toBe(true);
-    expect(result.wallets[1]?.stablecoins.USDC?.success).toBe(false);
-    expect(result.wallets[1]?.stablecoins.USDC?.rawValue).toBeUndefined();
-    expect(result.wallets[1]?.stablecoins.USDC?.error).toContain("execution reverted");
+    expect(result.wallets[1]?.tokens.USDC?.success).toBe(false);
+    expect(result.wallets[1]?.tokens.USDC?.rawValue).toBeUndefined();
+    expect(result.wallets[1]?.tokens.USDC?.error).toContain("execution reverted");
     // The failed wallet is excluded from the total rather than added as 0.
     expect(result.totals.USDC).toBe(1_000_000n);
   });
@@ -189,7 +196,7 @@ describe("loadPortfolioWithClient", () => {
     const result = await loadPortfolioWithClient(client, [A], TOKENS);
 
     expect(result.partial).toBe(true);
-    expect(result.wallets[0]?.stablecoins.USDT0?.success).toBe(false);
+    expect(result.wallets[0]?.tokens.USDT0?.success).toBe(false);
   });
 
   it("handles an empty wallet list without inventing values", async () => {
@@ -338,12 +345,8 @@ describe("collectFailedReads", () => {
     });
 
     expect(failures).toHaveLength(2);
-    expect(failures).toContainEqual(
-      expect.objectContaining({ address: A, symbol: "MON" }),
-    );
-    expect(failures).toContainEqual(
-      expect.objectContaining({ address: A, symbol: "USDC" }),
-    );
+    expect(failures).toContainEqual(expect.objectContaining({ address: A, symbol: "MON" }));
+    expect(failures).toContainEqual(expect.objectContaining({ address: A, symbol: "USDC" }));
   });
 
   it("returns nothing when every read succeeded", async () => {
@@ -353,7 +356,130 @@ describe("collectFailedReads", () => {
     });
     const full = await loadPortfolioWithClient(client, [A], TOKENS);
     expect(
-      collectFailedReads({ ...full, endpointUsed: "t", failedEndpoints: [], fetchedAt: 0 }),
+      collectFailedReads({
+        ...full,
+        endpointUsed: "t",
+        failedEndpoints: [],
+        fetchedAt: 0,
+      }),
     ).toEqual([]);
   });
 });
+
+// ---------------------------------------------------------------------------
+// Curated community tokens ride the same load as MON and the stablecoins
+// ---------------------------------------------------------------------------
+
+describe("meme tokens in the default load", () => {
+  it("queries every configured token for every wallet in one multicall", async () => {
+    const client = mockClient({
+      multicallResults: Array.from({ length: ALL_BALANCE_TOKENS.length * 2 }, () => success(0n)),
+    });
+
+    await loadPortfolioWithClient(client, [A, B]);
+
+    const multicall = client.multicall as unknown as ReturnType<typeof vi.fn>;
+    expect(multicall).toHaveBeenCalledTimes(1);
+
+    const { contracts, blockNumber } = multicall.mock.calls[0]![0];
+    // One entry per (token, wallet) pair — nothing skipped for a meme token.
+    expect(contracts).toHaveLength(ALL_BALANCE_TOKENS.length * 2);
+    // Every read is pinned to the same block as the native reads.
+    expect(blockNumber).toBe(88_613_299n);
+
+    for (const token of ALL_BALANCE_TOKENS) {
+      const forToken = contracts.filter(
+        (c: { address: string }) => c.address.toLowerCase() === token.address.toLowerCase(),
+      );
+      expect(forToken, `${token.symbol} was not queried for both wallets`).toHaveLength(2);
+      expect(forToken.map((c: { args: string[] }) => c.args[0])).toEqual([A, B]);
+    }
+  });
+
+  it("gives a single wallet the full token set too", async () => {
+    const client = mockClient({
+      multicallResults: Array.from({ length: ALL_BALANCE_TOKENS.length }, () => success(0n)),
+    });
+
+    const result = await loadPortfolioWithClient(client, [A]);
+
+    // One wallet is not a reduced check: every configured symbol is present.
+    for (const token of ALL_BALANCE_TOKENS) {
+      expect(result.wallets[0]!.tokens[token.symbol]).toBeDefined();
+    }
+    expect(Object.keys(result.wallets[0]!.tokens)).toHaveLength(ALL_BALANCE_TOKENS.length);
+  });
+
+  it("combines a meme balance across wallets and keeps the per-wallet split", async () => {
+    const chogIndex = ALL_BALANCE_TOKENS.findIndex((t) => t.symbol === "CHOG");
+    const results = Array.from({ length: ALL_BALANCE_TOKENS.length * 2 }, () => success(0n));
+    // token-major, wallet-minor ordering
+    results[chogIndex * 2] = success(3n * 10n ** 18n);
+    results[chogIndex * 2 + 1] = success(4n * 10n ** 18n);
+
+    const result = await loadPortfolioWithClient(client_(results), [A, B]);
+
+    expect(result.totals.CHOG).toBe(7n * 10n ** 18n);
+    expect(result.wallets[0]!.tokens.CHOG?.rawValue).toBe(3n * 10n ** 18n);
+    expect(result.wallets[1]!.tokens.CHOG?.rawValue).toBe(4n * 10n ** 18n);
+  });
+
+  it("with one wallet, the combined total equals that wallet's balance", async () => {
+    const chogIndex = ALL_BALANCE_TOKENS.findIndex((t) => t.symbol === "CHOG");
+    const results = Array.from({ length: ALL_BALANCE_TOKENS.length }, () => success(0n));
+    results[chogIndex] = success(42n * 10n ** 18n);
+
+    const result = await loadPortfolioWithClient(client_(results), [A]);
+
+    expect(result.totals.CHOG).toBe(42n * 10n ** 18n);
+    expect(result.wallets[0]!.tokens.CHOG?.rawValue).toBe(42n * 10n ** 18n);
+  });
+
+  it("a failed meme read is not counted as zero and does not block the rest", async () => {
+    const chogIndex = ALL_BALANCE_TOKENS.findIndex((t) => t.symbol === "CHOG");
+    const jamesIndex = ALL_BALANCE_TOKENS.findIndex((t) => t.symbol === "JAMES");
+    const results = Array.from({ length: ALL_BALANCE_TOKENS.length }, () => success(0n));
+    results[chogIndex] = {
+      status: "failure",
+      error: new Error("execution reverted"),
+    };
+    results[jamesIndex] = success(5n * 10n ** 18n);
+
+    const result = await loadPortfolioWithClient(client_(results), [A]);
+
+    const chog = result.wallets[0]!.tokens.CHOG!;
+    expect(chog.success).toBe(false);
+    expect(chog.rawValue).toBeUndefined();
+    expect(result.partial).toBe(true);
+
+    // The failure is reported, not silently folded into the total…
+    expect(result.totals.CHOG).toBe(0n);
+    expect(
+      collectFailedReads({
+        ...result,
+        endpointUsed: "",
+        failedEndpoints: [],
+        fetchedAt: 0,
+      }),
+    ).toEqual(expect.arrayContaining([expect.objectContaining({ symbol: "CHOG" })]));
+    // …and the sibling token still loaded.
+    expect(result.wallets[0]!.tokens.JAMES?.rawValue).toBe(5n * 10n ** 18n);
+  });
+
+  it("preserves full precision for a tiny balance", async () => {
+    const chogIndex = ALL_BALANCE_TOKENS.findIndex((t) => t.symbol === "CHOG");
+    const results = Array.from({ length: ALL_BALANCE_TOKENS.length }, () => success(0n));
+    results[chogIndex] = success(1n);
+
+    const result = await loadPortfolioWithClient(client_(results), [A]);
+
+    // Stored as exact base units; rounding is a display concern only.
+    expect(result.wallets[0]!.tokens.CHOG?.rawValue).toBe(1n);
+    expect(result.totals.CHOG).toBe(1n);
+  });
+});
+
+/** Shorthand: a client returning the given multicall results. */
+function client_(multicallResults: MulticallEntry[]) {
+  return mockClient({ multicallResults });
+}

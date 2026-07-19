@@ -9,7 +9,7 @@
 
 import { erc20Abi, getAddress, type PublicClient } from "viem";
 import { withRpcFallback, errorText, type WithRpcOptions } from "./rpc";
-import { NATIVE_SYMBOL, SUPPORTED_STABLECOINS, type SupportedStablecoin } from "./tokens";
+import { ALL_BALANCE_TOKENS, NATIVE_SYMBOL, type BalanceToken } from "./tokens";
 import type {
   AggregatedPortfolio,
   AssetReadResult,
@@ -17,17 +17,25 @@ import type {
   WalletPortfolio,
 } from "./types";
 
-const ok = (value: bigint): AssetReadResult => ({ success: true, rawValue: value });
+const ok = (value: bigint): AssetReadResult => ({
+  success: true,
+  rawValue: value,
+});
 const failed = (error: string): AssetReadResult => ({ success: false, error });
 
 export type LoadPortfolioOptions = WithRpcOptions & {
-  tokens?: readonly SupportedStablecoin[];
+  tokens?: readonly BalanceToken[];
   /** Injected in tests to control the clock. */
   now?: () => number;
 };
 
 /**
- * Reads native + stablecoin balances for every wallet at one pinned block.
+ * Reads native + ERC-20 balances for every wallet at one pinned block.
+ *
+ * Stablecoins and curated community tokens travel in the same token list, so
+ * they cost one multicall between them and land on the same block. A
+ * one-wallet portfolio therefore gets exactly the coverage a five-wallet one
+ * does — the combined total simply equals the single wallet's balance.
  *
  * Pinning matters: without it a slow multicall could straddle two blocks and
  * produce a "combined total" that never existed at any single moment.
@@ -35,7 +43,7 @@ export type LoadPortfolioOptions = WithRpcOptions & {
 export async function loadPortfolioWithClient(
   client: PublicClient,
   addresses: readonly PortfolioAddress[],
-  tokens: readonly SupportedStablecoin[] = SUPPORTED_STABLECOINS,
+  tokens: readonly BalanceToken[] = ALL_BALANCE_TOKENS,
 ): Promise<{
   wallets: WalletPortfolio[];
   totals: Record<string, bigint>;
@@ -72,8 +80,7 @@ export async function loadPortfolioWithClient(
   // viem's multicall return type is generic over the contracts tuple; the flat
   // shape is all we need, so narrow it explicitly rather than fighting inference.
   type MulticallEntry =
-    | { status: "success"; result: unknown }
-    | { status: "failure"; error: unknown };
+    { status: "success"; result: unknown } | { status: "failure"; error: unknown };
 
   let tokenResults: readonly MulticallEntry[];
   try {
@@ -89,14 +96,14 @@ export async function loadPortfolioWithClient(
   }
 
   const walletPortfolios: WalletPortfolio[] = wallets.map((address, walletIndex) => {
-    const stablecoins: Record<string, AssetReadResult> = {};
+    const readsBySymbol: Record<string, AssetReadResult> = {};
     tokens.forEach((token, tokenIndex) => {
       const flatIndex = tokenIndex * wallets.length + walletIndex;
       const entry = tokenResults[flatIndex];
       if (entry && entry.status === "success") {
-        stablecoins[token.symbol] = ok(entry.result as bigint);
+        readsBySymbol[token.symbol] = ok(entry.result as bigint);
       } else {
-        stablecoins[token.symbol] = failed(
+        readsBySymbol[token.symbol] = failed(
           entry ? errorText(entry.error) : "no result returned for this call",
         );
       }
@@ -104,7 +111,7 @@ export async function loadPortfolioWithClient(
     return {
       address,
       mon: nativeResults[walletIndex] ?? failed("no native result returned"),
-      stablecoins,
+      tokens: readsBySymbol,
     };
   });
 
@@ -120,7 +127,7 @@ export async function loadPortfolioWithClient(
       partial = true;
     }
     for (const token of tokens) {
-      const result = wallet.stablecoins[token.symbol];
+      const result = wallet.tokens[token.symbol];
       if (result?.success && result.rawValue !== undefined) {
         totals[token.symbol] = (totals[token.symbol] ?? 0n) + result.rawValue;
       } else {
@@ -137,7 +144,7 @@ export async function loadPortfolio(
   addresses: readonly PortfolioAddress[],
   options: LoadPortfolioOptions = {},
 ): Promise<AggregatedPortfolio> {
-  const tokens = options.tokens ?? SUPPORTED_STABLECOINS;
+  const tokens = options.tokens ?? ALL_BALANCE_TOKENS;
   const now = options.now ?? Date.now;
 
   const outcome = await withRpcFallback(

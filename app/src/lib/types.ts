@@ -24,8 +24,14 @@ export type AssetReadResult = {
 export type WalletPortfolio = {
   address: PortfolioAddress;
   mon: AssetReadResult;
-  /** Keyed by token symbol, e.g. "USDC". */
-  stablecoins: Record<string, AssetReadResult>;
+  /**
+   * Every non-native read, keyed by onchain symbol — stablecoins and curated
+   * community tokens alike, e.g. "USDC" or "CHOG".
+   *
+   * Symbols are stored exactly as the chain reports them, so some are
+   * lowercase ("shramp", "emo", "moncock").
+   */
+  tokens: Record<string, AssetReadResult>;
 };
 
 export type AggregatedPortfolio = {
@@ -59,7 +65,7 @@ export function collectFailedReads(portfolio: AggregatedPortfolio): FailedRead[]
         error: wallet.mon.error ?? "unknown error",
       });
     }
-    for (const [symbol, result] of Object.entries(wallet.stablecoins)) {
+    for (const [symbol, result] of Object.entries(wallet.tokens)) {
       if (!result.success) {
         failures.push({
           address: wallet.address,

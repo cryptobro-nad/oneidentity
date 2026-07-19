@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, type FormEvent } from "react";
+import { useId, useState, type FormEvent } from "react";
 import { validateNewAddress } from "@/lib/addresses";
 import { MAX_WALLETS } from "@/lib/chain";
 import { walletLabel } from "@/lib/format";
@@ -28,6 +28,7 @@ export function WalletList({
   /** Section heading; names the active portfolio. */
   heading?: string;
 }) {
+  const inputId = useId();
   const [draft, setDraft] = useState("");
   const [error, setError] = useState<string | null>(null);
 
@@ -57,18 +58,22 @@ export function WalletList({
       </div>
 
       <form onSubmit={submit} noValidate className="space-y-2">
+        <label htmlFor={inputId} className="block text-xs text-faint">
+          Add wallet address
+        </label>
         <div className="flex flex-col gap-2 sm:flex-row">
           <input
+            id={inputId}
             value={draft}
             onChange={(e) => {
               setDraft(e.target.value);
               if (error) setError(null);
             }}
-            placeholder="0x…"
+            placeholder="0x… wallet address"
             spellCheck={false}
             autoComplete="off"
             disabled={full}
-            aria-label="Monad wallet address"
+            aria-label="Add wallet address"
             aria-invalid={error ? true : undefined}
             aria-describedby={error ? "wallet-error" : undefined}
             className="min-w-0 flex-1 rounded-lg border border-line bg-surface px-3.5 py-2.5 font-mono text-sm text-ink placeholder:text-faint disabled:opacity-50"
@@ -102,9 +107,7 @@ export function WalletList({
               className="flex flex-wrap items-center justify-between gap-3 px-4 py-3"
             >
               <div className="flex min-w-0 items-center gap-3">
-                <span className="w-[4.5rem] shrink-0 text-xs text-faint">
-                  {walletLabel(index)}
-                </span>
+                <span className="w-[4.5rem] shrink-0 text-xs text-faint">{walletLabel(index)}</span>
                 <AddressChip address={address} />
               </div>
               <button

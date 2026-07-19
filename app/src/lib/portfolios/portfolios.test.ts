@@ -12,12 +12,7 @@ import {
   setActivePortfolio,
   subscribe,
 } from "./store";
-import {
-  LEGACY_ADDRESSES_KEY,
-  PORTFOLIOS_KEY,
-  migrateLegacy,
-  readState,
-} from "./storage";
+import { LEGACY_ADDRESSES_KEY, PORTFOLIOS_KEY, migrateLegacy, readState } from "./storage";
 import { PERSONAL_ID, validatePortfolioName, type Portfolio } from "./types";
 
 const A = "0xB09684f5486d1af80699BbC27f14dd5A905da873";
@@ -110,12 +105,7 @@ describe("legacy migration", () => {
   it("never migrates balance or NFT data", () => {
     // A legacy value polluted with non-address junk keeps only the addresses.
     installStorage({
-      [LEGACY_ADDRESSES_KEY]: JSON.stringify([
-        A,
-        { mon: "9.43", nfts: ["ROARRR"] },
-        "junk",
-        B,
-      ]),
+      [LEGACY_ADDRESSES_KEY]: JSON.stringify([A, { mon: "9.43", nfts: ["ROARRR"] }, "junk", B]),
     });
     const addresses = getSnapshot().portfolios[0]!.addresses;
 
@@ -219,12 +209,8 @@ describe("switching portfolios", () => {
     addAddressTo(created.id, B);
 
     const state = getSnapshot();
-    expect(
-      state.portfolios.find((p) => p.id === PERSONAL_ID)!.addresses,
-    ).toEqual([A]);
-    expect(
-      state.portfolios.find((p) => p.id === created.id)!.addresses,
-    ).toEqual([B]);
+    expect(state.portfolios.find((p) => p.id === PERSONAL_ID)!.addresses).toEqual([A]);
+    expect(state.portfolios.find((p) => p.id === created.id)!.addresses).toEqual([B]);
   });
 
   it("rejects an unknown portfolio id", () => {
@@ -295,12 +281,8 @@ describe("addresses within a portfolio", () => {
     removeAddressFrom(created.id, A as `0x${string}`);
 
     const state = getSnapshot();
-    expect(
-      state.portfolios.find((p) => p.id === PERSONAL_ID)!.addresses,
-    ).toEqual([A]);
-    expect(
-      state.portfolios.find((p) => p.id === created.id)!.addresses,
-    ).toEqual([]);
+    expect(state.portfolios.find((p) => p.id === PERSONAL_ID)!.addresses).toEqual([A]);
+    expect(state.portfolios.find((p) => p.id === created.id)!.addresses).toEqual([]);
   });
 
   it("enforces the existing five-wallet limit per portfolio", () => {
@@ -315,9 +297,7 @@ describe("addresses within a portfolio", () => {
     for (const a of five) expect(addAddressTo(PERSONAL_ID, a).ok).toBe(true);
 
     // Multiple portfolios must not raise the per-portfolio limit.
-    expect(
-      addAddressTo(PERSONAL_ID, "0xb2A44ce122FAB07Fc514ea7830623201b152D99D"),
-    ).toMatchObject({
+    expect(addAddressTo(PERSONAL_ID, "0xb2A44ce122FAB07Fc514ea7830623201b152D99D")).toMatchObject({
       ok: false,
     });
   });
@@ -356,10 +336,34 @@ describe("renaming", () => {
     expect(renamePortfolio(beta.id, "alpha")).toMatchObject({ ok: false });
   });
 
-  it("refuses to rename Personal", () => {
+  it("renames the default portfolio, keeping its id and addresses", () => {
     installStorage();
-    expect(renamePortfolio(PERSONAL_ID, "Main")).toMatchObject({ ok: false });
-    expect(getSnapshot().portfolios[0]!.name).toBe("Personal");
+    addAddressTo(PERSONAL_ID, A);
+
+    expect(renamePortfolio(PERSONAL_ID, "Main").ok).toBe(true);
+
+    const renamed = getSnapshot().portfolios.find((p) => p.id === PERSONAL_ID)!;
+    expect(renamed.name).toBe("Main");
+    expect(renamed.addresses).toEqual([A]);
+    // Identity is the id, never the label.
+    expect(renamed.id).toBe(PERSONAL_ID);
+  });
+
+  it("keeps the default's new name across a reload", () => {
+    const storage = installStorage();
+    renamePortfolio(PERSONAL_ID, "Main");
+
+    resetPortfolioStoreCache();
+    expect(getSnapshot().portfolios.find((p) => p.id === PERSONAL_ID)!.name).toBe("Main");
+    expect(storage._dump()[PORTFOLIOS_KEY]).toContain("Main");
+  });
+
+  it("still rejects a name that clashes with another portfolio", () => {
+    installStorage();
+    createPortfolio("Trading");
+    expect(renamePortfolio(PERSONAL_ID, "trading")).toMatchObject({
+      ok: false,
+    });
   });
 });
 
@@ -376,9 +380,7 @@ describe("deleting", () => {
   it("refuses to delete Personal", () => {
     installStorage();
     expect(deletePortfolio(PERSONAL_ID)).toMatchObject({ ok: false });
-    expect(getSnapshot().portfolios.some((p) => p.id === PERSONAL_ID)).toBe(
-      true,
-    );
+    expect(getSnapshot().portfolios.some((p) => p.id === PERSONAL_ID)).toBe(true);
   });
 
   it("returns to Personal when the active portfolio is deleted", () => {
@@ -430,9 +432,7 @@ describe("defensive storage", () => {
         activeId: "x",
       }),
     });
-    expect(getSnapshot().portfolios.some((p) => p.id === PERSONAL_ID)).toBe(
-      true,
-    );
+    expect(getSnapshot().portfolios.some((p) => p.id === PERSONAL_ID)).toBe(true);
   });
 
   it("handles duplicate ids deterministically without losing addresses", () => {
@@ -504,11 +504,7 @@ describe("only watchlist data is persisted", () => {
     const raw = storage._dump()[PORTFOLIOS_KEY]!;
     const parsed = JSON.parse(raw) as Record<string, unknown>;
 
-    expect(Object.keys(parsed).sort()).toEqual([
-      "activeId",
-      "portfolios",
-      "version",
-    ]);
+    expect(Object.keys(parsed).sort()).toEqual(["activeId", "portfolios", "version"]);
     for (const p of parsed.portfolios as Record<string, unknown>[]) {
       expect(Object.keys(p).sort()).toEqual(["addresses", "id", "name"]);
     }
@@ -551,9 +547,7 @@ describe("store notifications", () => {
 });
 
 describe("validatePortfolioName", () => {
-  const existing: Portfolio[] = [
-    { id: PERSONAL_ID, name: "Personal", addresses: [] },
-  ];
+  const existing: Portfolio[] = [{ id: PERSONAL_ID, name: "Personal", addresses: [] }];
 
   it("accepts a normal name", () => {
     expect(validatePortfolioName("Trading", existing).ok).toBe(true);
@@ -567,5 +561,38 @@ describe("validatePortfolioName", () => {
       expect(result.message.length).toBeGreaterThan(0);
       expect(result.message).not.toMatch(/undefined|\[object/);
     }
+  });
+});
+
+describe("the default portfolio is renamable but permanent", () => {
+  it("honours a stored custom name for the default", () => {
+    installStorage({
+      [PORTFOLIOS_KEY]: JSON.stringify({
+        version: 2,
+        portfolios: [{ id: PERSONAL_ID, name: "Main", addresses: [] }],
+        activeId: PERSONAL_ID,
+      }),
+    });
+    // Normalisation used to force this back to "Personal", silently undoing
+    // every rename on the next read.
+    expect(getSnapshot().portfolios[0]!.name).toBe("Main");
+  });
+
+  it("falls back to Personal only when the stored name is blank", () => {
+    installStorage({
+      [PORTFOLIOS_KEY]: JSON.stringify({
+        version: 2,
+        portfolios: [{ id: PERSONAL_ID, name: "   ", addresses: [] }],
+        activeId: PERSONAL_ID,
+      }),
+    });
+    expect(getSnapshot().portfolios[0]!.name).toBe("Personal");
+  });
+
+  it("cannot be deleted even after a rename", () => {
+    installStorage();
+    renamePortfolio(PERSONAL_ID, "Main");
+    expect(deletePortfolio(PERSONAL_ID)).toMatchObject({ ok: false });
+    expect(getSnapshot().portfolios.some((p) => p.id === PERSONAL_ID)).toBe(true);
   });
 });

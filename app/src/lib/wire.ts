@@ -23,7 +23,7 @@ export type WireAssetRead = {
 export type WireWallet = {
   address: PortfolioAddress;
   mon: WireAssetRead;
-  stablecoins: Record<string, WireAssetRead>;
+  tokens: Record<string, WireAssetRead>;
 };
 
 export type WirePortfolio = {
@@ -51,9 +51,7 @@ export type WireNftCheck =
     };
 
 /** Result envelope for actions, so a total failure is data rather than a throw. */
-export type ActionResult<T> =
-  | { ok: true; data: T }
-  | { ok: false; error: string };
+export type ActionResult<T> = { ok: true; data: T } | { ok: false; error: string };
 
 const encodeRead = (r: AssetReadResult): WireAssetRead => ({
   success: r.success,
@@ -72,8 +70,8 @@ export function encodePortfolio(p: AggregatedPortfolio): WirePortfolio {
     wallets: p.wallets.map((w) => ({
       address: w.address,
       mon: encodeRead(w.mon),
-      stablecoins: Object.fromEntries(
-        Object.entries(w.stablecoins).map(([symbol, r]) => [symbol, encodeRead(r)]),
+      tokens: Object.fromEntries(
+        Object.entries(w.tokens).map(([symbol, r]) => [symbol, encodeRead(r)]),
       ),
     })),
     totals: Object.fromEntries(
@@ -92,13 +90,11 @@ export function decodePortfolio(w: WirePortfolio): AggregatedPortfolio {
     wallets: w.wallets.map((wallet) => ({
       address: wallet.address,
       mon: decodeRead(wallet.mon),
-      stablecoins: Object.fromEntries(
-        Object.entries(wallet.stablecoins).map(([symbol, r]) => [symbol, decodeRead(r)]),
+      tokens: Object.fromEntries(
+        Object.entries(wallet.tokens).map(([symbol, r]) => [symbol, decodeRead(r)]),
       ),
     })),
-    totals: Object.fromEntries(
-      Object.entries(w.totals).map(([symbol, v]) => [symbol, BigInt(v)]),
-    ),
+    totals: Object.fromEntries(Object.entries(w.totals).map(([symbol, v]) => [symbol, BigInt(v)])),
     blockNumber: BigInt(w.blockNumber),
     partial: w.partial,
     endpointUsed: w.endpointUsed,
@@ -112,7 +108,10 @@ export function encodeNftCheck(c: NftCollectionCheck): WireNftCheck {
   return {
     status: "ok",
     address: c.address,
-    wallets: c.wallets.map((w) => ({ address: w.address, result: encodeRead(w.result) })),
+    wallets: c.wallets.map((w) => ({
+      address: w.address,
+      result: encodeRead(w.result),
+    })),
     total: c.total.toString(),
     partial: c.partial,
     blockNumber: c.blockNumber.toString(),
@@ -126,7 +125,10 @@ export function decodeNftCheck(w: WireNftCheck): NftCollectionCheck {
   return {
     status: "ok",
     address: w.address,
-    wallets: w.wallets.map((x) => ({ address: x.address, result: decodeRead(x.result) })),
+    wallets: w.wallets.map((x) => ({
+      address: x.address,
+      result: decodeRead(x.result),
+    })),
     total: BigInt(w.total),
     partial: w.partial,
     blockNumber: BigInt(w.blockNumber),

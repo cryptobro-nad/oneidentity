@@ -6,7 +6,7 @@
 
 **[Open the app](https://oneidentity.app)** · **[See a real Verified ONE](https://oneidentity.app/one/0x1139dec3A681C96807D8C277601655A707494AaA)** · **[Watch-only portfolio](https://oneidentity.app/portfolio)**
 
-Live on **Monad Mainnet** · Registry [`0xf8E6…F915`](https://monadscan.com/address/0xf8E62d8D16acB49eeEeCF13DE48f1f6898c2F915) · Source-verified · 588 automated tests · [MIT](LICENSE)
+Live on **Monad Mainnet** · Registry [`0xf8E6…F915`](https://monadscan.com/address/0xf8E62d8D16acB49eeEeCF13DE48f1f6898c2F915) · Source-verified · 663 automated tests · [MIT](LICENSE)
 
 > No wallet needed to look around. The portfolio and every public ONE profile are read-only.
 
@@ -105,7 +105,7 @@ a page should not silently start that work. After a load the button becomes
 `localhost`, a preview deployment and a custom domain. Moving to a new domain,
 switching browser, or clearing site data means entering the wallets once more.
 
-### Multiple named portfolios
+### Clickable named portfolios
 
 One list is rarely enough. Wallets get grouped by purpose — hot wallets you
 touch daily, a cold wallet you check monthly, a team treasury, a friend's
@@ -118,10 +118,19 @@ anything else up to 40 characters, then switch between them from a dropdown.
 Each keeps its own set of up to five addresses. The same address may appear in
 more than one portfolio — these are watchlists, not exclusive buckets.
 
-Personal cannot be renamed or deleted, so there is always somewhere to land;
-deleting any other portfolio asks for confirmation naming it first, and returns
-you to Personal. Anyone who used the app before this existed keeps their saved
-addresses: the old single list migrates into Personal on first load, once.
+Portfolios are shown as a compact list of rows — name, wallet count, and Edit
+and Delete actions — rather than a dropdown or scrolling tabs. Clicking a row
+switches to it. The Edit and Delete buttons sit beside the row body rather than
+inside it, so clicking one never also switches portfolio.
+
+The default portfolio **can be renamed but never deleted**: its identity is a
+fixed internal id, not the label, so calling it "Main" changes nothing except
+what you read. It is where deleting any other portfolio lands, which is why one
+must always exist. Every other portfolio can be renamed and deleted, with the
+same confirmation naming it first.
+
+Anyone who used the app before this existed keeps their saved addresses: the old
+single list migrates into the default portfolio on first load, once.
 
 Switching is **free**. Selecting a different portfolio reads nothing from Monad —
 it only changes which list is on screen, and clears any result belonging to the
@@ -132,17 +141,65 @@ The storage rule is unchanged and applies per portfolio: names and addresses are
 saved, balances and NFT results never are. It is all still one `localStorage`
 key in your browser — no account, no database, no sync between devices.
 
+**One wallet is not a lesser check.** A single address gets exactly the same
+supported balance coverage as five; the combined total simply equals that
+wallet's balance, and the per-wallet breakdown has one row. The quick way to
+check a single wallet is to add it here on its own.
+
+---
+
+## Monad memes
+
+Alongside MON and the stablecoins, an explicit load also reads a curated list of
+**nine Monad community tokens**: CHOG, JAMES, BOB, shramp, 143, emo, ANAGO,
+EGGMON and moncock. They travel in the same Multicall3 batch at the same pinned
+block, so they cost nothing extra and can never disagree with the other
+balances.
+
+**Every address was verified before inclusion, and symbols were treated as
+untrustworthy.** While researching the list I found six live contracts answering
+`symbol()` as some form of `MOLANDAK`, and five answering `moncock`. Choosing by
+symbol would have shipped an imitation token. A token ships only if nad.fun's
+own API confirms it as graduated, it is the *only* graduated token for that
+symbol across the launchpad's index, an official site or account exists, and
+direct onchain reads agree on `name`, `symbol`, `decimals` and `balanceOf`.
+
+Two of the eleven requested tokens are **deliberately not shipped**. MONIGGA
+verifies on every technical criterion but its name embeds a racial slur, so it
+is excluded on content grounds. MOLANDAK is unresolved: two different live
+tokens share the symbol and reputable sources disagree, and picking wrong would
+show a confident `0` to somebody who really holds the other one. Both decisions,
+with addresses and evidence, are recorded in
+[docs/meme-token-verification.md](docs/meme-token-verification.md).
+
+Addresses are hardcoded and reviewed — there is no runtime discovery by symbol,
+because that is precisely how an imitation token would get in.
+
+> Curated community-token balances. Contract addresses are verified, but
+> inclusion is not an endorsement.
+
+**Zero balances are hidden.** MON always shows. Every other asset — stablecoins
+and community tokens alike — appears only when a wallet actually holds it, with
+a **Show zero balances** control to reveal the rest. Thirteen always-on columns
+would be unreadable on a phone and mostly zeroes. A read that *failed* is never
+hidden: it renders as "Failed", because presenting an RPC failure as "you hold
+none" is the one confusion this codebase exists to avoid.
+
+No prices, USD values, market caps, charts or rankings are shown anywhere, and
+no external price API is used. ONE reads `balanceOf` and nothing else.
+
 **Personal Portfolio at a glance**
 
 | | |
 |---|---|
 | Portfolios | Unlimited, named; **Personal** always present |
 | Addresses | 1–5 per portfolio, entered manually |
+| Default portfolio | Renamable, never deletable |
 | Wallet connection | None |
 | Signature | None |
 | Transaction | None |
 | Storage | Your browser only |
-| Assets shown | MON, USDC, USDT0, AUSD, ERC-721 collections |
+| Assets shown | MON, USDC, USDT0, AUSD, 9 curated community tokens, ERC-721 collections |
 | Verification | **None** — relationship is not cryptographically verified |
 
 Useful for hot wallets, cold wallets and hardware wallets alike, precisely because none of them has to be unlocked.
@@ -564,17 +621,18 @@ NEXT_PUBLIC_ONE_REGISTRY_ADDRESS=0xf8E62d8D16acB49eeEeCF13DE48f1f6898c2F915
 
 | Suite | Count |
 |---|---|
-| Frontend (Vitest) | **525** |
+| Frontend (Vitest) | **600** |
 | Contracts (Foundry) | **63** |
-| **Total** | **588** |
+| **Total** | **663** |
 
 ```bash
-cd app && npm run test          # 525 passing
+cd app && npm run test          # 600 passing
 cd contracts && forge test      # 63 passing
 ```
 
 Coverage includes EIP-712 typed-data construction verified against the deployed contract, `membersHash` parity with Solidity, signature invalidation rules, gas-limit policy, event parsing, prediction/event mismatch handling, custom-error decoding, NFT discovery and partial-failure handling, named-portfolio migration and
-isolation, and the full contract lifecycle.
+isolation, curated meme-token address verification, and the full contract
+lifecycle.
 
 ---
 

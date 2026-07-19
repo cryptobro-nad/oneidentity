@@ -51,7 +51,11 @@ function safeStorage(): MinimalStorage | undefined {
 // ---------------------------------------------------------------------------
 
 /** Coerces an unknown value into a valid Portfolio, or null if unusable. */
-function normalisePortfolio(value: unknown, seenIds: Set<string>, seenNames: Set<string>): Portfolio | null {
+function normalisePortfolio(
+  value: unknown,
+  seenIds: Set<string>,
+  seenNames: Set<string>,
+): Portfolio | null {
   if (!value || typeof value !== "object") return null;
   const raw = value as Record<string, unknown>;
 
@@ -60,9 +64,12 @@ function normalisePortfolio(value: unknown, seenIds: Set<string>, seenNames: Set
   const uniqueId = seenIds.has(id) ? generatePortfolioId() : id;
 
   const rawName = typeof raw.name === "string" ? raw.name.trim() : "";
-  let name = rawName.length > 0 ? rawName.slice(0, MAX_NAME_LENGTH) : "Untitled";
-  // Personal keeps its name regardless of what was stored.
-  if (uniqueId === PERSONAL_ID) name = PERSONAL_NAME;
+  // The default portfolio is renamable, so a stored name is honoured here as
+  // for any other. Its identity is PERSONAL_ID, never the label. Only a
+  // missing or blank name falls back, and for the default that fallback is
+  // "Personal" rather than "Untitled".
+  const fallback = uniqueId === PERSONAL_ID ? PERSONAL_NAME : "Untitled";
+  const name = rawName.length > 0 ? rawName.slice(0, MAX_NAME_LENGTH) : fallback;
 
   // Deterministic on duplicate names: suffix rather than drop, so no addresses
   // are lost to a storage collision.
@@ -124,7 +131,9 @@ export function normaliseState(value: unknown): PortfolioState {
  * legacy key is only removed after the new state is written, so an interrupted
  * migration retries rather than losing addresses.
  */
-export function migrateLegacy(storage: MinimalStorage | undefined = safeStorage()): PortfolioState | null {
+export function migrateLegacy(
+  storage: MinimalStorage | undefined = safeStorage(),
+): PortfolioState | null {
   if (!storage) return null;
 
   let legacyRaw: string | null = null;
@@ -152,7 +161,10 @@ export function migrateLegacy(storage: MinimalStorage | undefined = safeStorage(
     portfolios: existing.portfolios.map((p) =>
       p.id === PERSONAL_ID
         ? // Union, so re-running can never duplicate an address.
-          { ...p, addresses: sanitizeAddressList([...p.addresses, ...addresses]).slice(0, MAX_WALLETS) }
+          {
+            ...p,
+            addresses: sanitizeAddressList([...p.addresses, ...addresses]).slice(0, MAX_WALLETS),
+          }
         : p,
     ),
   };

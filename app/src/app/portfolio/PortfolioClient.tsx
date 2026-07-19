@@ -72,7 +72,10 @@ export function PortfolioClient() {
     (name: string) => {
       const outcome = createPortfolio(name);
       if (outcome.ok) clearResults();
-      return { ok: outcome.ok, message: outcome.ok ? undefined : outcome.message };
+      return {
+        ok: outcome.ok,
+        message: outcome.ok ? undefined : outcome.message,
+      };
     },
     [clearResults],
   );
@@ -80,7 +83,10 @@ export function PortfolioClient() {
   const handleRename = useCallback((id: string, name: string) => {
     const outcome = renamePortfolio(id, name);
     // A rename keeps the same id and addresses, so results stay valid.
-    return { ok: outcome.ok, message: outcome.ok ? undefined : outcome.message };
+    return {
+      ok: outcome.ok,
+      message: outcome.ok ? undefined : outcome.message,
+    };
   }, []);
 
   const handleDelete = useCallback(
@@ -173,7 +179,11 @@ export function PortfolioClient() {
             ? "Refresh portfolio"
             : savedFromPreviousVisit
               ? "Load saved portfolio"
-              : "Load portfolio"
+              : // One wallet is not a "portfolio" in the user's head, so name
+                // the action after what it actually does in that case.
+                addresses.length === 1
+                ? "Check wallet balances"
+                : "Load portfolio"
         }
       />
 

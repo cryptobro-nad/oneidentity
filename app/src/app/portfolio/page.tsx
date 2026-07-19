@@ -4,9 +4,9 @@ import { MAX_WALLETS } from "@/lib/chain";
 import { PortfolioClient } from "./PortfolioClient";
 
 export const metadata: Metadata = {
-  title: "Personal portfolio — ONE",
+  title: "Watch-only portfolios — ONE",
   description:
-    "Combine up to five Monad wallets into one unverified view of MON, stablecoins and NFT collection balances.",
+    "Private browser watchlists of one to five Monad wallets, showing MON, stablecoins, curated community tokens and NFT collection balances.",
 };
 
 export default function PortfolioPage() {
@@ -14,11 +14,15 @@ export default function PortfolioPage() {
     <div className="mx-auto w-full max-w-5xl px-5 py-12 sm:px-8 sm:py-16">
       <header className="mb-10">
         <h1 className="text-3xl font-semibold tracking-[-0.03em] text-ink sm:text-4xl">
-          Personal portfolio
+          Watch-only portfolios
         </h1>
         <p className="mt-3 max-w-xl text-pretty text-muted">
-          Enter up to {MAX_WALLETS} Monad Mainnet addresses to see their combined balances. No
-          wallet connection, no signatures, and nothing is written onchain.
+          Add a single wallet or up to {MAX_WALLETS}. One wallet gets that wallet&apos;s complete
+          supported balance view; several are shown as combined totals with a per-wallet breakdown.
+        </p>
+        <p className="mt-2 max-w-xl text-pretty text-sm text-faint">
+          No wallet connection or signature is required. These are private watchlists saved in this
+          browser — they do not prove ownership of the wallets in them.
         </p>
       </header>
 

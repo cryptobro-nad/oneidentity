@@ -1,10 +1,5 @@
 import { describe, expect, it } from "vitest";
-import {
-  decodeNftCheck,
-  decodePortfolio,
-  encodeNftCheck,
-  encodePortfolio,
-} from "./wire";
+import { decodeNftCheck, decodePortfolio, encodeNftCheck, encodePortfolio } from "./wire";
 import type { AggregatedPortfolio, NftCollectionCheck, PortfolioAddress } from "./types";
 
 const A = "0xB09684f5486d1af80699BbC27f14dd5A905da873" as PortfolioAddress;
@@ -15,7 +10,7 @@ const portfolio: AggregatedPortfolio = {
     {
       address: A,
       mon: { success: true, rawValue: 1_629_382_684_819_370_271_507_052n },
-      stablecoins: {
+      tokens: {
         USDC: { success: true, rawValue: 10_025_337_220n },
         USDT0: { success: false, error: "execution reverted" },
       },
@@ -23,10 +18,14 @@ const portfolio: AggregatedPortfolio = {
     {
       address: B,
       mon: { success: true, rawValue: 0n },
-      stablecoins: { USDC: { success: true, rawValue: 0n } },
+      tokens: { USDC: { success: true, rawValue: 0n } },
     },
   ],
-  totals: { MON: 1_629_382_684_819_370_271_507_052n, USDC: 10_025_337_220n, USDT0: 0n },
+  totals: {
+    MON: 1_629_382_684_819_370_271_507_052n,
+    USDC: 10_025_337_220n,
+    USDT0: 0n,
+  },
   blockNumber: 88_613_299n,
   partial: true,
   endpointUsed: "https://rpc.monad.xyz",
@@ -47,11 +46,14 @@ describe("portfolio wire encoding", () => {
 
   it("keeps failed reads distinguishable from zero after a round trip", () => {
     const decoded = decodePortfolio(encodePortfolio(portfolio));
-    expect(decoded.wallets[0]?.stablecoins.USDT0).toEqual({
+    expect(decoded.wallets[0]?.tokens.USDT0).toEqual({
       success: false,
       error: "execution reverted",
     });
-    expect(decoded.wallets[1]?.stablecoins.USDC).toEqual({ success: true, rawValue: 0n });
+    expect(decoded.wallets[1]?.tokens.USDC).toEqual({
+      success: true,
+      rawValue: 0n,
+    });
   });
 
   it("is JSON-serialisable once encoded", () => {
@@ -78,7 +80,10 @@ describe("nft check wire encoding", () => {
   });
 
   it("round-trips the non-contract and non-erc721 verdicts", () => {
-    const notContract: NftCollectionCheck = { status: "not-a-contract", address: A };
+    const notContract: NftCollectionCheck = {
+      status: "not-a-contract",
+      address: A,
+    };
     const notErc721: NftCollectionCheck = { status: "not-erc721", address: A };
     expect(decodeNftCheck(encodeNftCheck(notContract))).toEqual(notContract);
     expect(decodeNftCheck(encodeNftCheck(notErc721))).toEqual(notErc721);
