@@ -6,7 +6,7 @@
 
 **[Open the app](https://oneidentity.app)** · **[See a real Verified ONE](https://oneidentity.app/one/0x1139dec3A681C96807D8C277601655A707494AaA)** · **[Watch-only portfolio](https://oneidentity.app/portfolio)**
 
-Live on **Monad Mainnet** · Registry [`0xf8E6…F915`](https://monadscan.com/address/0xf8E62d8D16acB49eeEeCF13DE48f1f6898c2F915) · Source-verified · 432 automated tests · [MIT](LICENSE)
+Live on **Monad Mainnet** · Registry [`0xf8E6…F915`](https://monadscan.com/address/0xf8E62d8D16acB49eeEeCF13DE48f1f6898c2F915) · Source-verified · 457 automated tests · [MIT](LICENSE)
 
 > No wallet needed to look around. The portfolio and every public ONE profile are read-only.
 
@@ -187,6 +187,32 @@ A Verified ONE links **two to five wallets** into one public identity.
 - The relationship becomes **public onchain**.
 
 Throughout the interface these are **linked wallets**, **wallets in this ONE**, and **verified wallets**. The word *members* appears only in contract functions and implementation notes.
+
+### Wallet support
+
+| Where you are | How you connect |
+|---|---|
+| Desktop browser with an extension | **Injected wallet** — MetaMask, Rabby and anything announcing via EIP-6963, listed by its real name |
+| Desktop browser with no extension | **WalletConnect QR** — scan with a wallet on your phone |
+| Mobile Safari or Chrome | **Deep link** — opens your wallet app and returns you to the page |
+| A wallet's in-app browser | **Injected wallet**, exactly as on desktop |
+
+Every route into the app produces the same connection state, so signing,
+network checks and transaction submission behave identically however you
+arrived. Because people switch accounts while away from the browser — easy to
+do on mobile — the connected account is **re-read and re-verified immediately
+before every signature and transaction**, never trusted from when you connected.
+
+**Reading needs no wallet at all.** The watch-only portfolio, the public ONE
+lookup and every public profile work with no connection, no signature and no
+extension. A wallet is required only to *act*: signing a `JoinOne`
+authorization, creating a ONE, or removing a linked wallet — and only from the
+wallet actually authorized to do it.
+
+> Mobile connection uses [Reown/WalletConnect](https://reown.com) and needs
+> `NEXT_PUBLIC_REOWN_PROJECT_ID`. Without it the app still runs: injected
+> wallets and every public page keep working, and only the mobile/QR option is
+> hidden.
 
 ---
 
@@ -510,12 +536,12 @@ NEXT_PUBLIC_ONE_REGISTRY_ADDRESS=0xf8E62d8D16acB49eeEeCF13DE48f1f6898c2F915
 
 | Suite | Count |
 |---|---|
-| Frontend (Vitest) | **282** |
+| Frontend (Vitest) | **394** |
 | Contracts (Foundry) | **63** |
-| **Total** | **345** |
+| **Total** | **457** |
 
 ```bash
-cd app && npm run test          # 282 passing
+cd app && npm run test          # 394 passing
 cd contracts && forge test      # 63 passing
 ```
 

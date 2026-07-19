@@ -22,6 +22,12 @@ import {
   walletClientFor,
   type DiscoveredWallet,
 } from "./provider";
+import {
+  disconnectWalletConnect,
+  isWalletConnectConfigured,
+  walletConnectEntry,
+  WALLETCONNECT_UUID,
+} from "./walletconnect";
 
 export type WalletState = {
   wallets: DiscoveredWallet[];
@@ -31,6 +37,8 @@ export type WalletState = {
   connecting: boolean;
   error: string | null;
   isOnMonad: boolean;
+  /** True when this deployment has a WalletConnect project id configured. */
+  walletConnectAvailable: boolean;
 };
 
 export function useWallet() {
@@ -71,12 +79,42 @@ export function useWallet() {
     }
   }, []);
 
+  /**
+   * Connects through WalletConnect.
+   *
+   * The provider it returns is an ordinary EIP-1193 provider, so it goes
+   * through exactly the same `connect` path as an injected wallet — one code
+   * path, one account state, no way for the two to disagree.
+   */
+  const connectWalletConnect = useCallback(async () => {
+    setConnecting(true);
+    setError(null);
+    try {
+      const entry = await walletConnectEntry();
+      // EthereumProvider.connect() opens the QR modal on desktop and
+      // deep-links into an installed wallet on mobile.
+      await (entry.provider as unknown as { connect: () => Promise<unknown> }).connect();
+      await connect(entry);
+    } catch (err) {
+      const message = err instanceof Error ? err.message.split("\n")[0]! : String(err);
+      // Closing the modal is a choice, not a failure worth shouting about.
+      setError(/user rejected|closed modal|user closed/i.test(message) ? null : message);
+    } finally {
+      setConnecting(false);
+    }
+  }, [connect]);
+
   const disconnect = useCallback(() => {
+    // End the real session, not just the local view of it. Skipping this would
+    // leave the wallet still paired and silently reuse it on next connect.
+    if (selected?.info.uuid === WALLETCONNECT_UUID) {
+      void disconnectWalletConnect();
+    }
     setSelected(null);
     setAddress(null);
     setChainId(null);
     setError(null);
-  }, []);
+  }, [selected]);
 
   const switchNetwork = useCallback(async () => {
     if (!selected) return;
@@ -121,9 +159,19 @@ export function useWallet() {
       connecting,
       error,
       isOnMonad: chainId === MONAD_CHAIN_ID,
+      // Whether this deployment can offer a mobile/QR connection at all.
+      walletConnectAvailable: isWalletConnectConfigured(),
     }),
     [wallets, selected, address, chainId, connecting, error],
   );
 
-  return { ...state, connect, disconnect, switchNetwork, refreshAccount, getWalletClient };
+  return {
+    ...state,
+    connect,
+    connectWalletConnect,
+    disconnect,
+    switchNetwork,
+    refreshAccount,
+    getWalletClient,
+  };
 }
