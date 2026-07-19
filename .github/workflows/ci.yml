@@ -135,13 +135,24 @@ jobs:
             ':(exclude)contracts/lib' \
             ':(exclude)app/package-lock.json' \
             ':(exclude)docs' \
-            ':(exclude)*.md' || true)
+            ':(exclude)*.md' \
+            ':(exclude).github' || true)
           if [ -n "$HITS" ]; then
             echo "Found 64-hex values in first-party source; verifying each is a known public constant."
             echo "$HITS"
           fi
-          # Explicitly fail on the well-known Anvil key appearing outside vendored libs.
-          LEAK=$(git grep -nI 'ac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80' -- ':(exclude)contracts/lib' || true)
+
+          # Fail if the well-known Anvil key appears outside vendored libraries.
+          #
+          # The needle is assembled from two halves at runtime so this file never
+          # contains the full 64-character sequence. Writing it literally makes
+          # the check match ITSELF once committed — which is exactly what
+          # happened on the first CI run, and passed locally beforehand only
+          # because `git grep` searches tracked files and this file was not yet
+          # committed. Keep it split.
+          NEEDLE_A='ac0974bec39a17e36ba4a6b4d238ff9'
+          NEEDLE_B='44bacb478cbed5efcae784d7bf4f2ff80'
+          LEAK=$(git grep -nI "${NEEDLE_A}${NEEDLE_B}" -- ':(exclude)contracts/lib' || true)
           if [ -n "$LEAK" ]; then
             echo "::error::Anvil test key found outside vendored libraries:"
             echo "$LEAK"
