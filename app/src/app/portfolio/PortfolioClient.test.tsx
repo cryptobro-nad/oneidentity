@@ -25,23 +25,31 @@ vi.mock("@/app/portfolio/actions", async (importOriginal) => {
 });
 
 import { PortfolioClient } from "./PortfolioClient";
-import { resetAddressStoreCache } from "@/lib/addressStore";
-import { STORAGE_KEY } from "@/lib/storage";
+import { resetPortfolioStoreCache } from "@/lib/portfolios/store";
+import { LEGACY_ADDRESSES_KEY, PORTFOLIOS_KEY } from "@/lib/portfolios/storage";
 
 const A = "0xB09684f5486d1af80699BbC27f14dd5A905da873";
 const B = "0x2b197ea9CcAeec32560Ea8891ad17F0bb5866DD1";
 
 function seedStorage(addresses: string[] | null) {
   window.localStorage.clear();
-  if (addresses) window.localStorage.setItem(STORAGE_KEY, JSON.stringify(addresses));
-  resetAddressStoreCache();
+  if (addresses)
+    window.localStorage.setItem(
+      LEGACY_ADDRESSES_KEY,
+      JSON.stringify(addresses),
+    );
+  resetPortfolioStoreCache();
 }
 
 const portfolioResponse = {
   ok: true as const,
   data: {
     wallets: [
-      { address: A, mon: { success: true, rawValue: "1000000000000000000" }, stablecoins: {} },
+      {
+        address: A,
+        mon: { success: true, rawValue: "1000000000000000000" },
+        stablecoins: {},
+      },
     ],
     totals: { MON: "1000000000000000000", USDC: "0", USDT0: "0", AUSD: "0" },
     blockNumber: "88730274",
@@ -92,7 +100,9 @@ describe("returning user with saved addresses", () => {
   it("labels the button 'Load saved portfolio' before the first load", () => {
     seedStorage([A, B]);
     render(<PortfolioClient />);
-    expect(screen.getByRole("button", { name: /load saved portfolio/i })).toBeTruthy();
+    expect(
+      screen.getByRole("button", { name: /load saved portfolio/i }),
+    ).toBeTruthy();
   });
 
   it("does NOT fetch the portfolio automatically on mount", async () => {
@@ -127,7 +137,9 @@ describe("explicit load", () => {
     const user = userEvent.setup();
     render(<PortfolioClient />);
 
-    await user.click(screen.getByRole("button", { name: /load saved portfolio/i }));
+    await user.click(
+      screen.getByRole("button", { name: /load saved portfolio/i }),
+    );
 
     await waitFor(() => expect(loadPortfolioAction).toHaveBeenCalledWith([A]));
   });
@@ -138,7 +150,9 @@ describe("explicit load", () => {
     render(<PortfolioClient />);
 
     expect(loadNftHoldingsAction).not.toHaveBeenCalled();
-    await user.click(screen.getByRole("button", { name: /load saved portfolio/i }));
+    await user.click(
+      screen.getByRole("button", { name: /load saved portfolio/i }),
+    );
 
     await waitFor(() => expect(loadNftHoldingsAction).toHaveBeenCalled());
   });
@@ -148,10 +162,14 @@ describe("explicit load", () => {
     const user = userEvent.setup();
     render(<PortfolioClient />);
 
-    await user.click(screen.getByRole("button", { name: /load saved portfolio/i }));
+    await user.click(
+      screen.getByRole("button", { name: /load saved portfolio/i }),
+    );
 
     await waitFor(() =>
-      expect(screen.getByRole("button", { name: /refresh portfolio/i })).toBeTruthy(),
+      expect(
+        screen.getByRole("button", { name: /refresh portfolio/i }),
+      ).toBeTruthy(),
     );
   });
 
@@ -160,17 +178,26 @@ describe("explicit load", () => {
     const user = userEvent.setup();
     render(<PortfolioClient />);
 
-    await user.click(screen.getByRole("button", { name: /load saved portfolio/i }));
-    await waitFor(() => expect(screen.queryByText(/saved portfolio found/i)).toBeNull());
+    await user.click(
+      screen.getByRole("button", { name: /load saved portfolio/i }),
+    );
+    await waitFor(() =>
+      expect(screen.queryByText(/saved portfolio found/i)).toBeNull(),
+    );
   });
 
   it("surfaces a load failure without inventing balances", async () => {
-    loadPortfolioAction.mockResolvedValue({ ok: false, error: "Monad unreachable" });
+    loadPortfolioAction.mockResolvedValue({
+      ok: false,
+      error: "Monad unreachable",
+    });
     seedStorage([A]);
     const user = userEvent.setup();
     render(<PortfolioClient />);
 
-    await user.click(screen.getByRole("button", { name: /load saved portfolio/i }));
+    await user.click(
+      screen.getByRole("button", { name: /load saved portfolio/i }),
+    );
     expect(await screen.findByText(/monad unreachable/i)).toBeTruthy();
   });
 });
@@ -205,7 +232,15 @@ describe("editing the wallet list", () => {
 
     await user.click(screen.getByRole("button", { name: /clear all/i }));
 
-    await waitFor(() => expect(window.localStorage.getItem(STORAGE_KEY)).toBeNull());
+    // Clear all empties the ACTIVE portfolio's addresses. The portfolio itself
+    // still exists — deleting a portfolio is a separate, confirmed action.
+    await waitFor(() => {
+      const raw = window.localStorage.getItem(PORTFOLIOS_KEY);
+      const parsed = JSON.parse(raw!) as {
+        portfolios: { addresses: string[] }[];
+      };
+      expect(parsed.portfolios[0]!.addresses).toEqual([]);
+    });
     expect(screen.getByText(/0 of 5 added/i)).toBeTruthy();
   });
 
@@ -214,16 +249,194 @@ describe("editing the wallet list", () => {
     const user = userEvent.setup();
     render(<PortfolioClient />);
 
-    await user.click(screen.getByRole("button", { name: /load saved portfolio/i }));
+    await user.click(
+      screen.getByRole("button", { name: /load saved portfolio/i }),
+    );
     await waitFor(() => expect(loadPortfolioAction).toHaveBeenCalled());
     await waitFor(() => expect(loadNftHoldingsAction).toHaveBeenCalled());
 
     // After a full load, storage must still contain the address list alone.
-    const raw = window.localStorage.getItem(STORAGE_KEY)!;
-    expect(JSON.parse(raw)).toEqual([A]);
-    for (const forbidden of ["1000000000000000000", "88730274", "MON", "USDC", "collections", "totals"]) {
+    const raw = window.localStorage.getItem(PORTFOLIOS_KEY)!;
+    expect(JSON.parse(raw).portfolios[0].addresses).toEqual([A]);
+    for (const forbidden of [
+      "1000000000000000000",
+      "88730274",
+      "MON",
+      "USDC",
+      "collections",
+      "totals",
+    ]) {
       expect(raw).not.toContain(forbidden);
     }
-    expect(Object.keys(window.localStorage)).toEqual([STORAGE_KEY]);
+    expect(Object.keys(window.localStorage)).toEqual([PORTFOLIOS_KEY]);
+  });
+});
+
+describe("multiple portfolios", () => {
+  async function createPortfolioNamed(
+    user: ReturnType<typeof userEvent.setup>,
+    name: string,
+  ) {
+    await user.click(screen.getByRole("button", { name: /new portfolio/i }));
+    await user.type(screen.getByLabelText(/name for the new portfolio/i), name);
+    await user.click(screen.getByRole("button", { name: /^create$/i }));
+  }
+
+  it("names the wallet section after the active portfolio", async () => {
+    seedStorage([A]);
+    const user = userEvent.setup();
+    render(<PortfolioClient />);
+
+    expect(
+      screen.getByRole("heading", { name: /wallets in .*personal/i }),
+    ).toBeTruthy();
+
+    await createPortfolioNamed(user, "Trading");
+    await waitFor(() =>
+      expect(
+        screen.getByRole("heading", { name: /wallets in .*trading/i }),
+      ).toBeTruthy(),
+    );
+  });
+
+  it("starts a new portfolio empty, without touching the other one", async () => {
+    seedStorage([A, B]);
+    const user = userEvent.setup();
+    render(<PortfolioClient />);
+
+    await createPortfolioNamed(user, "Trading");
+
+    await waitFor(() => expect(screen.getByText(/0 of 5 added/i)).toBeTruthy());
+    // Switch back: Personal is intact.
+    await user.selectOptions(
+      screen.getByRole("combobox", { name: /^portfolio$/i }),
+      "personal",
+    );
+    await waitFor(() => expect(screen.getByText(/2 of 5 added/i)).toBeTruthy());
+  });
+
+  it("does NOT scan when a portfolio is created", async () => {
+    seedStorage([A]);
+    const user = userEvent.setup();
+    render(<PortfolioClient />);
+
+    await createPortfolioNamed(user, "Trading");
+    await new Promise((r) => setTimeout(r, 50));
+
+    expect(loadPortfolioAction).not.toHaveBeenCalled();
+    expect(loadNftHoldingsAction).not.toHaveBeenCalled();
+  });
+
+  it("does NOT scan when switching portfolios", async () => {
+    seedStorage([A]);
+    const user = userEvent.setup();
+    render(<PortfolioClient />);
+
+    await createPortfolioNamed(user, "Trading");
+    await user.selectOptions(
+      screen.getByRole("combobox", { name: /^portfolio$/i }),
+      "personal",
+    );
+    await new Promise((r) => setTimeout(r, 50));
+
+    // Switching is a local, free operation. Only an explicit Load may spend RPC.
+    expect(loadPortfolioAction).not.toHaveBeenCalled();
+    expect(loadNftHoldingsAction).not.toHaveBeenCalled();
+  });
+
+  it("never shows one portfolio's balances under another's name", async () => {
+    seedStorage([A]);
+    const user = userEvent.setup();
+    render(<PortfolioClient />);
+
+    await user.click(
+      screen.getByRole("button", { name: /load saved portfolio/i }),
+    );
+    await waitFor(() =>
+      expect(screen.getByRole("button", { name: /refresh/i })).toBeTruthy(),
+    );
+
+    await createPortfolioNamed(user, "Trading");
+
+    // The loaded result belonged to Personal; it must be gone immediately.
+    await waitFor(() =>
+      expect(
+        screen.getByRole("heading", { name: /wallets in .*trading/i }),
+      ).toBeTruthy(),
+    );
+    expect(
+      screen.queryByRole("button", { name: /refresh portfolio/i }),
+    ).toBeNull();
+  });
+
+  it("discards an in-flight response if the user switches mid-load", async () => {
+    seedStorage([A]);
+    let release: (v: unknown) => void = () => {};
+    loadPortfolioAction.mockImplementation(
+      () => new Promise((resolve) => (release = resolve)),
+    );
+
+    const user = userEvent.setup();
+    render(<PortfolioClient />);
+
+    await user.click(
+      screen.getByRole("button", { name: /load saved portfolio/i }),
+    );
+    await createPortfolioNamed(user, "Trading");
+
+    release(portfolioResponse);
+    await new Promise((r) => setTimeout(r, 50));
+
+    // Personal's data arrived after the switch and must not be rendered.
+    expect(
+      screen.queryByRole("button", { name: /refresh portfolio/i }),
+    ).toBeNull();
+    expect(
+      screen.getByRole("heading", { name: /wallets in .*trading/i }),
+    ).toBeTruthy();
+  });
+
+  it("clears a load error when switching away", async () => {
+    loadPortfolioAction.mockResolvedValue({
+      ok: false,
+      error: "Monad unreachable",
+    });
+    seedStorage([A]);
+    const user = userEvent.setup();
+    render(<PortfolioClient />);
+
+    await user.click(
+      screen.getByRole("button", { name: /load saved portfolio/i }),
+    );
+    expect(await screen.findByText(/monad unreachable/i)).toBeTruthy();
+
+    await createPortfolioNamed(user, "Trading");
+    await waitFor(() =>
+      expect(screen.queryByText(/monad unreachable/i)).toBeNull(),
+    );
+  });
+
+  it("keeps each portfolio's addresses separate in storage", async () => {
+    seedStorage([A]);
+    const user = userEvent.setup();
+    render(<PortfolioClient />);
+
+    await createPortfolioNamed(user, "Trading");
+    await user.type(screen.getByLabelText(/monad wallet address/i), B);
+    await user.click(screen.getByRole("button", { name: /add wallet/i }));
+
+    await waitFor(() => {
+      const parsed = JSON.parse(
+        window.localStorage.getItem(PORTFOLIOS_KEY)!,
+      ) as {
+        portfolios: { name: string; addresses: string[] }[];
+      };
+      expect(
+        parsed.portfolios.find((p) => p.name === "Personal")!.addresses,
+      ).toEqual([A]);
+      expect(
+        parsed.portfolios.find((p) => p.name === "Trading")!.addresses,
+      ).toEqual([B]);
+    });
   });
 });

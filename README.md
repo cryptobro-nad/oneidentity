@@ -6,7 +6,7 @@
 
 **[Open the app](https://oneidentity.app)** · **[See a real Verified ONE](https://oneidentity.app/one/0x1139dec3A681C96807D8C277601655A707494AaA)** · **[Watch-only portfolio](https://oneidentity.app/portfolio)**
 
-Live on **Monad Mainnet** · Registry [`0xf8E6…F915`](https://monadscan.com/address/0xf8E62d8D16acB49eeEeCF13DE48f1f6898c2F915) · Source-verified · 511 automated tests · [MIT](LICENSE)
+Live on **Monad Mainnet** · Registry [`0xf8E6…F915`](https://monadscan.com/address/0xf8E62d8D16acB49eeEeCF13DE48f1f6898c2F915) · Source-verified · 588 automated tests · [MIT](LICENSE)
 
 > No wallet needed to look around. The portfolio and every public ONE profile are read-only.
 
@@ -105,11 +105,39 @@ a page should not silently start that work. After a load the button becomes
 `localhost`, a preview deployment and a custom domain. Moving to a new domain,
 switching browser, or clearing site data means entering the wallets once more.
 
+### Multiple named portfolios
+
+One list is rarely enough. Wallets get grouped by purpose — hot wallets you
+touch daily, a cold wallet you check monthly, a team treasury, a friend's
+addresses you keep an eye on. Squeezing those into a single five-slot list means
+constantly retyping.
+
+So the watch-only portfolio holds **several named lists**. Everyone starts with
+one called **Personal**; you can add "Trading wallets", "Cold storage" or
+anything else up to 40 characters, then switch between them from a dropdown.
+Each keeps its own set of up to five addresses. The same address may appear in
+more than one portfolio — these are watchlists, not exclusive buckets.
+
+Personal cannot be renamed or deleted, so there is always somewhere to land;
+deleting any other portfolio asks for confirmation naming it first, and returns
+you to Personal. Anyone who used the app before this existed keeps their saved
+addresses: the old single list migrates into Personal on first load, once.
+
+Switching is **free**. Selecting a different portfolio reads nothing from Monad —
+it only changes which list is on screen, and clears any result belonging to the
+portfolio you left, so one portfolio's balances can never appear under another's
+name. Loading remains explicit, per portfolio.
+
+The storage rule is unchanged and applies per portfolio: names and addresses are
+saved, balances and NFT results never are. It is all still one `localStorage`
+key in your browser — no account, no database, no sync between devices.
+
 **Personal Portfolio at a glance**
 
 | | |
 |---|---|
-| Addresses | 1–5, entered manually |
+| Portfolios | Unlimited, named; **Personal** always present |
+| Addresses | 1–5 per portfolio, entered manually |
 | Wallet connection | None |
 | Signature | None |
 | Transaction | None |
@@ -536,16 +564,17 @@ NEXT_PUBLIC_ONE_REGISTRY_ADDRESS=0xf8E62d8D16acB49eeEeCF13DE48f1f6898c2F915
 
 | Suite | Count |
 |---|---|
-| Frontend (Vitest) | **448** |
+| Frontend (Vitest) | **525** |
 | Contracts (Foundry) | **63** |
-| **Total** | **511** |
+| **Total** | **588** |
 
 ```bash
-cd app && npm run test          # 448 passing
+cd app && npm run test          # 525 passing
 cd contracts && forge test      # 63 passing
 ```
 
-Coverage includes EIP-712 typed-data construction verified against the deployed contract, `membersHash` parity with Solidity, signature invalidation rules, gas-limit policy, event parsing, prediction/event mismatch handling, custom-error decoding, NFT discovery and partial-failure handling, and the full contract lifecycle.
+Coverage includes EIP-712 typed-data construction verified against the deployed contract, `membersHash` parity with Solidity, signature invalidation rules, gas-limit policy, event parsing, prediction/event mismatch handling, custom-error decoding, NFT discovery and partial-failure handling, named-portfolio migration and
+isolation, and the full contract lifecycle.
 
 ---
 

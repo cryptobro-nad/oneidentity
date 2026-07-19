@@ -14,6 +14,7 @@ export function WalletList({
   onClear,
   onLoad,
   loading,
+  heading = "Wallets",
   loadLabel = "Load portfolio",
 }: {
   addresses: PortfolioAddress[];
@@ -24,6 +25,8 @@ export function WalletList({
   loading: boolean;
   /** Varies with state: load / load saved / refresh. */
   loadLabel?: string;
+  /** Section heading; names the active portfolio. */
+  heading?: string;
 }) {
   const [draft, setDraft] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -45,8 +48,8 @@ export function WalletList({
   return (
     <section aria-labelledby="wallets-heading" className="space-y-5">
       <div className="flex flex-wrap items-baseline justify-between gap-2">
-        <h2 id="wallets-heading" className="text-lg font-medium text-ink">
-          Wallets
+        <h2 id="wallets-heading" className="min-w-0 truncate text-lg font-medium text-ink">
+          {heading}
         </h2>
         <p className="text-sm text-faint">
           {addresses.length} of {MAX_WALLETS} added

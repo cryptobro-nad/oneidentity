@@ -5,91 +5,160 @@ import { NftCollectionChecker } from "@/components/NftCollectionChecker";
 import { NftHoldings } from "@/components/NftHoldings";
 import { ErrorNotice, UnverifiedNotice } from "@/components/Notices";
 import { PortfolioResult } from "@/components/PortfolioResult";
+import { PortfolioSwitcher } from "@/components/PortfolioSwitcher";
 import { SavedPortfolioNotice } from "@/components/SavedPortfolioNotice";
 import { WalletList } from "@/components/WalletList";
-import { removeAddress } from "@/lib/addresses";
 import {
+  addAddressTo,
+  clearAddressesIn,
+  createPortfolio,
+  deletePortfolio,
   getServerSnapshot,
   getSnapshot,
-  setAddresses,
+  removeAddressFrom,
+  renamePortfolio,
+  setActivePortfolio,
   subscribe,
-  wasRestoredFromStorage,
-} from "@/lib/addressStore";
+} from "@/lib/portfolios/store";
+import { activePortfolio } from "@/lib/portfolios/types";
 import type { AggregatedPortfolio, PortfolioAddress } from "@/lib/types";
 import { decodePortfolio } from "@/lib/wire";
 import { loadPortfolioAction } from "./actions";
 
 export function PortfolioClient() {
-  // The address list lives in localStorage, which is external to React and
-  // absent during SSR — useSyncExternalStore is the supported way to read it
-  // without an effect that would cause a cascading render.
-  const addresses = useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
-  const restoredFromStorage = useSyncExternalStore(
-    subscribe,
-    wasRestoredFromStorage,
-    () => false,
-  );
+  // Portfolios live in localStorage — external to React and absent during SSR,
+  // so useSyncExternalStore is the supported way to read them without an
+  // effect that would cause a cascading render.
+  const state = useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
+  const active = activePortfolio(state);
+  const addresses = active.addresses;
 
-  const [portfolio, setPortfolio] = useState<AggregatedPortfolio | null>(null);
+  const [result, setResult] = useState<AggregatedPortfolio | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
   /**
-   * Whether the user has explicitly asked for data this session.
+   * Which portfolio the current result and NFT scan belong to.
    *
-   * Nothing fetches until this is true. A returning user with five saved
-   * wallets would otherwise trigger a portfolio read *and* a full NFT
-   * transfer-history scan just by opening the page — many RPC calls and
-   * several seconds of work nobody asked for.
+   * This is what prevents cross-portfolio leakage. Results are rendered only
+   * when this matches the active portfolio, so switching can never show one
+   * portfolio's balances under another's name — even for the render between a
+   * switch and any cleanup.
    */
-  const [dataRequested, setDataRequested] = useState(false);
+  const [resultsFor, setResultsFor] = useState<string | null>(null);
 
-  const add = useCallback((address: PortfolioAddress) => {
-    setAddresses([...getSnapshot(), address]);
+  const resultsMatchActive = resultsFor === active.id;
+  const shownResult = resultsMatchActive ? result : null;
+  const dataRequested = resultsMatchActive && resultsFor !== null;
+
+  const clearResults = useCallback(() => {
+    setResult(null);
+    setResultsFor(null);
+    setError(null);
   }, []);
 
-  const remove = useCallback((address: PortfolioAddress) => {
-    setAddresses(removeAddress(getSnapshot(), address));
-    // A result that no longer matches the wallet list would be misleading.
-    setPortfolio(null);
-    setDataRequested(false);
+  // --- portfolio management -------------------------------------------------
+
+  const selectPortfolio = useCallback(
+    (id: string) => {
+      setActivePortfolio(id);
+      // Results belong to the portfolio they were loaded for.
+      clearResults();
+    },
+    [clearResults],
+  );
+
+  const handleCreate = useCallback(
+    (name: string) => {
+      const outcome = createPortfolio(name);
+      if (outcome.ok) clearResults();
+      return { ok: outcome.ok, message: outcome.ok ? undefined : outcome.message };
+    },
+    [clearResults],
+  );
+
+  const handleRename = useCallback((id: string, name: string) => {
+    const outcome = renamePortfolio(id, name);
+    // A rename keeps the same id and addresses, so results stay valid.
+    return { ok: outcome.ok, message: outcome.ok ? undefined : outcome.message };
   }, []);
+
+  const handleDelete = useCallback(
+    (id: string) => {
+      deletePortfolio(id);
+      clearResults();
+    },
+    [clearResults],
+  );
+
+  // --- addresses ------------------------------------------------------------
+
+  const add = useCallback(
+    (address: PortfolioAddress) => {
+      addAddressTo(active.id, address);
+    },
+    [active.id],
+  );
+
+  const remove = useCallback(
+    (address: PortfolioAddress) => {
+      removeAddressFrom(active.id, address);
+      // A result that no longer matches the wallet list would be misleading.
+      clearResults();
+    },
+    [active.id, clearResults],
+  );
 
   const clear = useCallback(() => {
-    setAddresses([]);
-    setPortfolio(null);
-    setError(null);
-    setDataRequested(false);
-  }, []);
+    clearAddressesIn(active.id);
+    clearResults();
+  }, [active.id, clearResults]);
+
+  // --- loading --------------------------------------------------------------
 
   const load = useCallback(async () => {
+    const portfolioId = active.id;
     setLoading(true);
     setError(null);
-    setDataRequested(true);
     try {
       const response = await loadPortfolioAction(addresses);
+      // Guard against a switch mid-request: results are only accepted for the
+      // portfolio that is still active.
+      if (getSnapshot().activeId !== portfolioId) return;
+
       if (response.ok) {
-        setPortfolio(decodePortfolio(response.data));
+        setResult(decodePortfolio(response.data));
+        setResultsFor(portfolioId);
       } else {
-        setPortfolio(null);
+        setResult(null);
+        setResultsFor(portfolioId);
         setError(response.error);
       }
     } catch {
-      setPortfolio(null);
+      setResult(null);
+      setResultsFor(portfolioId);
       setError("The portfolio request failed unexpectedly. Please try again.");
     } finally {
       setLoading(false);
     }
-  }, [addresses]);
+  }, [active.id, addresses]);
 
-  // Saved addresses are only news before the first load of this session.
-  const showSavedNotice = restoredFromStorage && !dataRequested && addresses.length > 0;
+  const savedFromPreviousVisit = !dataRequested && addresses.length > 0;
 
   return (
-    <div className="space-y-12">
+    <div className="space-y-10">
       <UnverifiedNotice />
 
-      {showSavedNotice ? <SavedPortfolioNotice count={addresses.length} /> : null}
+      <PortfolioSwitcher
+        portfolios={state.portfolios}
+        activeId={active.id}
+        onSelect={selectPortfolio}
+        onCreate={handleCreate}
+        onRename={handleRename}
+        onDelete={handleDelete}
+      />
+
+      {savedFromPreviousVisit ? <SavedPortfolioNotice count={addresses.length} /> : null}
 
       <WalletList
         addresses={addresses}
@@ -98,30 +167,36 @@ export function PortfolioClient() {
         onClear={clear}
         onLoad={load}
         loading={loading}
+        heading={`Wallets in “${active.name}”`}
         loadLabel={
-          portfolio ? "Refresh portfolio" : showSavedNotice ? "Load saved portfolio" : "Load portfolio"
+          shownResult
+            ? "Refresh portfolio"
+            : savedFromPreviousVisit
+              ? "Load saved portfolio"
+              : "Load portfolio"
         }
       />
 
-      {error ? <ErrorNotice title="Could not load the portfolio">{error}</ErrorNotice> : null}
+      {error && resultsMatchActive ? (
+        <ErrorNotice title="Could not load the portfolio">{error}</ErrorNotice>
+      ) : null}
 
-      {portfolio ? (
-        <div className="border-t border-line pt-12">
-          <PortfolioResult portfolio={portfolio} />
+      {shownResult ? (
+        <div className="border-t border-line pt-10">
+          <PortfolioResult portfolio={shownResult} />
         </div>
       ) : null}
 
-      {/* NFT discovery is gated on the same explicit request. Mounting this
-          component starts a transfer-history scan, so it must not appear
-          merely because saved addresses exist. */}
+      {/* NFT discovery is gated on the same explicit request, and keyed to the
+          active portfolio so switching cannot start a scan or show stale rows. */}
       {dataRequested && addresses.length > 0 ? (
-        <div className="border-t border-line pt-12">
-          <NftHoldings addresses={addresses} />
+        <div className="border-t border-line pt-10">
+          <NftHoldings key={active.id} addresses={addresses} />
         </div>
       ) : null}
 
-      <div className="border-t border-line pt-12">
-        <NftCollectionChecker addresses={addresses} />
+      <div className="border-t border-line pt-10">
+        <NftCollectionChecker key={active.id} addresses={addresses} />
       </div>
     </div>
   );
