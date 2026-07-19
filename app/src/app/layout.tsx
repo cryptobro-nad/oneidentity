@@ -14,9 +14,22 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
+  // Production origin, used only to resolve relative metadata URLs into
+  // absolute ones for link previews. Runtime links are never built from this —
+  // the profile-link copy uses window.location.origin so it stays correct on
+  // localhost and preview deployments.
+  metadataBase: new URL("https://oneidentity.app"),
   title: "ONE — Many wallets. One view.",
   description:
     "View your MON, stablecoins and NFT collection holdings across multiple Monad wallets.",
+  openGraph: {
+    title: "ONE — Many wallets. One onchain identity.",
+    description:
+      "Combine MON, stablecoins and NFT holdings across multiple Monad wallets, or create one public onchain identity.",
+    url: "https://oneidentity.app",
+    siteName: "ONE",
+    type: "website",
+  },
 };
 
 function Wordmark() {

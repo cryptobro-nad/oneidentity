@@ -2,7 +2,13 @@
 
 **Many wallets. One onchain identity.**
 
-Live on **Monad Mainnet** · Registry [`0xf8E6…F915`](https://monadscan.com/address/0xf8E62d8D16acB49eeEeCF13DE48f1f6898c2F915) · Source-verified · 345 automated tests · [MIT](LICENSE)
+### 🔗 [**Try it live → oneidentity.app**](https://oneidentity.app)
+
+**[Open the app](https://oneidentity.app)** · **[See a real Verified ONE](https://oneidentity.app/one/0x1139dec3A681C96807D8C277601655A707494AaA)** · **[Watch-only portfolio](https://oneidentity.app/portfolio)**
+
+Live on **Monad Mainnet** · Registry [`0xf8E6…F915`](https://monadscan.com/address/0xf8E62d8D16acB49eeEeCF13DE48f1f6898c2F915) · Source-verified · 432 automated tests · [MIT](LICENSE)
+
+> No wallet needed to look around. The portfolio and every public ONE profile are read-only.
 
 ---
 
@@ -296,6 +302,55 @@ That user fails a "hold 5" gate on every wallet individually, yet genuinely qual
 
 To support this, an external application must **explicitly integrate `ONERegistry` or `ONEIdentity`** and read the linked wallets. *No third-party integrations exist today* — this describes what the contracts make possible, not shipped partnerships.
 
+## For integrators: identity is not authentication
+
+> **A ONE address is public. Anyone can copy it. Receiving one proves nothing.**
+
+This is the single mistake most likely to be made when integrating ONE, so it is
+worth stating bluntly: a ONE identity address is public data, published onchain
+and visible on any profile page. If your application accepts a pasted ONE
+address as evidence of ownership, **anyone can paste anyone else's** and inherit
+their combined holdings.
+
+ONE answers *"which wallets belong together, and what do they hold?"* It does
+not answer *"is this person one of those wallets?"* That second question is
+authentication, and it remains your application's job.
+
+**For anything that grants value** — a claim, mint, allowlist, airdrop, or
+token gate — do this instead:
+
+1. **Ask the user to connect and sign.** A wallet signature, or a transaction
+   sent from the wallet, is the proof. A pasted address is not.
+2. **Resolve the ONE from the authenticated wallet**, never from user input:
+   `ONERegistry.activeOneOf(wallet)`.
+3. **Require the result to be non-zero and the ONE to be active.** An inactive
+   ONE has only its historical primary left and must not carry eligibility.
+4. **Check eligibility against the identity**, using
+   `ONEIdentity.combinedERC721Balance(collection)` or
+   `meetsERC721Threshold(collection, minimum)`.
+5. **Record the claim against the ONE address**, not against each wallet.
+
+That last point is what makes aggregation safe. A ONE can hold up to five
+wallets; if you record claims per wallet, one person claims five times. Keying
+on the identity — `claimed[oneAddress]` — collapses those into one.
+
+```solidity
+// Illustrative only — no audited claim contract ships with ONE.
+address one = registry.activeOneOf(msg.sender);   // authenticated caller
+require(one != address(0), "wallet not in a ONE");
+require(registry.isActive(one), "ONE is inactive");
+require(!claimed[one], "already claimed");        // keyed on identity
+require(ONEIdentity(one).meetsERC721Threshold(collection, 5), "not eligible");
+claimed[one] = true;
+```
+
+ONE provides **identity and aggregation**. Your application remains responsible
+for **authentication and claim tracking**.
+
+📘 **[Full integration guide →](docs/integration-guide.md)** — onchain and
+offchain flows, primary-only vs any-wallet authorization, inactive handling, and
+what ONE deliberately does not guarantee.
+
 ---
 
 ## Architecture
@@ -514,7 +569,11 @@ one/
 └── docs/               Deployment runbook and screenshots
 ```
 
-Key documents: [`docs/MAINNET_DEPLOYMENT.md`](docs/MAINNET_DEPLOYMENT.md) (deployment runbook and record) and [`spikes/mainnet-data/results/REPORT.md`](spikes/mainnet-data/results/REPORT.md) (the data-infrastructure investigation behind the NFT design).
+Key documents:
+
+- [`docs/integration-guide.md`](docs/integration-guide.md) — building on ONE safely, including why a pasted ONE address must never be trusted
+- [`docs/MAINNET_DEPLOYMENT.md`](docs/MAINNET_DEPLOYMENT.md) — deployment runbook and record
+- [`spikes/mainnet-data/results/REPORT.md`](spikes/mainnet-data/results/REPORT.md) — the data-infrastructure investigation behind the NFT design
 
 ---
 
