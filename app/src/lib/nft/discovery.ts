@@ -40,6 +40,14 @@ export type DiscoveryOutcome =
       blocked: boolean;
       /** Distinguishes "needs a paid plan" from "transient failure". */
       reason: DiscoveryBlockReason;
+      /**
+       * Collections found before the failure, if any.
+       *
+       * A budget-limited log scan is incomplete but not worthless: what it did
+       * find are real collections. They are still verified on-chain and shown,
+       * while the result stays flagged partial so nobody reads it as complete.
+       */
+      partialCollections?: DiscoveredCollection[];
     };
 
 export interface NftDiscoveryProvider {

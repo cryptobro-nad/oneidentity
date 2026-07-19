@@ -21,6 +21,7 @@ import {
   type DiscoveredCollection,
   type DiscoveryBlockReason,
 } from "@/lib/nft/discovery";
+import { OnChainLogDiscovery } from "@/lib/nft/onchainDiscovery";
 import { loadHybridNftHoldings } from "@/lib/nft/hybrid";
 import type { PortfolioAddress } from "@/lib/types";
 
@@ -92,10 +93,22 @@ export async function loadNftHoldingsAction(
     }
   }
 
+  // Provider selection.
+  //
+  // Default is the self-indexed on-chain log scan: it needs no credential, no
+  // paid plan, and is verifiable end to end. A commercial indexer is used only
+  // when one is explicitly configured AND opted into, since BlockVision's
+  // Monad account endpoints are Pro-tier gated and would otherwise fail every
+  // request. The curated list remains as a last resort.
   const apiKey = process.env.BLOCKVISION_API_KEY;
-  const provider = apiKey
-    ? new BlockVisionDiscovery(apiKey)
-    : new CuratedDiscovery();
+  const preferIndexer = process.env.NFT_DISCOVERY_PROVIDER === "blockvision";
+
+  const provider =
+    preferIndexer && apiKey
+      ? new BlockVisionDiscovery(apiKey)
+      : process.env.NFT_DISCOVERY_PROVIDER === "curated"
+        ? new CuratedDiscovery()
+        : new OnChainLogDiscovery();
 
   try {
     const outcome = await withRpcFallback((client) =>

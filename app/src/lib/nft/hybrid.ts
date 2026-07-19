@@ -21,6 +21,7 @@ import type { PortfolioAddress } from "@/lib/types";
 import type {
   DiscoveredCollection,
   DiscoveryBlockReason,
+  DiscoveryOutcome,
   NftDiscoveryProvider,
 } from "./discovery";
 
@@ -107,7 +108,18 @@ export async function loadHybridNftHoldings(
 
   for (const c of options.extraCollections ?? []) addCandidate(c);
 
-  const outcomes = await Promise.all(normalisedWallets.map((w) => provider.discover(w)));
+  // Discovery runs SEQUENTIALLY, not in parallel.
+  //
+  // The log-scan provider issues many requests per wallet against an endpoint
+  // with a documented 15 rps limit. Running five wallets concurrently reliably
+  // trips it — observed as HTML rate-limit pages that surfaced as confusing
+  // "Unexpected token '<'" JSON errors. Sequential scanning keeps the request
+  // rate predictable at the cost of latency, which is the right trade for a
+  // result the user is waiting on and must be able to trust.
+  const outcomes: DiscoveryOutcome[] = [];
+  for (const wallet of normalisedWallets) {
+    outcomes.push(await provider.discover(wallet));
+  }
   for (const outcome of outcomes) {
     if (!outcome.ok) {
       discoveryFailures.push({
@@ -116,6 +128,9 @@ export async function loadHybridNftHoldings(
         blocked: outcome.blocked,
         reason: outcome.reason,
       });
+      // A partial scan still found real collections — verify and show them,
+      // while the failure above keeps the result honestly flagged incomplete.
+      for (const c of outcome.partialCollections ?? []) addCandidate(c);
       continue;
     }
     for (const c of outcome.collections) addCandidate(c);

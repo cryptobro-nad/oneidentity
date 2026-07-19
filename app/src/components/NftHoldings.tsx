@@ -116,10 +116,14 @@ function DiscoveryStatus({
 }: {
   discovery: Extract<NftHoldingsResult, { ok: true }>["discovery"];
 }) {
+  const selfIndexed = discovery.provider === "onchain-log-scan";
+
   if (discovery.state === "complete") {
     return (
       <p className="text-xs text-faint">
-        Collections discovered via {discovery.provider}; every count re-read onchain.
+        {selfIndexed
+          ? "Collections discovered by scanning this wallet's full transfer history onchain; every count re-read onchain."
+          : `Collections discovered via ${discovery.provider}; every count re-read onchain.`}
       </p>
     );
   }
@@ -129,10 +133,21 @@ function DiscoveryStatus({
       <div role="status" className="rounded-xl border border-warn/30 bg-warn-soft px-4 py-3">
         <p className="text-sm font-medium text-ink">Partial discovery</p>
         <p className="mt-1 text-sm text-muted">
-          {discovery.provider} did not respond for{" "}
-          {discovery.failedWallets.map((w) => shortenAddress(w)).join(", ")}. Collections held only
-          by {discovery.failedWallets.length === 1 ? "that wallet" : "those wallets"} may be
-          missing. Counts shown are still verified onchain.
+          {selfIndexed ? (
+            <>
+              The transfer-history scan for{" "}
+              {discovery.failedWallets.map((w) => shortenAddress(w)).join(", ")} reached its request
+              limit before covering all history — that wallet has an unusually large number of NFT
+              transfers. Older collections may be missing. Everything shown is verified onchain.
+            </>
+          ) : (
+            <>
+              {discovery.provider} did not respond for{" "}
+              {discovery.failedWallets.map((w) => shortenAddress(w)).join(", ")}. Collections held
+              only by {discovery.failedWallets.length === 1 ? "that wallet" : "those wallets"} may
+              be missing. Counts shown are still verified onchain.
+            </>
+          )}
         </p>
       </div>
     );
