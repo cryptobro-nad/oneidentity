@@ -3,6 +3,8 @@
 import { useCallback, useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import { useRouter } from "next/navigation";
 import { createPublicClient, http } from "viem";
+import { ActiveOneCard } from "@/components/verified/ActiveOneCard";
+import { ErrorNotice } from "@/components/Notices";
 import { SetupStep } from "@/components/verified/SetupStep";
 import { SigningStep } from "@/components/verified/SigningStep";
 import { ReviewStep } from "@/components/verified/ReviewStep";
@@ -36,7 +38,12 @@ import { DEFAULT_GAS_BUFFER_PERCENT, type GasPlan } from "@/lib/registry/gas";
 import { computeMembersHash, sameAddress, sortMembers } from "@/lib/registry/members";
 import { useWallet } from "@/lib/wallet/useWallet";
 import type { PortfolioAddress } from "@/lib/types";
-import { readMemberStates, type MemberChainState } from "./actions";
+import {
+  loadWalletMembershipAction,
+  readMemberStates,
+  type MemberChainState,
+  type MembershipActionResult,
+} from "./actions";
 
 /** Read-only client for simulation/preflight; the wallet handles writes. */
 const publicClient = createPublicClient({ chain: monad, transport: http(PRIMARY_RPC) });
@@ -64,6 +71,38 @@ export function VerifiedClient() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<DecodedError | null>(null);
   const [simulatedFingerprint, setSimulatedFingerprint] = useState<string | null>(null);
+  const [membership, setMembership] = useState<{ forWallet: string; result: MembershipActionResult } | null>(null);
+
+  // Whether the connected wallet already belongs to a ONE. Re-read whenever the
+  // connected account changes, so switching accounts updates the card. State is
+  // only written after the await, so this never cascades a synchronous render.
+  useEffect(() => {
+    const connected = wallet.address;
+    if (!connected) return;
+
+    let cancelled = false;
+    const run = async () => {
+      const result = await loadWalletMembershipAction(connected);
+      if (!cancelled) setMembership({ forWallet: connected, result });
+    };
+    void run();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [wallet.address]);
+
+  /**
+   * Membership, but only when it describes the CURRENTLY connected wallet.
+   *
+   * Derived rather than cleared in an effect: disconnecting or switching
+   * accounts must not leave the previous wallet's ONE on screen, and comparing
+   * addresses is exact where an effect would lag by a render.
+   */
+  const membershipForConnected =
+    wallet.address && membership?.forWallet.toLowerCase() === wallet.address.toLowerCase()
+      ? membership.result
+      : null;
 
   const sortedMembers = useMemo(() => sortMembers(draft.members), [draft.members]);
   const fingerprint = useMemo(() => configFingerprint(draft), [draft]);
@@ -367,6 +406,22 @@ export function VerifiedClient() {
   return (
     <div className="space-y-12">
       <WalletConnect wallet={wallet} />
+
+      {/* An already-linked wallet sees its identity FIRST, not buried in an
+          error. The creation guardrail still appears further down. */}
+      {membershipForConnected?.state === "linked" ? (
+        <ActiveOneCard membership={membershipForConnected} connectedAddress={wallet.address!} />
+      ) : null}
+
+      {membershipForConnected?.state === "error" ? (
+        <ErrorNotice title="Could not check this wallet's ONE status">
+          {membershipForConnected.message}
+          <p className="mt-2 text-ink">
+            Creation is disabled until this can be confirmed — proceeding on an unknown state
+            risks a transaction that reverts.
+          </p>
+        </ErrorNotice>
+      ) : null}
 
       {invalidatedNotice ? (
         <div role="status" className="rounded-xl border border-warn/30 bg-warn-soft px-4 py-3.5">

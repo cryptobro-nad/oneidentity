@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { OneLookup } from "@/components/OneLookup";
 import { MAX_WALLETS } from "@/lib/chain";
 import { SUPPORTED_STABLECOINS } from "@/lib/tokens";
 
@@ -88,6 +89,12 @@ export default function LandingPage() {
 
           <ConvergenceDiagram />
         </div>
+      </section>
+
+      {/* Public lookup: no wallet, no signature. Placed directly after the hero
+          so a shared ONE link is the first thing a newcomer can act on. */}
+      <section className="border-t border-line py-12">
+        <OneLookup />
       </section>
 
       <section className="border-t border-line py-12">

@@ -14,6 +14,7 @@ export function WalletList({
   onClear,
   onLoad,
   loading,
+  loadLabel = "Load portfolio",
 }: {
   addresses: PortfolioAddress[];
   onAdd: (address: PortfolioAddress) => void;
@@ -21,6 +22,8 @@ export function WalletList({
   onClear: () => void;
   onLoad: () => void;
   loading: boolean;
+  /** Varies with state: load / load saved / refresh. */
+  loadLabel?: string;
 }) {
   const [draft, setDraft] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -125,7 +128,7 @@ export function WalletList({
           disabled={addresses.length === 0 || loading}
           className="rounded-full bg-accent px-5 py-2.5 text-sm font-medium text-accent-ink transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40"
         >
-          {loading ? "Loading…" : "Load portfolio"}
+          {loading ? "Loading…" : loadLabel}
         </button>
         {addresses.length > 0 ? (
           <button

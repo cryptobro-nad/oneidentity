@@ -16,6 +16,12 @@ import type { PortfolioAddress } from "./types";
 const EMPTY: PortfolioAddress[] = [];
 
 let cache: PortfolioAddress[] | null = null;
+/**
+ * True when the current list came from localStorage rather than this session's
+ * typing. Lets the UI say "saved portfolio found" only to a genuinely returning
+ * user, and reset the moment they edit the list themselves.
+ */
+let restoredFromStorage = false;
 const listeners = new Set<() => void>();
 
 function emit() {
@@ -44,7 +50,11 @@ export function subscribe(listener: () => void): () => void {
 }
 
 export function getSnapshot(): PortfolioAddress[] {
-  if (cache === null) cache = loadStoredAddresses();
+  if (cache === null) {
+    cache = loadStoredAddresses();
+    // Only a non-empty read counts as a restore worth telling the user about.
+    restoredFromStorage = cache.length > 0;
+  }
   return cache;
 }
 
@@ -53,8 +63,21 @@ export function getServerSnapshot(): PortfolioAddress[] {
   return EMPTY;
 }
 
+/**
+ * Whether the current list was restored from a previous visit.
+ *
+ * Reading this also primes the cache, so callers get a consistent answer
+ * regardless of hook ordering.
+ */
+export function wasRestoredFromStorage(): boolean {
+  if (cache === null) getSnapshot();
+  return restoredFromStorage;
+}
+
 export function setAddresses(next: PortfolioAddress[]): void {
   cache = next;
+  // Any deliberate edit means the list is no longer purely "restored".
+  restoredFromStorage = false;
   saveStoredAddresses(next);
   emit();
 }
@@ -62,4 +85,5 @@ export function setAddresses(next: PortfolioAddress[]): void {
 /** Test-only: drops the cache so the next read hits storage again. */
 export function resetAddressStoreCache(): void {
   cache = null;
+  restoredFromStorage = false;
 }

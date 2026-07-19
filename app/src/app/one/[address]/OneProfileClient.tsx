@@ -7,6 +7,7 @@ import { AddressChip } from "@/components/AddressChip";
 import { ErrorNotice } from "@/components/Notices";
 import { NftCollectionChecker } from "@/components/NftCollectionChecker";
 import { NftHoldings } from "@/components/NftHoldings";
+import { OneLookup } from "@/components/OneLookup";
 import { PortfolioResult } from "@/components/PortfolioResult";
 import { ErrorPanel } from "@/components/verified/ReviewStep";
 import { WalletConnect } from "@/components/verified/WalletConnect";
@@ -336,6 +337,10 @@ export function OneProfileClient({ initial }: { initial: WireProfile }) {
             Create another Verified ONE
           </Link>
         </p>
+      </section>
+
+      <section className="border-t border-line pt-10">
+        <OneLookup compact />
       </section>
     </div>
   );

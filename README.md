@@ -83,6 +83,22 @@ Balances are read at a **single pinned block** and shown combined, with a per-wa
 
 <img src="docs/screenshots/03-combined-balances.png" alt="Combined balances across three wallets with a per-wallet breakdown" width="100%">
 
+**Your wallet list is saved, your balances are not.** Addresses are kept in
+`localStorage` so a return visit does not mean retyping five of them. Balances,
+NFT results and block numbers are deliberately never persisted — they go stale
+the moment they are written, and a stale balance shown as current is worse than
+no balance at all. Everything is re-read from Monad on request.
+
+Nothing loads automatically on arrival. A returning user sees **"Saved portfolio
+found"** and an explicit **Load saved portfolio** button, because NFT discovery
+scans transfer history and can take several seconds and many RPC calls — opening
+a page should not silently start that work. After a load the button becomes
+**Refresh portfolio**.
+
+`localStorage` is per-origin, so the list does not follow you between
+`localhost`, a preview deployment and a custom domain. Moving to a new domain,
+switching browser, or clearing site data means entering the wallets once more.
+
 **Personal Portfolio at a glance**
 
 | | |
@@ -203,6 +219,36 @@ The interface is deliberately hard to misuse. These screenshots show the guardra
 **On gas.** Monad charges based on the **submitted gas limit**, not the gas actually used. ONE therefore estimates each transaction individually and applies a small, adjustable buffer rather than a blanket worst-case limit — an oversized limit is real money, not free insurance.
 
 ---
+
+## Finding and sharing a ONE
+
+**If you already have one.** Connect a wallet on the Verified ONE page and your
+identity appears at the top of the page — address in full, your role (primary or
+secondary, read from the Registry rather than inferred), and buttons to **copy
+the ONE address**, **copy a public profile link**, or **view your ONE**. The
+copied address is always complete even where the display shortens it, and the
+profile link is built from the current browser origin, so it is correct on
+localhost, on a preview deployment, and on any domain the app is later served
+from.
+
+**If you have someone else's.** The landing page has a public lookup: paste a
+ONE identity address *or* any wallet currently linked to one, and it opens the
+profile. No wallet, no connection, no signature — it reads public Registry data.
+
+One asymmetry worth knowing, because it follows from the contract rather than
+the interface:
+
+| You paste | Resolves |
+|---|---|
+| A **ONE identity** address | Active **and** inactive historical identities |
+| A **wallet** address | Only that wallet's **current active** ONE |
+
+The Registry keeps no reverse index from a wallet to its past memberships, so an
+inactive relationship cannot be found from a wallet address. A direct ONE
+address always works.
+
+Failures stay distinct: an unreachable RPC reports as an RPC problem, never as
+"no ONE found".
 
 ## Public ONE profile
 

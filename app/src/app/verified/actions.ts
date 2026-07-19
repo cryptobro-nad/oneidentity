@@ -14,6 +14,8 @@ import { ONE_REGISTRY_ADDRESS } from "@/lib/chain";
 import { withRpcFallback } from "@/lib/rpc";
 import { ONE_REGISTRY_ABI } from "@/lib/registry/abi";
 import { loadOneProfile } from "@/lib/registry/profile";
+import { LOOKUP_MESSAGES, resolveOneLookup, type LookupResult } from "@/lib/registry/lookup";
+import { loadWalletMembership } from "@/lib/registry/membership";
 import type { PortfolioAddress } from "@/lib/types";
 
 export type MemberChainState = {
@@ -128,6 +130,54 @@ export async function predictOneAddressAction(
     return {
       ok: false,
       error: error instanceof Error ? error.message.split("\n")[0]! : String(error),
+    };
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Lookup and membership
+// ---------------------------------------------------------------------------
+
+export type LookupActionResult = LookupResult;
+
+/**
+ * Resolves a pasted address to a ONE identity. No wallet connection required —
+ * this reads public Registry state only.
+ */
+export async function resolveOneLookupAction(input: string): Promise<LookupActionResult> {
+  try {
+    const outcome = await withRpcFallback((client) => resolveOneLookup(client, input));
+    return outcome.value;
+  } catch (error) {
+    // Every endpoint failed. This is an RPC problem, never "not found".
+    return {
+      ok: false,
+      code: "RPC_ERROR",
+      message:
+        LOOKUP_MESSAGES.RPC_ERROR +
+        (error instanceof Error ? ` (${error.message.split("\n")[0]})` : ""),
+    };
+  }
+}
+
+export type MembershipActionResult =
+  | { state: "linked"; oneAddress: PortfolioAddress; role: "primary" | "secondary"; isActive: boolean; memberCount: number }
+  | { state: "unlinked" }
+  | { state: "error"; message: string };
+
+/** Reads the ONE a connected wallet already belongs to, and its role in it. */
+export async function loadWalletMembershipAction(
+  wallet: string,
+): Promise<MembershipActionResult> {
+  try {
+    const outcome = await withRpcFallback((client) => loadWalletMembership(client, wallet));
+    return outcome.value;
+  } catch (error) {
+    return {
+      state: "error",
+      message:
+        "Monad could not be reached to check this wallet. " +
+        (error instanceof Error ? error.message.split("\n")[0]! : String(error)),
     };
   }
 }
