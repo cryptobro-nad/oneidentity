@@ -16,7 +16,7 @@ import type { PortfolioAddress } from "@/lib/types";
 import {
   getChainId,
   requestAccounts,
-  requestAccountsWithChooser,
+  revokeInjectedPermissions,
   subscribeToProviderEvents,
   subscribeToWallets,
   switchToMonad,
@@ -163,14 +163,12 @@ export function useWallet() {
     setConnecting(true);
     setError(null);
     try {
-      // Injected wallets get an explicit account chooser, so a manual disconnect
-      // is never undone by a silent reconnect of the previous account. The
-      // WalletConnect provider already chose an account in its own modal, so it
-      // takes the plain path.
-      const accounts =
-        wallet.info.uuid === WALLETCONNECT_UUID
-          ? await requestAccounts(wallet.provider)
-          : await requestAccountsWithChooser(wallet.provider);
+      // A plain account request: the wallet opens and asks the user to approve
+      // the currently active account. A deliberate disconnect revokes the
+      // injected permission (see `disconnect`), so this prompts fresh rather
+      // than returning the previous account silently — no account-management
+      // dialog, no need to open the extension first.
+      const accounts = await requestAccounts(wallet.provider);
       if (accounts.length === 0) throw new Error("No accounts were returned by the wallet.");
       const id = await getChainId(wallet.provider);
       setSelected(wallet);
@@ -213,13 +211,17 @@ export function useWallet() {
   }, [connect]);
 
   const disconnect = useCallback(() => {
-    // End the real session, not just the local view of it. Skipping this would
-    // leave the wallet still paired and silently reuse it on next connect.
+    // End the real authorisation, not just the local view of it. Skipping this
+    // leaves the site connected and silently reused on the next connect.
     if (selected?.info.uuid === WALLETCONNECT_UUID) {
       // Record the intent first, so even if the SDK teardown fails on mobile,
       // the next restore-on-refresh refuses to reconnect.
       markWalletConnectDisconnected();
       void disconnectWalletConnect();
+    } else if (selected) {
+      // Injected: de-authorise the site so the next connect prompts fresh for
+      // the active account instead of returning the previous one silently.
+      void revokeInjectedPermissions(selected.provider);
     }
     setSelected(null);
     setAddress(null);

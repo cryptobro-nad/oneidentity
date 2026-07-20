@@ -16,26 +16,21 @@ const OTHER = "0xe3A0795381521C177fc8c7723213df7B56A10a31";
 /** A controllable EIP-1193 mock whose chain/accounts can change out of band. */
 function makeWallet(chainId: number, accounts: string[] = [ADDRESS], uuid = "test") {
   const calls: string[] = [];
-  let rejectPermissions = false;
-  let permissionsUnsupported = false;
+  let revokeUnsupported = false;
   const p = {
     chain: chainId,
     accounts,
     calls,
-    setRejectPermissions(v: boolean) {
-      rejectPermissions = v;
-    },
-    setPermissionsUnsupported(v: boolean) {
-      permissionsUnsupported = v;
+    setRevokeUnsupported(v: boolean) {
+      revokeUnsupported = v;
     },
     on() {},
     removeListener() {},
     async request({ method, params }: { method: string; params?: unknown[] }) {
       calls.push(method);
-      if (method === "wallet_requestPermissions") {
-        if (rejectPermissions) throw { code: 4001, message: "User rejected the request" };
-        if (permissionsUnsupported) throw { code: 4200, message: "Unsupported method" };
-        return [{ parentCapability: "eth_accounts" }];
+      if (method === "wallet_revokePermissions") {
+        if (revokeUnsupported) throw { code: 4200, message: "Unsupported method" };
+        return null;
       }
       if (method === "eth_requestAccounts" || method === "eth_accounts") return p.accounts;
       if (method === "eth_chainId") return `0x${p.chain.toString(16)}`;
@@ -57,6 +52,7 @@ function makeWallet(chainId: number, accounts: string[] = [ADDRESS], uuid = "tes
 beforeEach(() => {
   // Keep WalletConnect out of the picture so the mount stays synchronous.
   delete process.env.NEXT_PUBLIC_REOWN_PROJECT_ID;
+  window.localStorage.clear();
 });
 afterEach(() => vi.clearAllMocks());
 
@@ -96,53 +92,60 @@ describe("ensureOnMonad (Sign / Create network check)", () => {
   });
 });
 
-describe("account chooser on connect (no silent reconnect after disconnect)", () => {
-  it("asks an injected wallet for an explicit account choice", async () => {
+describe("connect uses a normal approval (not an account-management dialog)", () => {
+  it("injected connect calls eth_requestAccounts and shows the account", async () => {
     const { wallet, p } = makeWallet(143, [ADDRESS], "io.metamask");
     const { result } = renderHook(() => useWallet());
     await act(async () => {
       await result.current.connect(wallet);
     });
-    // The permission request is what opens MetaMask's account selector.
-    expect(p.calls).toContain("wallet_requestPermissions");
+    // A plain approval of the active account — no wallet_requestPermissions,
+    // which is what forced MetaMask's account-management screen before.
+    expect(p.calls).toContain("eth_requestAccounts");
+    expect(p.calls).not.toContain("wallet_requestPermissions");
     expect(result.current.address?.toLowerCase()).toBe(ADDRESS.toLowerCase());
   });
+});
 
-  it("does not force a chooser for WalletConnect (its modal already chose)", async () => {
+describe("disconnect de-authorises the wallet (no silent reconnect)", () => {
+  it("revokes the injected site permission so the next connect prompts fresh", async () => {
+    const { wallet, p } = makeWallet(143, [ADDRESS], "io.metamask");
+    const { result } = renderHook(() => useWallet());
+    await act(async () => {
+      await result.current.connect(wallet);
+    });
+    await act(async () => {
+      result.current.disconnect();
+    });
+    expect(p.calls).toContain("wallet_revokePermissions");
+    expect(result.current.address).toBeNull();
+    expect(result.current.selected).toBeNull();
+  });
+
+  it("still clears state when the wallet cannot revoke", async () => {
+    const { wallet, p } = makeWallet(143, [ADDRESS], "io.metamask");
+    p.setRevokeUnsupported(true);
+    const { result } = renderHook(() => useWallet());
+    await act(async () => {
+      await result.current.connect(wallet);
+    });
+    await act(async () => {
+      result.current.disconnect();
+    });
+    expect(result.current.address).toBeNull();
+    expect(result.current.selected).toBeNull();
+  });
+
+  it("does not revoke for WalletConnect (it ends the session instead)", async () => {
     const { wallet, p } = makeWallet(143, [ADDRESS], "walletconnect");
     const { result } = renderHook(() => useWallet());
     await act(async () => {
       await result.current.connect(wallet);
     });
-    expect(p.calls).not.toContain("wallet_requestPermissions");
-  });
-
-  it("falls back to a plain connect when the wallet can't force a chooser", async () => {
-    const { wallet, p } = makeWallet(143, [ADDRESS], "io.metamask");
-    p.setPermissionsUnsupported(true);
-    const { result } = renderHook(() => useWallet());
     await act(async () => {
-      await result.current.connect(wallet);
+      result.current.disconnect();
     });
-    // It tried the chooser, then fell back — the on-screen copy tells the user
-    // to switch accounts in the extension.
-    expect(p.calls).toContain("wallet_requestPermissions");
-    expect(p.calls).toContain("eth_requestAccounts");
-    expect(result.current.address?.toLowerCase()).toBe(ADDRESS.toLowerCase());
-  });
-
-  it("aborts (no silent connect) when the user rejects the account chooser", async () => {
-    const { wallet, p } = makeWallet(143, [ADDRESS], "io.metamask");
-    p.setRejectPermissions(true);
-    const { result } = renderHook(() => useWallet());
-    await act(async () => {
-      await result.current.connect(wallet);
-    });
-    // Rejection is a real "no": no account is attached and eth_requestAccounts
-    // was never used to sneak the previous account back in.
-    expect(result.current.address).toBeNull();
-    expect(p.calls).not.toContain("eth_requestAccounts");
-    expect(result.current.error).toBeTruthy();
+    expect(p.calls).not.toContain("wallet_revokePermissions");
   });
 });
 

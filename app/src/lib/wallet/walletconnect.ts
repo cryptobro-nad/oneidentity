@@ -139,6 +139,11 @@ export async function getWalletConnectProvider(): Promise<WalletConnectProvider>
   // Dynamic import: never in the initial bundle for visitors who only read.
   const { EthereumProvider } = await import("@walletconnect/ethereum-provider");
 
+  // Derived from the running origin so the wallet shows the right site — and can
+  // deep-link back to it — on localhost, previews and production alike.
+  const origin =
+    typeof window === "undefined" ? "https://oneidentity.app" : window.location.origin;
+
   const provider = (await EthereumProvider.init({
     projectId,
     // Monad only. Offering chains ONE cannot use would invite a session that
@@ -150,10 +155,13 @@ export async function getWalletConnectProvider(): Promise<WalletConnectProvider>
     metadata: {
       name: "ONE",
       description: "Many wallets. One onchain identity.",
-      // Derived from the running origin so the wallet shows the right site on
-      // localhost, previews and production alike.
-      url: typeof window === "undefined" ? "https://oneidentity.app" : window.location.origin,
+      url: origin,
       icons: ["https://oneidentity.app/icon.png"],
+      // Universal-link return path: after the user approves in the wallet app on
+      // mobile, this is how the wallet hands control back to ONE (and how Sign /
+      // Create requests reopen the right app). ONE is a web app, so there is no
+      // native scheme — the universal link is the running origin.
+      redirect: { native: "", universal: origin },
     },
   })) as unknown as WalletConnectProvider;
 

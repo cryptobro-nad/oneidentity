@@ -88,33 +88,29 @@ export async function requestAccounts(provider: EIP1193Provider): Promise<string
 }
 
 /**
- * Requests accounts in a way that lets the user PICK which account.
+ * Revokes this site's account permission on an injected wallet.
  *
- * Plain `eth_requestAccounts` silently returns the already-authorised account on
- * an injected wallet, so after a manual disconnect, clicking Connect would
- * immediately reattach the previous account with no choice — which is exactly
- * what a deliberate disconnect should prevent. `wallet_requestPermissions` with
- * `eth_accounts` opens the account selector in MetaMask and Rabby even when the
- * site is already connected, so the user explicitly chooses (the same account or
- * a different one).
+ * This is what makes a deliberate disconnect *real* on an injected wallet.
+ * Without it, MetaMask keeps the site authorised, so the next
+ * `eth_requestAccounts` returns the previous account silently, with no prompt —
+ * the "it just reconnects the old account" behaviour. After revoking (EIP-2255 /
+ * MetaMask `wallet_revokePermissions`), the next connect opens the wallet and
+ * asks the user to approve the currently active account: a normal connect, not
+ * an account-management dialog.
  *
- * If the wallet does not support the permission request, we fall back to
- * `eth_requestAccounts` and rely on the on-screen instruction to switch accounts
- * inside the extension. A user rejection is a real "no" and is NOT followed by a
- * silent connect.
+ * Best-effort: wallets that do not implement it simply keep their permission,
+ * and the on-screen copy tells the user to switch the active account in the
+ * extension. Never throws.
  */
-export async function requestAccountsWithChooser(provider: EIP1193Provider): Promise<string[]> {
+export async function revokeInjectedPermissions(provider: EIP1193Provider): Promise<void> {
   try {
     await provider.request({
-      method: "wallet_requestPermissions",
+      method: "wallet_revokePermissions",
       params: [{ eth_accounts: {} }],
     } as Parameters<EIP1193Provider["request"]>[0]);
-  } catch (error) {
-    if (isUserRejection(error)) throw error;
-    // Unsupported method or any other non-rejection failure: fall through to a
-    // plain request; the UI tells the user how to switch accounts manually.
+  } catch {
+    // Unsupported, already revoked, or user-dismissed: nothing to do.
   }
-  return requestAccounts(provider);
 }
 
 export async function getChainId(provider: EIP1193Provider): Promise<number> {

@@ -65,8 +65,8 @@ export function WalletConnect({ wallet }: { wallet: Wallet }) {
               ))}
             </ul>
             <p className="mt-2 text-xs text-faint">
-              You choose which account to connect. If your wallet reconnects the previous account
-              without asking, switch the active account inside the extension, then connect again.
+              Connect opens your wallet to approve the account that&apos;s currently active. To use
+              a different account, select it in your wallet extension first.
             </p>
           </>
         ) : null}
