@@ -189,8 +189,10 @@ export function VerifiedClient() {
         );
         return;
       }
-      if (!wallet.isOnMonad) {
-        setSignError("Switch to Monad Mainnet before signing.");
+      // Check the network live and request the switch as part of signing, rather
+      // than trusting possibly-stale chain state or a separate button press.
+      if (!(await wallet.ensureOnMonad())) {
+        setSignError("Open your wallet, select Monad Mainnet, return here, then tap Check again.");
         return;
       }
 
@@ -331,6 +333,19 @@ export function VerifiedClient() {
     setSubmitting(true);
     setError(null);
     try {
+      // Check the network live and request the switch as part of Create, so a
+      // wallet that drifted off Monad after simulating can't submit blind.
+      if (!(await wallet.ensureOnMonad())) {
+        setError({
+          name: "WrongNetwork",
+          title: "Wrong network",
+          detail: "Open your wallet, select Monad Mainnet, return here, then tap Check again.",
+          technical: "wallet not on Monad Mainnet at submit",
+        });
+        setSubmitting(false);
+        return;
+      }
+
       // Re-run preflight against current chain state; nonces and bindings can
       // move between simulating and submitting.
       const pre = await preflightCreateOne(publicClient, draft, {

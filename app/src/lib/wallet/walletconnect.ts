@@ -35,6 +35,53 @@ import type { DiscoveredWallet } from "./provider";
 export const WALLETCONNECT_UUID = "walletconnect";
 
 /**
+ * Records that the user *deliberately* disconnected.
+ *
+ * Relying only on the SDK's own `disconnect()` to clear the persisted session
+ * is not enough on mobile: if the wallet app is backgrounded or the relay
+ * socket is down, the teardown can silently fail and the next page load
+ * rehydrates the very session the user thought they ended. This flag is ONE's
+ * own record of intent, checked before any restoration, so a real disconnect
+ * always wins over a lingering session.
+ */
+const WC_DISCONNECT_INTENT_KEY = "one.wallet.wc.disconnected";
+
+function intentStorage(): Pick<Storage, "getItem" | "setItem" | "removeItem"> | undefined {
+  if (typeof window === "undefined") return undefined;
+  try {
+    return window.localStorage;
+  } catch {
+    return undefined;
+  }
+}
+
+/** Marks the WalletConnect connection as intentionally ended by the user. */
+export function markWalletConnectDisconnected(): void {
+  try {
+    intentStorage()?.setItem(WC_DISCONNECT_INTENT_KEY, "1");
+  } catch {
+    // Storage being unavailable must never break disconnect.
+  }
+}
+
+/** Clears the intent flag — called when the user deliberately connects again. */
+export function clearWalletConnectDisconnectIntent(): void {
+  try {
+    intentStorage()?.removeItem(WC_DISCONNECT_INTENT_KEY);
+  } catch {
+    // ignore
+  }
+}
+
+export function wasWalletConnectDisconnectedByUser(): boolean {
+  try {
+    return intentStorage()?.getItem(WC_DISCONNECT_INTENT_KEY) === "1";
+  } catch {
+    return false;
+  }
+}
+
+/**
  * Reown/WalletConnect project id.
  *
  * `NEXT_PUBLIC_` is correct here: a WalletConnect project id is a public
@@ -183,6 +230,18 @@ export type RestoredSession = {
  */
 export async function restoreWalletConnectSession(): Promise<RestoredSession | null> {
   if (!isWalletConnectConfigured()) return null;
+
+  // A deliberate disconnect must win, even if the wallet failed to tear its own
+  // session down. Clear anything that lingered and require a fresh connect.
+  if (wasWalletConnectDisconnectedByUser()) {
+    try {
+      const provider = await getWalletConnectProvider();
+      if (provider.session) await disconnectWalletConnect();
+    } catch {
+      // Best-effort cleanup; the important part is that we do not restore.
+    }
+    return null;
+  }
 
   try {
     const provider = await getWalletConnectProvider();

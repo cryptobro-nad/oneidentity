@@ -16,6 +16,7 @@ import type { PortfolioAddress } from "@/lib/types";
 import {
   getChainId,
   requestAccounts,
+  requestAccountsWithChooser,
   subscribeToProviderEvents,
   subscribeToWallets,
   switchToMonad,
@@ -23,8 +24,10 @@ import {
   type DiscoveredWallet,
 } from "./provider";
 import {
+  clearWalletConnectDisconnectIntent,
   disconnectWalletConnect,
   isWalletConnectConfigured,
+  markWalletConnectDisconnected,
   walletConnectEntry,
   restoreWalletConnectSession,
   WALLETCONNECT_UUID,
@@ -108,11 +111,66 @@ export function useWallet() {
     });
   }, [selected]);
 
+  /**
+   * Re-reads account and chain whenever the tab regains focus.
+   *
+   * On mobile the switch/sign prompt happens in a separate wallet app; coming
+   * back to Chrome is a deep-link return, and `accountsChanged` / `chainChanged`
+   * frequently do not fire (or fire while the tab is hidden and are missed). The
+   * result was ONE showing the old chain after the wallet had already switched,
+   * or the stale-account/stale-chain the mobile testing surfaced. Re-reading on
+   * return is a plain read — it never signs, switches, or reconnects.
+   */
+  useEffect(() => {
+    if (!selected) return;
+    const provider = selected.provider;
+    let cancelled = false;
+
+    const resync = async () => {
+      try {
+        const accounts = (await provider.request({ method: "eth_accounts" })) as string[];
+        if (!cancelled) {
+          setAddress(accounts.length > 0 ? (getAddress(accounts[0]!) as PortfolioAddress) : null);
+        }
+      } catch {
+        // A read failure here must not clear a good connection.
+      }
+      try {
+        const id = await getChainId(provider);
+        if (!cancelled) setChainId(id);
+      } catch {
+        // ignore
+      }
+    };
+
+    const onVisible = () => {
+      // Resync unless the tab is actually hidden — covers both the
+      // visibilitychange (tab shown) and focus (window refocused) paths.
+      if (document.visibilityState !== "hidden") void resync();
+    };
+
+    document.addEventListener("visibilitychange", onVisible);
+    window.addEventListener("focus", onVisible);
+
+    return () => {
+      cancelled = true;
+      document.removeEventListener("visibilitychange", onVisible);
+      window.removeEventListener("focus", onVisible);
+    };
+  }, [selected]);
+
   const connect = useCallback(async (wallet: DiscoveredWallet) => {
     setConnecting(true);
     setError(null);
     try {
-      const accounts = await requestAccounts(wallet.provider);
+      // Injected wallets get an explicit account chooser, so a manual disconnect
+      // is never undone by a silent reconnect of the previous account. The
+      // WalletConnect provider already chose an account in its own modal, so it
+      // takes the plain path.
+      const accounts =
+        wallet.info.uuid === WALLETCONNECT_UUID
+          ? await requestAccounts(wallet.provider)
+          : await requestAccountsWithChooser(wallet.provider);
       if (accounts.length === 0) throw new Error("No accounts were returned by the wallet.");
       const id = await getChainId(wallet.provider);
       setSelected(wallet);
@@ -136,6 +194,10 @@ export function useWallet() {
     setConnecting(true);
     setError(null);
     try {
+      // The user is deliberately connecting, so a previous "I disconnected"
+      // intent no longer applies. Clear it before opening the modal, or the
+      // next restore-on-refresh would wrongly suppress this new session.
+      clearWalletConnectDisconnectIntent();
       const entry = await walletConnectEntry();
       // EthereumProvider.connect() opens the QR modal on desktop and
       // deep-links into an installed wallet on mobile.
@@ -154,6 +216,9 @@ export function useWallet() {
     // End the real session, not just the local view of it. Skipping this would
     // leave the wallet still paired and silently reuse it on next connect.
     if (selected?.info.uuid === WALLETCONNECT_UUID) {
+      // Record the intent first, so even if the SDK teardown fails on mobile,
+      // the next restore-on-refresh refuses to reconnect.
+      markWalletConnectDisconnected();
       void disconnectWalletConnect();
     }
     setSelected(null);
@@ -181,6 +246,31 @@ export function useWallet() {
     } finally {
       setSwitching(false);
     }
+  }, [selected]);
+
+  /**
+   * Ensures the wallet is on Monad as part of an action (Sign / Create).
+   *
+   * Reads the LIVE chain first — never the possibly-stale `chainId` state — so a
+   * wallet that already switched (e.g. in its app, before returning) is accepted
+   * without a needless prompt. If it is genuinely on the wrong network, the
+   * switch is requested inline and the result is re-verified. Returns whether
+   * the wallet ended up on Monad. Never signs or submits anything.
+   */
+  const ensureOnMonad = useCallback(async (): Promise<boolean> => {
+    if (!selected) return false;
+    let live: number | null = null;
+    try {
+      live = await getChainId(selected.provider);
+      if (live !== null) setChainId(live);
+    } catch {
+      // fall through to a switch attempt
+    }
+    if (live === MONAD_CHAIN_ID) return true;
+
+    const outcome = await switchToMonad(selected.provider);
+    if (outcome.chainId !== null) setChainId(outcome.chainId);
+    return outcome.ok;
   }, [selected]);
 
   /**
@@ -249,6 +339,7 @@ export function useWallet() {
     connectWalletConnect,
     disconnect,
     switchNetwork,
+    ensureOnMonad,
     checkNetwork,
     refreshAccount,
     getWalletClient,

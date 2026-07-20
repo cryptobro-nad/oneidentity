@@ -221,7 +221,7 @@ describe("network switching UI", () => {
 
   it("shows actionable manual instructions alongside the error", () => {
     render(<WalletConnect wallet={wrongNetwork({ error: "Your wallet is still on a different network." })} />);
-    expect(screen.getByRole("alert").textContent).toMatch(/open your wallet app/i);
+    expect(screen.getByRole("alert").textContent).toMatch(/open your wallet, select monad mainnet/i);
   });
 
   it("disables both buttons and relabels while switching", () => {

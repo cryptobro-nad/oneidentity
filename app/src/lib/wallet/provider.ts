@@ -87,6 +87,36 @@ export async function requestAccounts(provider: EIP1193Provider): Promise<string
   return accounts.map((a) => getAddress(a));
 }
 
+/**
+ * Requests accounts in a way that lets the user PICK which account.
+ *
+ * Plain `eth_requestAccounts` silently returns the already-authorised account on
+ * an injected wallet, so after a manual disconnect, clicking Connect would
+ * immediately reattach the previous account with no choice — which is exactly
+ * what a deliberate disconnect should prevent. `wallet_requestPermissions` with
+ * `eth_accounts` opens the account selector in MetaMask and Rabby even when the
+ * site is already connected, so the user explicitly chooses (the same account or
+ * a different one).
+ *
+ * If the wallet does not support the permission request, we fall back to
+ * `eth_requestAccounts` and rely on the on-screen instruction to switch accounts
+ * inside the extension. A user rejection is a real "no" and is NOT followed by a
+ * silent connect.
+ */
+export async function requestAccountsWithChooser(provider: EIP1193Provider): Promise<string[]> {
+  try {
+    await provider.request({
+      method: "wallet_requestPermissions",
+      params: [{ eth_accounts: {} }],
+    } as Parameters<EIP1193Provider["request"]>[0]);
+  } catch (error) {
+    if (isUserRejection(error)) throw error;
+    // Unsupported method or any other non-rejection failure: fall through to a
+    // plain request; the UI tells the user how to switch accounts manually.
+  }
+  return requestAccounts(provider);
+}
+
 export async function getChainId(provider: EIP1193Provider): Promise<number> {
   const hex = (await provider.request({ method: "eth_chainId" })) as string;
   return Number.parseInt(hex, 16);

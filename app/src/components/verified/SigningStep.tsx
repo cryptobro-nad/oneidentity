@@ -87,7 +87,10 @@ export function SigningStep({
                   <button
                     type="button"
                     onClick={() => onSign(wallet)}
-                    disabled={!isOnMonad || busy}
+                    // Not gated on the (possibly stale) network: pressing Sign
+                    // re-reads the chain live and requests the switch if needed,
+                    // so a wallet already on Monad is never blocked by old state.
+                    disabled={busy}
                     className="rounded-lg bg-accent px-4 py-2 text-sm font-medium text-accent-ink transition-opacity hover:opacity-90 disabled:opacity-50"
                   >
                     {busy ? "Waiting for wallet…" : "Sign with this wallet"}
@@ -104,6 +107,14 @@ export function SigningStep({
                 <p className="mt-2 text-xs text-faint">
                   Switch the active account in your wallet to this address. ONE will not sign on
                   behalf of any wallet.
+                </p>
+              ) : null}
+
+              {/* Off Monad but the right wallet: signing will prompt the switch. */}
+              {isConnected && !isOnMonad && status.state !== "valid" ? (
+                <p className="mt-2 text-xs text-warn">
+                  Your wallet is on another network. Signing will ask it to switch to Monad
+                  Mainnet first.
                 </p>
               ) : null}
             </li>

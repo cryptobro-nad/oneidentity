@@ -46,23 +46,29 @@ export function WalletConnect({ wallet }: { wallet: Wallet }) {
 
         {/* Injected wallets, when the browser has any. */}
         {hasInjected ? (
-          <ul className="mt-4 flex flex-wrap gap-2">
-            {wallet.wallets.map((w) => (
-              <li key={w.info.uuid}>
-                <button
-                  type="button"
-                  onClick={() => void wallet.connect(w)}
-                  disabled={wallet.connecting}
-                  className="inline-flex items-center gap-2 rounded-lg border border-line-strong bg-surface px-4 py-2.5 text-sm text-ink transition-colors hover:bg-raised disabled:opacity-50"
-                >
-                  {w.info.icon ? (
-                    <Image src={w.info.icon} alt="" width={18} height={18} unoptimized />
-                  ) : null}
-                  {w.info.name}
-                </button>
-              </li>
-            ))}
-          </ul>
+          <>
+            <ul className="mt-4 flex flex-wrap gap-2">
+              {wallet.wallets.map((w) => (
+                <li key={w.info.uuid}>
+                  <button
+                    type="button"
+                    onClick={() => void wallet.connect(w)}
+                    disabled={wallet.connecting}
+                    className="inline-flex items-center gap-2 rounded-lg border border-line-strong bg-surface px-4 py-2.5 text-sm text-ink transition-colors hover:bg-raised disabled:opacity-50"
+                  >
+                    {w.info.icon ? (
+                      <Image src={w.info.icon} alt="" width={18} height={18} unoptimized />
+                    ) : null}
+                    {w.info.name}
+                  </button>
+                </li>
+              ))}
+            </ul>
+            <p className="mt-2 text-xs text-faint">
+              You choose which account to connect. If your wallet reconnects the previous account
+              without asking, switch the active account inside the extension, then connect again.
+            </p>
+          </>
         ) : null}
 
         {/* WalletConnect: deep links on mobile, QR on desktop. */}
@@ -175,8 +181,8 @@ export function WalletConnect({ wallet }: { wallet: Wallet }) {
             <div role="alert" className="mt-3 text-sm">
               <p className="text-danger">{wallet.error}</p>
               <p className="mt-1 text-muted">
-                Open your wallet app, switch to Monad Mainnet, then return to ONE and tap
-                &ldquo;Check network again&rdquo;.
+                Open your wallet, select Monad Mainnet, return here, then tap &ldquo;Check network
+                again&rdquo;.
               </p>
             </div>
           ) : null}
