@@ -47,6 +47,13 @@ export type WalletState = {
   restoring: boolean;
   /** True while a network switch or manual re-check is in flight. */
   switching: boolean;
+  /**
+   * Set after a disconnect that the wallet did not honour (e.g. Backpack keeps
+   * the site connected). ONE's own state is always cleared; this tells the user
+   * how to finish disconnecting inside their wallet. Null when disconnect was
+   * clean.
+   */
+  disconnectNotice: string | null;
 };
 
 export function useWallet() {
@@ -56,6 +63,7 @@ export function useWallet() {
   const [chainId, setChainId] = useState<number | null>(null);
   const [connecting, setConnecting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [disconnectNotice, setDisconnectNotice] = useState<string | null>(null);
   // Starts true only when there is something that could be restored, so the UI
   // never flashes "Connect a wallet" mid-check — and never shows a restoring
   // state on a deployment that has no WalletConnect at all.
@@ -162,6 +170,8 @@ export function useWallet() {
   const connect = useCallback(async (wallet: DiscoveredWallet) => {
     setConnecting(true);
     setError(null);
+    // A new connect attempt supersedes any leftover "finish disconnecting" note.
+    setDisconnectNotice(null);
     try {
       // A plain account request: the wallet opens and asks the user to approve
       // the currently active account. A deliberate disconnect revokes the
@@ -211,22 +221,42 @@ export function useWallet() {
   }, [connect]);
 
   const disconnect = useCallback(() => {
-    // End the real authorisation, not just the local view of it. Skipping this
-    // leaves the site connected and silently reused on the next connect.
-    if (selected?.info.uuid === WALLETCONNECT_UUID) {
-      // Record the intent first, so even if the SDK teardown fails on mobile,
-      // the next restore-on-refresh refuses to reconnect.
-      markWalletConnectDisconnected();
-      void disconnectWalletConnect();
-    } else if (selected) {
-      // Injected: de-authorise the site so the next connect prompts fresh for
-      // the active account instead of returning the previous one silently.
-      void revokeInjectedPermissions(selected.provider);
-    }
+    // Always clear ONE's own view of the wallet first and synchronously — the
+    // selected wallet, address, chain and (via the effect cleanup on `selected`)
+    // the account/chain listeners — so "Disconnect" is instant regardless of
+    // what the wallet does next.
+    const previous = selected;
     setSelected(null);
     setAddress(null);
     setChainId(null);
     setError(null);
+    setDisconnectNotice(null);
+
+    if (!previous) return;
+
+    if (previous.info.uuid === WALLETCONNECT_UUID) {
+      // Record the intent first, so even if the SDK teardown fails on mobile,
+      // the next restore-on-refresh refuses to reconnect.
+      markWalletConnectDisconnected();
+      void disconnectWalletConnect();
+      return;
+    }
+
+    // Injected: try to de-authorise the site so the next connect prompts fresh.
+    // Some wallets (Backpack) keep the site connected regardless; detect that
+    // honestly rather than claiming a disconnect that did not happen.
+    void (async () => {
+      const { deauthorized } = await revokeInjectedPermissions(previous.provider);
+      if (!deauthorized) {
+        const name = previous.info.name || "your wallet";
+        const host = typeof window !== "undefined" ? window.location.hostname : "this site";
+        setDisconnectNotice(
+          `${name} keeps this site connected on its side. ONE has disconnected here, but to ` +
+            `stop ${name} reconnecting automatically, open ${name} and remove ${host} from its ` +
+            `connected apps/sites.`,
+        );
+      }
+    })();
   }, [selected]);
 
   /**
@@ -331,8 +361,9 @@ export function useWallet() {
       walletConnectAvailable: isWalletConnectConfigured(),
       restoring,
       switching,
+      disconnectNotice,
     }),
-    [wallets, selected, address, chainId, connecting, error, restoring, switching],
+    [wallets, selected, address, chainId, connecting, error, restoring, switching, disconnectNotice],
   );
 
   return {

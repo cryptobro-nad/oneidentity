@@ -88,28 +88,41 @@ export async function requestAccounts(provider: EIP1193Provider): Promise<string
 }
 
 /**
- * Revokes this site's account permission on an injected wallet.
+ * Attempts to revoke this site's account permission on an injected wallet, and
+ * reports whether the wallet was actually de-authorised.
  *
- * This is what makes a deliberate disconnect *real* on an injected wallet.
- * Without it, MetaMask keeps the site authorised, so the next
- * `eth_requestAccounts` returns the previous account silently, with no prompt —
- * the "it just reconnects the old account" behaviour. After revoking (EIP-2255 /
+ * This is what makes a deliberate disconnect *real*. After revoking (EIP-2255 /
  * MetaMask `wallet_revokePermissions`), the next connect opens the wallet and
- * asks the user to approve the currently active account: a normal connect, not
- * an account-management dialog.
+ * asks the user to approve the active account, instead of `eth_requestAccounts`
+ * returning the previous account silently.
  *
- * Best-effort: wallets that do not implement it simply keep their permission,
- * and the on-screen copy tells the user to switch the active account in the
- * extension. Never throws.
+ * Not every wallet honours it. Backpack, for one, keeps the site connected —
+ * either the method is unsupported or it is a no-op. So this does not trust the
+ * call: it re-reads `eth_accounts` afterwards and treats the wallet as
+ * de-authorised only if the wallet no longer reports an authorised account.
+ * That behavioural check is wallet-agnostic — it catches both a thrown
+ * "unsupported" and a silent no-op — so the caller can be honest about whether
+ * the disconnect took effect. Never throws.
  */
-export async function revokeInjectedPermissions(provider: EIP1193Provider): Promise<void> {
+export async function revokeInjectedPermissions(
+  provider: EIP1193Provider,
+): Promise<{ deauthorized: boolean }> {
   try {
     await provider.request({
       method: "wallet_revokePermissions",
       params: [{ eth_accounts: {} }],
     } as Parameters<EIP1193Provider["request"]>[0]);
   } catch {
-    // Unsupported, already revoked, or user-dismissed: nothing to do.
+    // Unsupported, already revoked, or dismissed — verified below regardless.
+  }
+
+  try {
+    const accounts = (await provider.request({ method: "eth_accounts" })) as unknown;
+    const stillAuthorised = Array.isArray(accounts) && accounts.length > 0;
+    return { deauthorized: !stillAuthorised };
+  } catch {
+    // If the wallet will not even report accounts, treat it as cleared.
+    return { deauthorized: true };
   }
 }
 

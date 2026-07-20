@@ -32,6 +32,7 @@ function walletState(over: Partial<Wallet> = {}): Wallet {
     walletConnectAvailable: false,
     restoring: false,
     switching: false,
+    disconnectNotice: null,
     connect: vi.fn(),
     connectWalletConnect: vi.fn(),
     disconnect: vi.fn(),
@@ -133,6 +134,18 @@ describe("WalletConnect availability", () => {
       render(<WalletConnect wallet={walletState({ walletConnectAvailable: false })} />),
     ).not.toThrow();
     expect(screen.getByText(/connect a wallet/i)).toBeTruthy();
+  });
+
+  it("shows the honest disconnect notice when a wallet stayed connected", () => {
+    render(
+      <WalletConnect
+        wallet={walletState({
+          disconnectNotice:
+            "Backpack keeps this site connected on its side. ONE has disconnected here…",
+        })}
+      />,
+    );
+    expect(screen.getByRole("status").textContent).toMatch(/backpack keeps this site connected/i);
   });
 });
 

@@ -16,21 +16,28 @@ const OTHER = "0xe3A0795381521C177fc8c7723213df7B56A10a31";
 /** A controllable EIP-1193 mock whose chain/accounts can change out of band. */
 function makeWallet(chainId: number, accounts: string[] = [ADDRESS], uuid = "test") {
   const calls: string[] = [];
-  let revokeUnsupported = false;
+  // Default models MetaMask/Rabby/Phantom: revoke actually de-authorises the
+  // site, so eth_accounts returns [] afterwards. Backpack-style wallets set
+  // this false — revoke is a no-op and the account stays authorised.
+  let deauthorizesOnRevoke = true;
   const p = {
     chain: chainId,
     accounts,
     calls,
-    setRevokeUnsupported(v: boolean) {
-      revokeUnsupported = v;
+    setDeauthorizesOnRevoke(v: boolean) {
+      deauthorizesOnRevoke = v;
     },
     on() {},
     removeListener() {},
     async request({ method, params }: { method: string; params?: unknown[] }) {
       calls.push(method);
       if (method === "wallet_revokePermissions") {
-        if (revokeUnsupported) throw { code: 4200, message: "Unsupported method" };
-        return null;
+        if (deauthorizesOnRevoke) {
+          p.accounts = [];
+          return null;
+        }
+        // Backpack: unsupported / no-op — the site stays connected.
+        throw { code: 4200, message: "Unsupported method" };
       }
       if (method === "eth_requestAccounts" || method === "eth_accounts") return p.accounts;
       if (method === "eth_chainId") return `0x${p.chain.toString(16)}`;
@@ -108,7 +115,7 @@ describe("connect uses a normal approval (not an account-management dialog)", ()
 });
 
 describe("disconnect de-authorises the wallet (no silent reconnect)", () => {
-  it("revokes the injected site permission so the next connect prompts fresh", async () => {
+  it("revokes an injected wallet that supports it, with no leftover notice", async () => {
     const { wallet, p } = makeWallet(143, [ADDRESS], "io.metamask");
     const { result } = renderHook(() => useWallet());
     await act(async () => {
@@ -117,14 +124,33 @@ describe("disconnect de-authorises the wallet (no silent reconnect)", () => {
     await act(async () => {
       result.current.disconnect();
     });
-    expect(p.calls).toContain("wallet_revokePermissions");
+    // waitFor: the revoke + verification runs async after state is cleared.
+    await waitFor(() => expect(p.calls).toContain("wallet_revokePermissions"));
+    expect(result.current.address).toBeNull();
+    expect(result.current.selected).toBeNull();
+    expect(result.current.disconnectNotice).toBeNull();
+  });
+
+  it("clears ONE's state immediately even for a wallet it can't de-authorise", async () => {
+    const { wallet, p } = makeWallet(143, [ADDRESS], "app.backpack");
+    p.setDeauthorizesOnRevoke(false); // Backpack keeps the site connected
+    const { result } = renderHook(() => useWallet());
+    await act(async () => {
+      await result.current.connect(wallet);
+    });
+    await act(async () => {
+      result.current.disconnect();
+    });
+    // Local disconnect is instant regardless of what the wallet does.
     expect(result.current.address).toBeNull();
     expect(result.current.selected).toBeNull();
   });
 
-  it("still clears state when the wallet cannot revoke", async () => {
-    const { wallet, p } = makeWallet(143, [ADDRESS], "io.metamask");
-    p.setRevokeUnsupported(true);
+  it("shows an honest, wallet-named instruction when disconnect didn't take (Backpack)", async () => {
+    const { wallet, p } = makeWallet(143, [ADDRESS], "app.backpack");
+    p.setDeauthorizesOnRevoke(false);
+    // Give the wallet a human name so the notice can reference it.
+    wallet.info.name = "Backpack";
     const { result } = renderHook(() => useWallet());
     await act(async () => {
       await result.current.connect(wallet);
@@ -132,8 +158,27 @@ describe("disconnect de-authorises the wallet (no silent reconnect)", () => {
     await act(async () => {
       result.current.disconnect();
     });
-    expect(result.current.address).toBeNull();
-    expect(result.current.selected).toBeNull();
+    await waitFor(() => expect(result.current.disconnectNotice).toBeTruthy());
+    expect(result.current.disconnectNotice).toMatch(/Backpack/);
+    expect(result.current.disconnectNotice).toMatch(/connected apps|sites/i);
+  });
+
+  it("clears the notice when the user connects again", async () => {
+    const { wallet, p } = makeWallet(143, [ADDRESS], "app.backpack");
+    p.setDeauthorizesOnRevoke(false);
+    wallet.info.name = "Backpack";
+    const { result } = renderHook(() => useWallet());
+    await act(async () => {
+      await result.current.connect(wallet);
+    });
+    await act(async () => {
+      result.current.disconnect();
+    });
+    await waitFor(() => expect(result.current.disconnectNotice).toBeTruthy());
+    await act(async () => {
+      await result.current.connect(wallet);
+    });
+    expect(result.current.disconnectNotice).toBeNull();
   });
 
   it("does not revoke for WalletConnect (it ends the session instead)", async () => {

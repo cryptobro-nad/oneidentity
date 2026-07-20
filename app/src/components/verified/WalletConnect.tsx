@@ -44,6 +44,18 @@ export function WalletConnect({ wallet }: { wallet: Wallet }) {
           ONE never asks for a private key, a token approval, or a transfer.
         </p>
 
+        {/* Shown after a disconnect the wallet did not honour (e.g. Backpack):
+            ONE is disconnected here, but the wallet will reconnect silently
+            until the user removes the site inside it. */}
+        {wallet.disconnectNotice ? (
+          <div
+            role="status"
+            className="mt-4 rounded-lg border border-warn/30 bg-warn-soft px-4 py-3 text-sm text-muted"
+          >
+            {wallet.disconnectNotice}
+          </div>
+        ) : null}
+
         {/* Injected wallets, when the browser has any. */}
         {hasInjected ? (
           <>
