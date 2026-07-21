@@ -153,7 +153,6 @@ function WayCard({
   points,
   href,
   cta,
-  primary,
   accentPath,
 }: {
   badge: string;
@@ -163,13 +162,12 @@ function WayCard({
   points: string[];
   href: string;
   cta: string;
-  primary?: boolean;
   accentPath?: boolean;
 }) {
   return (
     <div
       className={
-        "flex flex-col depth-soft depth-lift rounded-[16px] border bg-surface px-5 py-4 " +
+        "flex flex-col depth-soft depth-lift rounded-[16px] border bg-surface px-5 pt-4 pb-3 " +
         (accentPath ? "border-line border-t-2 border-t-accent" : "border-line")
       }
     >
@@ -186,14 +184,12 @@ function WayCard({
           </li>
         ))}
       </ul>
+      {/* Both lower-section CTAs share one neutral outline style; fit-content and
+          left-aligned on desktop, full-width on mobile. The only filled violet
+          button on the homepage is the hero CTA. */}
       <Link
         href={href}
-        className={
-          "mt-5 w-full sm:w-auto " +
-          (primary
-            ? "inline-flex items-center justify-center rounded-[8px] bg-accent px-4 py-2.5 text-sm font-medium text-accent-ink shadow-[var(--shadow-card)] transition-[transform,filter] hover:-translate-y-px hover:brightness-110"
-            : "inline-flex items-center justify-center rounded-[8px] border border-line-strong bg-surface px-4 py-2.5 text-sm font-medium text-ink transition-colors hover:border-accent-line hover:bg-raised")
-        }
+        className="mt-5 inline-flex w-full items-center justify-center rounded-[8px] border border-line-strong bg-surface px-4 py-2.5 text-sm font-medium text-ink transition-colors hover:border-accent-line hover:bg-raised sm:w-auto sm:self-start"
       >
         {cta}
       </Link>
@@ -262,7 +258,6 @@ export default function LandingPage() {
             ]}
             href="/portfolio"
             cta="Open watch-only portfolio"
-            primary
           />
           <WayCard
             badge="Proves control"
