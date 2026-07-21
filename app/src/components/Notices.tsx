@@ -8,9 +8,9 @@ import { Notice } from "./ui/Notice";
  */
 export function UnverifiedNotice() {
   return (
-    <Notice tone="warn" title="Unverified — watch-only">
-      These addresses were entered manually. ONE has not verified that they belong to the same
-      person, and nothing here is written onchain.
+    <Notice tone="warn" title="Watch-only (unverified)">
+      You entered these addresses by hand. ONE has not checked that they belong to the same person.
+      Nothing here is written onchain.
     </Notice>
   );
 }
@@ -38,7 +38,7 @@ export function PartialNotice({ failures }: { failures: { label: string; detail:
       <ul className="mt-3 space-y-1.5">
         {failures.map((f) => (
           <li key={f.label} className="font-mono text-xs text-muted">
-            <span className="text-ink">{f.label}</span> — {f.detail}
+            <span className="text-ink">{f.label}</span>: {f.detail}
           </li>
         ))}
       </ul>

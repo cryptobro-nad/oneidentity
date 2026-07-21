@@ -2,7 +2,6 @@ import Link from "next/link";
 import { OneLookup } from "@/components/OneLookup";
 import { Badge } from "@/components/ui/Badge";
 import { MAX_WALLETS } from "@/lib/chain";
-import { SUPPORTED_STABLECOINS } from "@/lib/tokens";
 
 /**
  * The converging-wallets diagram from the product brief, drawn as real markup
@@ -14,7 +13,7 @@ function ConvergenceDiagram() {
     <div
       className="rounded-[16px] border border-line bg-surface p-6 shadow-[var(--shadow-card)] sm:p-8"
       role="img"
-      aria-label="Three wallets converging into one combined view"
+      aria-label="Three wallets combined into one view"
     >
       <p className="eyebrow">Combined view</p>
       <div className="mt-4 flex items-stretch gap-4 sm:gap-6">
@@ -40,11 +39,9 @@ function ConvergenceDiagram() {
 
         <div className="flex flex-1 items-center">
           <div className="w-full rounded-[12px] border border-line bg-raised px-4 py-4 sm:px-5 sm:py-5">
-            <div className="flex items-center gap-2">
-              <span className="text-sm font-semibold text-ink">ONE combined view</span>
-            </div>
+            <span className="text-sm font-semibold text-ink">ONE combined view</span>
             <p className="mt-1.5 text-sm text-muted">
-              MON, stablecoins and NFT collection balances, added up — with a per-wallet breakdown.
+              MON, stablecoins, supported memecoins and NFTs, added up. With a per-wallet breakdown.
             </p>
           </div>
         </div>
@@ -54,8 +51,8 @@ function ConvergenceDiagram() {
 }
 
 function UseCard({
-  eyebrow,
-  tone,
+  badge,
+  badgeTone,
   title,
   body,
   points,
@@ -63,8 +60,8 @@ function UseCard({
   cta,
   primary,
 }: {
-  eyebrow: string;
-  tone: "neutral" | "accent";
+  badge: string;
+  badgeTone: "neutral" | "accent";
   title: string;
   body: string;
   points: string[];
@@ -74,7 +71,9 @@ function UseCard({
 }) {
   return (
     <div className="flex flex-col rounded-[16px] border border-line bg-surface p-6 shadow-[var(--shadow-card)] sm:p-7">
-      <Badge tone={tone === "accent" ? "accent" : "neutral"}>{eyebrow}</Badge>
+      <div className="self-start">
+        <Badge tone={badgeTone}>{badge}</Badge>
+      </div>
       <h3 className="mt-4 text-xl font-semibold tracking-[-0.01em] text-ink">{title}</h3>
       <p className="mt-2 text-sm leading-relaxed text-muted">{body}</p>
       <ul className="mt-4 flex-1 space-y-2">
@@ -101,13 +100,11 @@ function UseCard({
 }
 
 export default function LandingPage() {
-  const symbols = SUPPORTED_STABLECOINS.map((t) => t.symbol).join(", ");
-
   return (
     <div className="mx-auto w-full max-w-6xl px-5 sm:px-8">
       {/* Hero */}
-      <section className="py-16 sm:py-24">
-        <div className="grid gap-12 lg:grid-cols-[1.05fr_1fr] lg:items-center lg:gap-16">
+      <section className="py-14 sm:py-18">
+        <div className="grid gap-10 lg:grid-cols-[1.05fr_1fr] lg:items-center lg:gap-14">
           <div>
             <Badge tone="neutral" dot>
               Built on Monad Mainnet
@@ -118,8 +115,9 @@ export default function LandingPage() {
               One view.
             </h1>
             <p className="mt-6 max-w-md text-lg leading-relaxed text-pretty text-muted">
-              See your MON, stablecoins and NFT collections across every Monad wallet in one place —
-              and, when you need it, prove they&apos;re yours with a single onchain identity.
+              Track your MON, stablecoins, supported memecoins and NFTs across up to five Monad
+              wallets. Keep it watch-only or create a Verified ONE to prove the wallets belong to
+              you.
             </p>
 
             <div className="mt-8 flex flex-wrap items-center gap-3">
@@ -138,7 +136,7 @@ export default function LandingPage() {
             </div>
 
             <p className="mt-5 text-sm text-faint">
-              Viewing needs no wallet connection, no signature, and writes nothing onchain.
+              No wallet connection or signature needed. Nothing is written onchain.
             </p>
           </div>
 
@@ -147,22 +145,23 @@ export default function LandingPage() {
       </section>
 
       {/* Two ways to use ONE */}
-      <section className="border-t border-line py-14 sm:py-16">
+      <section className="border-t border-line py-11 sm:py-12">
         <div className="max-w-2xl">
           <h2 className="text-2xl font-semibold tracking-[-0.02em] text-ink">Two ways to use ONE</h2>
           <p className="mt-2 text-sm leading-relaxed text-muted">
-            Start read-only. Add cryptographic proof only when you actually need it.
+            Start with a watch-only portfolio. Create a Verified ONE when you want to prove the
+            wallets are yours.
           </p>
         </div>
-        <div className="mt-8 grid gap-5 md:grid-cols-2">
+        <div className="mt-7 grid gap-5 md:grid-cols-2">
           <UseCard
-            eyebrow="Watch-only · no connection"
-            tone="neutral"
+            badge="No connection needed"
+            badgeTone="neutral"
             title="Watch-only portfolios"
-            body="Paste public addresses and read their combined onchain holdings. No wallet connection, no signature, nothing stored on a server."
+            body="Add public wallet addresses and view their combined balances. No wallet connection or signature required."
             points={[
-              `Up to ${MAX_WALLETS} addresses per portfolio`,
-              `MON, ${symbols} and ERC-721 collections`,
+              `Up to ${MAX_WALLETS} wallets per portfolio`,
+              "MON, stablecoins, supported memecoins and NFTs",
               "Combined totals with a per-wallet breakdown",
             ]}
             href="/portfolio"
@@ -170,14 +169,14 @@ export default function LandingPage() {
             primary
           />
           <UseCard
-            eyebrow="Verified · proves control"
-            tone="accent"
+            badge="Proves control"
+            badgeTone="accent"
             title="Verified ONE"
-            body="Prove you control two to five wallets and create one public identity address that other apps can resolve. Funds never move; ONE never takes custody."
+            body="Link wallets you control and create one public identity that other apps can look up."
             points={[
-              "Each wallet signs a gasless authorization",
-              "One transaction on Monad Mainnet",
-              "A public identity address others can look up",
+              "Each secondary wallet signs a gasless authorization",
+              "The primary wallet completes one Monad Mainnet transaction",
+              "No funds move and ONE never takes custody",
             ]}
             href="/verified"
             cta="Create a Verified ONE"
@@ -186,7 +185,7 @@ export default function LandingPage() {
       </section>
 
       {/* Public lookup */}
-      <section className="border-t border-line py-14">
+      <section className="border-t border-line py-10">
         <OneLookup />
       </section>
     </div>

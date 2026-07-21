@@ -90,7 +90,7 @@ export function NftHoldings({
           {result.collections.length === 0 ? (
             <p className="rounded-[12px] border border-dashed border-line-strong px-4 py-10 text-center text-sm text-faint">
               {result.discovery.state === "complete"
-                ? "No ERC-721 collections held by these wallets."
+                ? "No ERC-721 collections found for these wallets."
                 : "No collections found. Automatic discovery is unavailable, so only known collections were checked."}
             </p>
           ) : (
@@ -137,8 +137,8 @@ function DiscoveryStatus({
             <>
               The transfer-history scan for{" "}
               {discovery.failedWallets.map((w) => shortenAddress(w)).join(", ")} reached its request
-              limit before covering all history — that wallet has an unusually large number of NFT
-              transfers. Older collections may be missing. Everything shown is verified onchain.
+              limit before covering all history. That wallet has an unusually large number of NFT
+              transfers, so older collections may be missing. Everything shown is verified onchain.
             </>
           ) : (
             <>

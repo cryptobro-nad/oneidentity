@@ -193,7 +193,7 @@ export function PortfolioResult({ portfolio }: { portfolio: AggregatedPortfolio 
 
       {heldMemes.length > 0 || showZero ? (
         <p className="text-xs leading-relaxed text-faint">
-          Curated community-token balances. Contract addresses are verified, but inclusion is not an
+          These supported memecoins use verified contract addresses. Inclusion is not an
           endorsement.
         </p>
       ) : null}

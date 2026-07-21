@@ -29,12 +29,12 @@ export function SigningStep({
   return (
     <section aria-labelledby="signing-heading" className="space-y-5">
       <div>
-        <h2 id="signing-heading" className="text-lg font-medium text-ink">
-          2. Collect signatures
+        <h2 id="signing-heading" className="text-lg font-semibold text-ink">
+          2. Sign with each wallet
         </h2>
         <p className="mt-1.5 text-sm text-muted">
-          Each secondary wallet signs an authorization. The primary does not sign — it proves
-          intent by submitting the transaction.
+          Each secondary wallet signs a gasless authorization to join this ONE. The primary wallet
+          does not sign. It confirms the group by submitting the transaction.
         </p>
         {deadline ? (
           <p className="mt-1.5 text-sm text-faint">
@@ -45,11 +45,8 @@ export function SigningStep({
 
       <div className="rounded-[12px] border border-line bg-raised px-4 py-3">
         <p className="text-sm text-muted">
-          <span className="font-medium text-ink">
-            Wallet signatures authorize identity membership only.
-          </span>{" "}
-          ONE does not control or hold your funds. A signature here cannot move or approve any
-          asset.
+          <span className="font-medium text-ink">Signing does not move funds or approve tokens.</span>{" "}
+          It only records that the wallet agrees to join this ONE. ONE never takes custody.
         </p>
       </div>
 
@@ -68,10 +65,10 @@ export function SigningStep({
                     {status.state === "valid" ? (
                       <span className="text-accent">Signed · nonce {status.signature.nonce}</span>
                     ) : status.state === "expired" ? (
-                      <span className="text-danger">Signature expired — must sign again</span>
+                      <span className="text-danger">Signature expired. Sign again.</span>
                     ) : status.state === "stale-config" ? (
                       <span className="text-danger">
-                        Configuration changed — signature no longer valid
+                        The wallet list changed, so this signature is no longer valid.
                       </span>
                     ) : (
                       <span className="text-faint">Not signed yet</span>

@@ -92,7 +92,7 @@ export function ReviewStep({
   return (
     <section aria-labelledby="review-heading" className="space-y-5">
       <div>
-        <h2 id="review-heading" className="text-lg font-medium text-ink">
+        <h2 id="review-heading" className="text-lg font-semibold text-ink">
           3. Review and create
         </h2>
         <p className="mt-1.5 text-sm text-muted">
@@ -101,18 +101,17 @@ export function ReviewStep({
       </div>
 
       <div className="rounded-[10px] border border-warn/30 bg-warn-soft px-4 py-3.5">
-        <p className="text-sm font-medium text-ink">Verified ONE is public.</p>
+        <p className="text-sm font-medium text-ink">A Verified ONE is public.</p>
         <p className="mt-1 text-sm text-muted">
-          The selected wallets and their relationship will be visible onchain. Membership is
-          permanent in this identity&apos;s history: wallets can leave, but the record that they
-          were once linked cannot be removed.
+          The wallets and their link will be visible onchain. Wallets can leave later, but the
+          record that they were linked stays.
         </p>
       </div>
 
       <dl className="divide-y divide-line overflow-hidden rounded-[12px] border border-line bg-surface shadow-[var(--shadow-card)]">
         <div className="flex flex-wrap items-center justify-between gap-2 px-4 py-3">
           <dt className="text-sm text-faint">Primary wallet</dt>
-          <dd>{primary ? <AddressChip address={primary} /> : <span className="text-sm text-faint">—</span>}</dd>
+          <dd>{primary ? <AddressChip address={primary} /> : <span className="text-sm text-faint">Not selected</span>}</dd>
         </div>
 
         <div className="px-4 py-3">
@@ -146,7 +145,7 @@ export function ReviewStep({
         <div className="flex flex-wrap items-center justify-between gap-2 px-4 py-3">
           <dt className="text-sm text-faint">Signatures expire</dt>
           <dd className="text-sm text-muted">
-            {deadline ? formatTimestamp(Number(deadline) * 1000) : "—"}
+            {deadline ? formatTimestamp(Number(deadline) * 1000) : "Not set"}
           </dd>
         </div>
       </dl>
@@ -156,8 +155,8 @@ export function ReviewStep({
         <h3 className="text-sm font-medium text-ink">Gas</h3>
         <p className="mt-1 text-sm text-muted">
           Monad charges the submitted gas limit, not the gas actually used. A larger buffer is
-          real money, not free insurance — but too small a limit means the transaction runs out of
-          gas and you are still charged.
+          real money, not free insurance. Too low a buffer risks the transaction running out of
+          gas, and you are still charged.
         </p>
 
         <label className="mt-3 flex flex-wrap items-center gap-3 text-sm">

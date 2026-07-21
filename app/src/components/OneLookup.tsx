@@ -55,7 +55,7 @@ export function OneLookup({ compact = false }: { compact?: boolean }) {
       className={
         compact
           ? "rounded-[12px] border border-line bg-surface p-5 shadow-[var(--shadow-card)]"
-          : "rounded-[16px] border border-line bg-surface p-6 shadow-[var(--shadow-card)] sm:p-8"
+          : "rounded-[16px] border border-line bg-surface p-5 shadow-[var(--shadow-card)] sm:p-6"
       }
     >
       <h2
@@ -65,7 +65,7 @@ export function OneLookup({ compact = false }: { compact?: boolean }) {
         {compact ? "Look up another ONE" : "Look up a Verified ONE"}
       </h2>
       <p className="mt-1.5 text-sm text-muted">
-        Paste a ONE identity address or a wallet currently linked to one. No connection needed.
+        Enter a ONE identity address or a linked wallet address. No wallet connection needed.
       </p>
 
       <form onSubmit={submit} noValidate className="mt-4 space-y-2">
@@ -110,15 +110,20 @@ export function OneLookup({ compact = false }: { compact?: boolean }) {
       </form>
 
       <p className="mt-3 text-xs text-faint">
-        No connection or signature required. ONE reads public Monad data.
+        ONE reads public Monad data. No connection or signature required.
       </p>
 
       {!compact ? (
-        <p className="mt-2 text-xs text-faint">
-          A ONE address resolves whether the identity is active or inactive. A wallet address
-          resolves only the wallet&apos;s current active ONE — historical relationships cannot be
-          reverse-resolved from a wallet with the current Registry API.
-        </p>
+        <details className="mt-3 border-t border-line pt-3">
+          <summary className="cursor-pointer list-none text-xs font-medium text-muted transition-colors hover:text-ink">
+            How lookup works
+          </summary>
+          <p className="mt-2 text-xs leading-relaxed text-faint">
+            A ONE identity address shows whether the identity is active or inactive. A wallet
+            address shows only the Verified ONE it is linked to now. Past links cannot be looked up
+            from a wallet address.
+          </p>
+        </details>
       ) : null}
     </section>
   );

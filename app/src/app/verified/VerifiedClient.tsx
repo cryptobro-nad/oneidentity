@@ -185,7 +185,7 @@ export function VerifiedClient() {
       const live = await wallet.refreshAccount();
       if (!sameAddress(live, target)) {
         setSignError(
-          `The connected wallet is ${live ?? "none"}, not ${target}. Switch accounts and try again.`,
+          `The connected wallet is ${live ?? "none"}, not ${target}. Switch to ${target} in your wallet, then try again.`,
         );
         return;
       }
@@ -397,7 +397,7 @@ export function VerifiedClient() {
           detail:
             outcome.reason === "prediction-mismatch"
               ? `The transaction created ${outcome.actual}, but ${outcome.predicted} was predicted and shown to you. Do not treat this identity as the one you approved.`
-              : `Verification failed: ${outcome.reason}. The transaction is on-chain — check the explorer before retrying.`,
+              : `Verification failed: ${outcome.reason}. The transaction is onchain. Check the explorer before retrying.`,
           technical: `${outcome.reason} · tx ${hash}`,
         });
         return;
@@ -432,8 +432,8 @@ export function VerifiedClient() {
         <ErrorNotice title="Could not check this wallet's ONE status">
           {membershipForConnected.message}
           <p className="mt-2 text-ink">
-            Creation is disabled until this can be confirmed — proceeding on an unknown state
-            risks a transaction that reverts.
+            Creation is disabled until this can be confirmed. Continuing on an unknown state risks
+            a transaction that reverts.
           </p>
         </ErrorNotice>
       ) : null}

@@ -13,11 +13,11 @@ export function SavedPortfolioNotice({ count }: { count: number }) {
     <Notice tone="info" role="status" title="Saved portfolio found">
       <p className="leading-relaxed">
         Your {count === 1 ? "wallet address is" : `${count} wallet addresses are`} saved in this
-        browser. Load the portfolio to fetch fresh onchain balances and NFT holdings.
+        browser. Load the portfolio to read fresh balances and NFT holdings.
       </p>
       <p className="mt-2 text-xs text-faint">
         Saved only in this browser. Clearing site data or using another browser removes this list.
-        Balances and NFT results are never saved — they are always re-read from Monad.
+        Balances and NFT results are never saved. ONE reads them from Monad each time.
       </p>
     </Notice>
   );

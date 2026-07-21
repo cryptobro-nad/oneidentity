@@ -142,8 +142,8 @@ export function NftCollectionChecker({ addresses }: { addresses: PortfolioAddres
 
           {result.partial ? (
             <p className="rounded-[10px] border border-warn/30 bg-warn-soft px-3 py-2 text-sm text-muted">
-              <span className="font-medium text-ink">Partial data loaded</span> — some wallets could
-              not be read. They are excluded from the total rather than counted as zero.
+              <span className="font-medium text-ink">Partial data loaded.</span> Some wallets could
+              not be read. They are left out of the total rather than counted as zero.
             </p>
           ) : null}
 

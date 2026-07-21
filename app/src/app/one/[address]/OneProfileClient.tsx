@@ -189,7 +189,8 @@ export function OneProfileClient({ initial }: { initial: WireProfile }) {
         </dl>
 
         <p className="mt-5 text-xs text-faint">
-          Wallet relationships created through Verified ONE are publicly visible onchain.
+          This is an identity address, not a wallet. Do not send funds to it. Wallet links created
+          through Verified ONE are public onchain.
         </p>
       </section>
 

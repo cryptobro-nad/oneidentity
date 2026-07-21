@@ -54,12 +54,12 @@ export function SetupStep({
   return (
     <section aria-labelledby="setup-heading" className="space-y-5">
       <div>
-        <h2 id="setup-heading" className="text-lg font-medium text-ink">
+        <h2 id="setup-heading" className="text-lg font-semibold text-ink">
           1. Choose wallets
         </h2>
         <p className="mt-1.5 text-sm text-muted">
-          Between {MIN_MEMBERS} and {MAX_MEMBERS} wallets. One is the primary and submits the
-          transaction; the others each sign an authorization.
+          Add {MIN_MEMBERS} to {MAX_MEMBERS} wallets. Pick one as the primary wallet, which submits
+          the transaction. The others sign to join.
         </p>
       </div>
 
@@ -162,7 +162,7 @@ export function SetupStep({
               disabled={checking}
               className="text-xs text-muted transition-colors hover:text-ink disabled:opacity-50"
             >
-              {checking ? "Checking…" : "Re-check on-chain state"}
+              {checking ? "Checking…" : "Re-check onchain state"}
             </button>
           </div>
         </>

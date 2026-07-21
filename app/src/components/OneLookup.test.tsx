@@ -226,14 +226,16 @@ describe("OneLookup — no wallet involvement", () => {
     expect(screen.getByText(/no connection or signature required/i)).toBeTruthy();
   });
 
-  it("explains the wallet-vs-identity resolution asymmetry in full mode", () => {
+  it("explains the wallet-vs-identity lookup asymmetry in full mode", () => {
     render(<OneLookup />);
-    expect(screen.getByText(/current active ONE/i)).toBeTruthy();
+    // Detail lives in the collapsed "How lookup works" note (still in the DOM).
+    expect(screen.getByText(/how lookup works/i)).toBeTruthy();
+    expect(screen.getByText(/past links cannot be looked up from a wallet address/i)).toBeTruthy();
   });
 
   it("omits the long explanation in compact mode", () => {
     render(<OneLookup compact />);
-    expect(screen.queryByText(/cannot be reverse-resolved/i)).toBeNull();
+    expect(screen.queryByText(/past links cannot be looked up/i)).toBeNull();
     expect(screen.getByRole("heading", { name: /look up another one/i })).toBeTruthy();
   });
 });

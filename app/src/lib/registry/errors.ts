@@ -48,7 +48,7 @@ const EXPLAINERS: Record<string, Explainer> = {
       `The registry requires members in strictly ascending numeric order; ` +
       `position ${asNumber(args[0])} breaks that order.`,
     action:
-      "This is an application bug, not something you did — please report it. " +
+      "This looks like a bug in ONE, not something you did. Please report it. " +
       "ONE sorts the list automatically before submitting.",
   }),
   PrimaryNotInMemberList: (args) => ({
@@ -87,7 +87,7 @@ const EXPLAINERS: Record<string, Explainer> = {
     detail:
       "The combination of primary wallet, member set and salt has already been submitted. " +
       "Each creation intent can be used only once.",
-    action: "Start a new draft — a fresh random salt will be generated.",
+    action: "Start a new draft. ONE will generate a fresh salt.",
   }),
   UnknownOne: (args) => ({
     title: "Not a ONE identity",

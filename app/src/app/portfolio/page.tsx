@@ -4,9 +4,9 @@ import { MAX_WALLETS } from "@/lib/chain";
 import { PortfolioClient } from "./PortfolioClient";
 
 export const metadata: Metadata = {
-  title: "Watch-only portfolios — ONE",
+  title: "Watch-only portfolios. ONE",
   description:
-    "Private browser watchlists of one to five Monad wallets, showing MON, stablecoins, curated community tokens and NFT collection balances.",
+    "Track one to five public Monad wallet addresses and view their MON, stablecoins, supported memecoins and NFT balances. No wallet connection needed.",
 };
 
 export default function PortfolioPage() {
@@ -17,10 +17,10 @@ export default function PortfolioPage() {
           Watch-only portfolios
         </h1>
         <p className="mt-3 max-w-2xl text-pretty text-[15px] leading-relaxed text-muted">
-          Add a single wallet or up to {MAX_WALLETS}. One wallet gets that wallet&apos;s complete
-          supported balance view; several are shown as combined totals with a per-wallet breakdown.
-          No wallet connection or signature is required — these are private watchlists saved in this
-          browser that read public onchain data and do not prove ownership of the wallets in them.
+          Add a single wallet or up to {MAX_WALLETS}. One wallet shows that wallet&apos;s full
+          balances. Several show combined totals with a per-wallet breakdown. No wallet connection
+          or signature is required. Your portfolios are saved only in this browser and do not prove
+          that you own the wallets.
         </p>
       </header>
 
@@ -31,9 +31,9 @@ export default function PortfolioPage() {
           <div className="max-w-lg">
             <h2 className="text-lg font-semibold text-ink">Want these wallets verified?</h2>
             <p className="mt-2 text-sm leading-relaxed text-muted">
-              This view is unverified — anyone can type any address. A Verified ONE proves control
-              by having each wallet sign, then records one public identity address onchain. Funds
-              never move.
+              This view is unverified. Anyone can type any address. A Verified ONE proves control by
+              having each wallet sign, then records one public identity address onchain. No funds
+              move.
             </p>
           </div>
           <Link

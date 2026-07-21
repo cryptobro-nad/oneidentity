@@ -19,13 +19,13 @@ export const metadata: Metadata = {
   // the profile-link copy uses window.location.origin so it stays correct on
   // localhost and preview deployments.
   metadataBase: new URL("https://oneidentity.app"),
-  title: "ONE — Many wallets. One view.",
+  title: "ONE. Many wallets. One view.",
   description:
-    "View your MON, stablecoins and NFT collection holdings across multiple Monad wallets.",
+    "Track your MON, stablecoins, supported memecoins and NFTs across up to five Monad wallets.",
   openGraph: {
-    title: "ONE — Many wallets. One onchain identity.",
+    title: "ONE. Many wallets. One view.",
     description:
-      "Combine MON, stablecoins and NFT holdings across multiple Monad wallets, or create one public onchain identity.",
+      "Track your MON, stablecoins, supported memecoins and NFTs across up to five Monad wallets. Keep it watch-only or create a Verified ONE to prove the wallets belong to you.",
     url: "https://oneidentity.app",
     siteName: "ONE",
     type: "website",
@@ -34,7 +34,7 @@ export const metadata: Metadata = {
 
 function Wordmark() {
   return (
-    <Link href="/" className="group inline-flex items-baseline gap-1.5" aria-label="ONE — home">
+    <Link href="/" className="group inline-flex items-baseline gap-1.5" aria-label="ONE home">
       <span className="text-lg font-semibold tracking-[-0.03em] text-ink">ONE</span>
       <span
         aria-hidden

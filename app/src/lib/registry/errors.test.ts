@@ -42,7 +42,7 @@ describe("custom error decoding", () => {
   it("decodes UnsortedMembers and blames the app, not the user", () => {
     const decoded = decodeRegistryError(revertWith("UnsortedMembers", [1n]));
     expect(decoded.name).toBe("UnsortedMembers");
-    expect(decoded.action).toMatch(/application bug/i);
+    expect(decoded.action).toMatch(/bug in ONE/i);
   });
 
   it("decodes WalletAlreadyInActiveOne with both addresses", () => {
