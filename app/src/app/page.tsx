@@ -3,54 +3,144 @@ import { OneLookup } from "@/components/OneLookup";
 import { Badge } from "@/components/ui/Badge";
 import { MAX_WALLETS } from "@/lib/chain";
 
-/**
- * The converging-wallets diagram from the product brief, drawn as real markup
- * rather than an image so it scales, respects the theme, and needs no assets.
- */
-function ConvergenceDiagram() {
-  const wallets = ["Wallet A", "Wallet B", "Wallet C"];
+const ASSETS = "MON, stablecoins, supported memecoins and NFTs";
+
+/** A single wallet chip. Real HTML: selectable, accessible, responsive. */
+function WalletChip({ label }: { label: string }) {
   return (
-    <div
-      className="rounded-[16px] border border-line bg-surface p-6 shadow-[var(--shadow-card)] sm:p-8"
-      role="img"
-      aria-label="Three wallets combined into one view"
-    >
-      <p className="eyebrow">Combined view</p>
-      <div className="mt-4 flex items-stretch gap-4 sm:gap-6">
-        <ul className="flex flex-col justify-between gap-3 py-1">
-          {wallets.map((w) => (
-            <li
-              key={w}
-              className="rounded-[8px] border border-line bg-raised px-3 py-2 font-mono text-xs text-muted sm:text-sm"
-            >
-              {w}
-            </li>
-          ))}
+    <div className="rounded-[8px] border border-line bg-surface px-3 py-2 text-center font-mono text-xs text-muted shadow-[var(--shadow-card)] sm:text-sm">
+      {label}
+    </div>
+  );
+}
+
+/** The combined-view result. Real HTML; a restrained accent edge marks the focal node. */
+function OneResult() {
+  return (
+    <div className="rounded-[12px] border border-line border-l-2 border-l-accent bg-surface px-4 py-4 shadow-[var(--shadow-card)] sm:px-5 sm:py-5">
+      <p className="text-sm font-semibold text-ink">ONE combined view</p>
+      <p className="mt-1.5 text-sm text-muted">{ASSETS}, added up. With a per-wallet breakdown.</p>
+    </div>
+  );
+}
+
+/**
+ * The wallet-to-ONE focal visual. Chips and the result are real HTML; only the
+ * connector paths and the convergence node are SVG (decorative, aria-hidden).
+ * Static by design. Two clean layouts: horizontal on desktop, compact on mobile.
+ */
+function WalletToOne() {
+  return (
+    <div>
+      {/* Desktop: three chips flow rightward into the combined result. */}
+      <div className="hidden items-stretch gap-0 lg:flex">
+        <ul className="flex flex-col justify-between gap-4 py-1">
+          <li>
+            <WalletChip label="Wallet A" />
+          </li>
+          <li>
+            <WalletChip label="Wallet B" />
+          </li>
+          <li>
+            <WalletChip label="Wallet C" />
+          </li>
         </ul>
-
-        <div aria-hidden className="relative w-10 shrink-0 sm:w-16">
-          <div className="absolute top-[16%] bottom-[16%] left-1/2 w-px bg-line-strong" />
-          {["16%", "50%", "84%"].map((top) => (
-            <div key={top} className="absolute left-0 h-px w-1/2 bg-line-strong" style={{ top }} />
-          ))}
-          <div className="absolute top-1/2 left-1/2 h-px w-1/2 bg-accent" />
-          <div className="absolute top-1/2 left-1/2 h-2 w-2 -translate-x-1/2 -translate-y-1/2 rounded-full bg-accent" />
+        <div aria-hidden className="relative w-16 shrink-0 xl:w-24">
+          <svg
+            viewBox="0 0 64 100"
+            preserveAspectRatio="none"
+            className="absolute inset-0 h-full w-full"
+          >
+            <g
+              fill="none"
+              stroke="var(--line-strong)"
+              strokeWidth="1.25"
+              vectorEffect="non-scaling-stroke"
+            >
+              <path d="M0,14 C 28,14 22,50 42,50" />
+              <path d="M0,50 H42" />
+              <path d="M0,86 C 28,86 22,50 42,50" />
+            </g>
+            <line
+              x1="42"
+              y1="50"
+              x2="64"
+              y2="50"
+              stroke="var(--accent)"
+              strokeWidth="1.25"
+              vectorEffect="non-scaling-stroke"
+            />
+            <circle cx="42" cy="50" r="3" fill="var(--accent)" />
+          </svg>
         </div>
-
         <div className="flex flex-1 items-center">
-          <div className="w-full rounded-[12px] border border-line bg-raised px-4 py-4 sm:px-5 sm:py-5">
-            <span className="text-sm font-semibold text-ink">ONE combined view</span>
-            <p className="mt-1.5 text-sm text-muted">
-              MON, stablecoins, supported memecoins and NFTs, added up. With a per-wallet breakdown.
-            </p>
-          </div>
+          <OneResult />
+        </div>
+      </div>
+
+      {/* Mobile: three chips in a row, a short downward flow, the result beneath. */}
+      <div className="lg:hidden">
+        <div className="grid grid-cols-3 gap-2">
+          <WalletChip label="Wallet A" />
+          <WalletChip label="Wallet B" />
+          <WalletChip label="Wallet C" />
+        </div>
+        <div aria-hidden className="relative h-6 w-full">
+          <svg
+            viewBox="0 0 100 24"
+            preserveAspectRatio="none"
+            className="absolute inset-0 h-full w-full"
+          >
+            <g
+              fill="none"
+              stroke="var(--line-strong)"
+              strokeWidth="1.25"
+              vectorEffect="non-scaling-stroke"
+            >
+              <path d="M16.7,0 C 16.7,15 50,7 50,18" />
+              <path d="M50,0 V18" />
+              <path d="M83.3,0 C 83.3,15 50,7 50,18" />
+            </g>
+            <circle cx="50" cy="18" r="3" fill="var(--accent)" />
+          </svg>
+        </div>
+        <div className="mt-1.5">
+          <OneResult />
         </div>
       </div>
     </div>
   );
 }
 
-function UseCard({
+/** Subtle, hero-only background. Radial wash plus a whisper of converging lines. */
+function HeroBackground() {
+  return (
+    <div aria-hidden className="pointer-events-none absolute inset-0">
+      <div
+        className="absolute inset-0"
+        style={{
+          background:
+            "radial-gradient(58% 55% at 80% 26%, color-mix(in srgb, var(--accent) 7%, transparent), transparent 68%)",
+        }}
+      />
+      <svg
+        className="absolute top-0 right-0 hidden h-full w-1/2 opacity-[0.3] lg:block"
+        viewBox="0 0 300 300"
+        preserveAspectRatio="none"
+        fill="none"
+        stroke="var(--line-strong)"
+        strokeWidth="1"
+        vectorEffect="non-scaling-stroke"
+      >
+        <path d="M300,40 C 210,60 150,120 60,150" vectorEffect="non-scaling-stroke" />
+        <path d="M300,150 C 210,150 150,150 60,151" vectorEffect="non-scaling-stroke" />
+        <path d="M300,260 C 210,240 150,182 60,152" vectorEffect="non-scaling-stroke" />
+      </svg>
+    </div>
+  );
+}
+
+function WayColumn({
   badge,
   badgeTone,
   title,
@@ -59,6 +149,7 @@ function UseCard({
   href,
   cta,
   primary,
+  className = "",
 }: {
   badge: string;
   badgeTone: "neutral" | "accent";
@@ -68,9 +159,10 @@ function UseCard({
   href: string;
   cta: string;
   primary?: boolean;
+  className?: string;
 }) {
   return (
-    <div className="flex flex-col rounded-[16px] border border-line bg-surface p-6 shadow-[var(--shadow-card)] sm:p-7">
+    <div className={`flex flex-col ${className}`}>
       <div className="self-start">
         <Badge tone={badgeTone}>{badge}</Badge>
       </div>
@@ -87,7 +179,7 @@ function UseCard({
       <Link
         href={href}
         className={
-          "mt-6 inline-flex items-center justify-center rounded-[8px] px-4 py-2.5 text-sm font-medium transition-colors " +
+          "mt-6 inline-flex w-full items-center justify-center rounded-[8px] px-4 py-2.5 text-sm font-medium transition-colors sm:w-auto " +
           (primary
             ? "bg-accent text-accent-ink shadow-[0_1px_2px_rgba(16,24,40,0.08)] hover:brightness-110"
             : "border border-line-strong bg-surface text-ink hover:bg-raised")
@@ -103,8 +195,9 @@ export default function LandingPage() {
   return (
     <div className="mx-auto w-full max-w-6xl px-5 sm:px-8">
       {/* Hero */}
-      <section className="py-14 sm:py-18">
-        <div className="grid gap-10 lg:grid-cols-[1.05fr_1fr] lg:items-center lg:gap-14">
+      <section className="relative overflow-hidden py-14 sm:py-16">
+        <HeroBackground />
+        <div className="relative grid gap-10 lg:grid-cols-[46fr_54fr] lg:items-center lg:gap-14">
           <div>
             <Badge tone="neutral" dot>
               Built on Monad Mainnet
@@ -140,7 +233,9 @@ export default function LandingPage() {
             </p>
           </div>
 
-          <ConvergenceDiagram />
+          <div className="lg:pl-4">
+            <WalletToOne />
+          </div>
         </div>
       </section>
 
@@ -153,8 +248,8 @@ export default function LandingPage() {
             wallets are yours.
           </p>
         </div>
-        <div className="mt-7 grid gap-5 md:grid-cols-2">
-          <UseCard
+        <div className="mt-8 grid divide-y divide-line md:grid-cols-2 md:divide-x md:divide-y-0">
+          <WayColumn
             badge="No connection needed"
             badgeTone="neutral"
             title="Watch-only portfolios"
@@ -167,8 +262,9 @@ export default function LandingPage() {
             href="/portfolio"
             cta="Open watch-only portfolio"
             primary
+            className="pb-8 md:pr-10 md:pb-0"
           />
-          <UseCard
+          <WayColumn
             badge="Proves control"
             badgeTone="accent"
             title="Verified ONE"
@@ -180,14 +276,15 @@ export default function LandingPage() {
             ]}
             href="/verified"
             cta="Create a Verified ONE"
+            className="pt-8 md:pt-0 md:pl-10"
           />
         </div>
       </section>
 
       {/* Public lookup */}
-      <section className="border-t border-line py-10">
+      <div className="border-t border-line py-10">
         <OneLookup />
-      </section>
+      </div>
     </div>
   );
 }

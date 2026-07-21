@@ -55,7 +55,7 @@ export function OneLookup({ compact = false }: { compact?: boolean }) {
       className={
         compact
           ? "rounded-[12px] border border-line bg-surface p-5 shadow-[var(--shadow-card)]"
-          : "rounded-[16px] border border-line bg-surface p-5 shadow-[var(--shadow-card)] sm:p-6"
+          : "max-w-2xl"
       }
     >
       <h2
