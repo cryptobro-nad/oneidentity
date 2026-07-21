@@ -86,8 +86,8 @@ export default function RootLayout({
         <main className="flex-1">{children}</main>
 
         <footer className="mt-16 border-t border-line bg-raised">
-          <div className="mx-auto w-full max-w-6xl px-5 py-10 sm:px-8">
-            <div className="flex flex-col gap-8 sm:flex-row sm:items-start sm:justify-between">
+          <div className="mx-auto w-full max-w-6xl px-5 py-6 sm:px-8">
+            <div className="flex flex-col gap-6 sm:flex-row sm:items-start sm:justify-between">
               <div className="max-w-md">
                 <Link
                   href="/"

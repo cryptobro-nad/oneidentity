@@ -53,15 +53,15 @@ function ConvergenceNode({ className = "" }: { className?: string }) {
  */
 function WalletToOne() {
   return (
-    <div className="group rounded-[16px] border border-line bg-surface p-5 shadow-[var(--shadow-card)] sm:p-6">
+    <div className="group depth depth-lift rounded-[16px] border border-line bg-surface p-4 sm:p-5">
       <div className="flex items-center gap-2">
         <span aria-hidden className="h-2 w-2 rounded-full bg-accent" />
         <span className="eyebrow">Combined view</span>
       </div>
 
       {/* Desktop: three wallet chips flow rightward into the combined result. */}
-      <div className="mt-5 hidden items-stretch lg:flex">
-        <ul className="flex w-36 flex-col justify-between gap-3 py-1">
+      <div className="mt-4 hidden items-stretch lg:flex">
+        <ul className="flex w-36 flex-col justify-between gap-2.5 py-1">
           <li>
             <WalletChip label="Wallet A" />
           </li>
@@ -98,7 +98,7 @@ function WalletToOne() {
       </div>
 
       {/* Mobile: chips row, a short downward flow to the node, result beneath. */}
-      <div className="mt-5 lg:hidden">
+      <div className="mt-4 lg:hidden">
         <div className="grid grid-cols-3 gap-2">
           <WalletChip label="Wallet A" />
           <WalletChip label="Wallet B" />
@@ -169,25 +169,19 @@ function WayCard({
   return (
     <div
       className={
-        "flex flex-col rounded-[16px] border bg-surface p-6 shadow-[var(--shadow-card)] transition-colors hover:border-line-strong " +
+        "flex flex-col depth-soft depth-lift rounded-[16px] border bg-surface px-5 py-4 " +
         (accentPath ? "border-line border-t-2 border-t-accent" : "border-line")
       }
     >
-      <div className="flex items-center justify-between gap-3">
+      <div>
         <Badge tone={badgeTone}>{badge}</Badge>
-        {accentPath ? <span aria-hidden className="h-1.5 w-1.5 rounded-full bg-accent" /> : null}
       </div>
-      <h3 className="mt-4 text-xl font-semibold tracking-[-0.01em] text-ink">{title}</h3>
+      <h3 className="mt-3 text-xl font-semibold tracking-[-0.01em] text-ink">{title}</h3>
       <p className="mt-2 text-sm leading-relaxed text-muted">{body}</p>
-      <ul className="mt-4 flex-1 space-y-2.5">
+      <ul className="mt-3 flex-1 space-y-2">
         {points.map((p) => (
           <li key={p} className="flex gap-2.5 text-sm text-muted">
-            <span
-              aria-hidden
-              className={
-                "mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full " + (accentPath ? "bg-accent" : "bg-faint")
-              }
-            />
+            <span aria-hidden className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-faint" />
             {p}
           </li>
         ))}
@@ -195,7 +189,7 @@ function WayCard({
       <Link
         href={href}
         className={
-          "mt-6 w-full sm:w-auto " +
+          "mt-5 w-full sm:w-auto " +
           (primary
             ? "inline-flex items-center justify-center rounded-[8px] bg-accent px-4 py-2.5 text-sm font-medium text-accent-ink shadow-[var(--shadow-card)] transition-[transform,filter] hover:-translate-y-px hover:brightness-110"
             : "inline-flex items-center justify-center rounded-[8px] border border-line-strong bg-surface px-4 py-2.5 text-sm font-medium text-ink transition-colors hover:border-accent-line hover:bg-raised")
@@ -211,7 +205,7 @@ export default function LandingPage() {
   return (
     <div className="mx-auto w-full max-w-6xl px-5 sm:px-8">
       {/* Hero */}
-      <section className="relative overflow-hidden pt-8 pb-14 sm:pt-10 sm:pb-16">
+      <section className="relative overflow-hidden pt-8 pb-10 sm:pt-10">
         <HeroBackground />
         <div className="relative grid gap-10 lg:grid-cols-[47fr_53fr] lg:items-center lg:gap-16">
           <div>
@@ -247,7 +241,7 @@ export default function LandingPage() {
       </section>
 
       {/* Two ways to use ONE */}
-      <section className="border-t border-line py-12 sm:py-14">
+      <section className="border-t border-line py-8 sm:py-10">
         <div className="max-w-2xl">
           <h2 className="text-2xl font-semibold tracking-[-0.02em] text-ink">Two ways to use ONE</h2>
           <p className="mt-2 text-sm leading-relaxed text-muted">
@@ -255,7 +249,7 @@ export default function LandingPage() {
             wallets are yours.
           </p>
         </div>
-        <div className="mt-8 grid gap-5 md:grid-cols-2">
+        <div className="mt-7 grid gap-5 md:grid-cols-2">
           <WayCard
             badge="No connection needed"
             badgeTone="neutral"
@@ -288,7 +282,7 @@ export default function LandingPage() {
       </section>
 
       {/* Public lookup */}
-      <section className="border-t border-line py-12 sm:py-14">
+      <section className="border-t border-line py-8 sm:py-10">
         <OneLookup />
       </section>
     </div>
