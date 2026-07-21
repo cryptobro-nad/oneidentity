@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
+import { Badge } from "@/components/ui/Badge";
 import { shortenAddress } from "@/lib/format";
 import { oneProfilePath } from "@/lib/registry/lookup";
 import type { MembershipActionResult } from "@/app/verified/actions";
@@ -60,43 +61,43 @@ export function ActiveOneCard({
   return (
     <section
       aria-labelledby="active-one-heading"
-      className="rounded-2xl border border-accent/30 bg-accent-soft p-6"
+      className="rounded-[12px] border border-line border-l-2 border-l-accent bg-surface p-6"
     >
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h2 id="active-one-heading" className="text-lg font-medium text-ink">
+          <h2 id="active-one-heading" className="text-xl font-semibold tracking-[-0.01em] text-ink">
             Your active ONE
           </h2>
           <p className="mt-1 text-sm text-muted">
             This wallet is already linked to a Verified ONE.
           </p>
         </div>
-        <span className="rounded-full bg-accent px-3 py-1 text-xs font-medium text-accent-ink">
+        <Badge tone={membership.isActive ? "success" : "neutral"} dot>
           {membership.isActive ? "Active" : "Inactive"}
-        </span>
+        </Badge>
       </div>
 
       <dl className="mt-5 space-y-4">
         <div>
-          <dt className="text-xs tracking-wide text-faint uppercase">ONE address</dt>
+          <dt className="eyebrow">ONE address</dt>
           <dd className="mt-1 font-mono text-sm break-all text-ink">{membership.oneAddress}</dd>
         </div>
 
         <div className="flex flex-wrap gap-x-8 gap-y-3">
           <div>
-            <dt className="text-xs tracking-wide text-faint uppercase">Your role</dt>
+            <dt className="eyebrow">Your role</dt>
             <dd className="mt-1 text-sm text-ink">
               {membership.role === "primary" ? "Primary" : "Secondary"}
             </dd>
           </div>
           <div>
-            <dt className="text-xs tracking-wide text-faint uppercase">Connected wallet</dt>
+            <dt className="eyebrow">Connected wallet</dt>
             <dd className="mt-1 font-mono text-sm text-ink" title={connectedAddress}>
               {shortenAddress(connectedAddress)}
             </dd>
           </div>
           <div>
-            <dt className="text-xs tracking-wide text-faint uppercase">Linked wallets</dt>
+            <dt className="eyebrow">Linked wallets</dt>
             <dd className="tnum mt-1 text-sm text-ink">{membership.memberCount}</dd>
           </div>
         </div>
@@ -105,21 +106,21 @@ export function ActiveOneCard({
       <div className="mt-6 flex flex-wrap items-center gap-3">
         <Link
           href={oneProfilePath(membership.oneAddress)}
-          className="rounded-full bg-accent px-5 py-2.5 text-sm font-medium text-accent-ink transition-opacity hover:opacity-90"
+          className="rounded-[8px] bg-accent px-5 py-2.5 text-sm font-medium text-accent-ink shadow-[0_1px_2px_rgba(16,24,40,0.08)] transition-colors hover:brightness-110"
         >
           View my ONE
         </Link>
         <button
           type="button"
           onClick={() => void copy("address")}
-          className="rounded-lg border border-line-strong bg-surface px-4 py-2.5 text-sm text-ink transition-colors hover:bg-raised"
+          className="rounded-[8px] border border-line-strong bg-surface px-4 py-2.5 text-sm text-ink transition-colors hover:bg-raised"
         >
           {copied === "address" ? "Copied" : "Copy ONE address"}
         </button>
         <button
           type="button"
           onClick={() => void copy("link")}
-          className="rounded-lg border border-line-strong bg-surface px-4 py-2.5 text-sm text-ink transition-colors hover:bg-raised"
+          className="rounded-[8px] border border-line-strong bg-surface px-4 py-2.5 text-sm text-ink transition-colors hover:bg-raised"
         >
           {copied === "link" ? "Copied" : "Copy profile link"}
         </button>

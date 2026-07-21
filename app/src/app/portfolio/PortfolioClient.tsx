@@ -152,7 +152,7 @@ export function PortfolioClient() {
   const savedFromPreviousVisit = !dataRequested && addresses.length > 0;
 
   return (
-    <div className="space-y-10">
+    <div className="space-y-8">
       <UnverifiedNotice />
 
       <PortfolioSwitcher
@@ -192,7 +192,7 @@ export function PortfolioClient() {
       ) : null}
 
       {shownResult ? (
-        <div className="border-t border-line pt-10">
+        <div className="border-t border-line pt-8">
           <PortfolioResult portfolio={shownResult} />
         </div>
       ) : null}
@@ -200,7 +200,7 @@ export function PortfolioClient() {
       {/* NFT discovery is gated on the same explicit request, and keyed to the
           active portfolio so switching cannot start a scan or show stale rows. */}
       {dataRequested && addresses.length > 0 ? (
-        <div className="border-t border-line pt-10">
+        <div className="border-t border-line pt-8">
           <NftHoldings key={active.id} addresses={addresses} />
         </div>
       ) : null}

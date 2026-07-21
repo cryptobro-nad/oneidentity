@@ -1,6 +1,7 @@
 "use client";
 
 import { AddressChip } from "@/components/AddressChip";
+import { Badge } from "@/components/ui/Badge";
 import { formatTimestamp, shortenAddress } from "@/lib/format";
 import { signatureStatusFor, type OneDraft } from "@/lib/registry/draft";
 import { secondariesInOrder, sameAddress } from "@/lib/registry/members";
@@ -29,12 +30,12 @@ export function SigningStep({
   return (
     <section aria-labelledby="signing-heading" className="space-y-5">
       <div>
-        <h2 id="signing-heading" className="text-lg font-medium text-ink">
-          2. Collect signatures
+        <h2 id="signing-heading" className="text-lg font-semibold tracking-[-0.01em] text-ink">
+          2. Sign with each wallet
         </h2>
         <p className="mt-1.5 text-sm text-muted">
-          Each secondary wallet signs an authorization. The primary does not sign — it proves
-          intent by submitting the transaction.
+          Each secondary wallet signs a gasless authorization to join this ONE. The primary wallet
+          does not sign. It confirms the group by submitting the transaction.
         </p>
         {deadline ? (
           <p className="mt-1.5 text-sm text-faint">
@@ -43,13 +44,10 @@ export function SigningStep({
         ) : null}
       </div>
 
-      <div className="rounded-xl border border-line bg-raised px-4 py-3">
+      <div className="rounded-[12px] border border-line bg-raised px-4 py-3">
         <p className="text-sm text-muted">
-          <span className="font-medium text-ink">
-            Wallet signatures authorize identity membership only.
-          </span>{" "}
-          ONE does not control or hold your funds. A signature here cannot move or approve any
-          asset.
+          <span className="font-medium text-ink">Signing does not move funds or approve tokens.</span>{" "}
+          It only records that the wallet agrees to join this ONE. ONE never takes custody.
         </p>
       </div>
 
@@ -60,7 +58,7 @@ export function SigningStep({
           const busy = signing !== null && sameAddress(signing, wallet);
 
           return (
-            <li key={wallet} className="rounded-xl border border-line bg-surface p-4">
+            <li key={wallet} className="rounded-[12px] border border-line bg-surface p-4">
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <div className="min-w-0">
                   <AddressChip address={wallet} />
@@ -68,10 +66,10 @@ export function SigningStep({
                     {status.state === "valid" ? (
                       <span className="text-accent">Signed · nonce {status.signature.nonce}</span>
                     ) : status.state === "expired" ? (
-                      <span className="text-danger">Signature expired — must sign again</span>
+                      <span className="text-danger">Signature expired. Sign again.</span>
                     ) : status.state === "stale-config" ? (
                       <span className="text-danger">
-                        Configuration changed — signature no longer valid
+                        The wallet list changed, so this signature is no longer valid.
                       </span>
                     ) : (
                       <span className="text-faint">Not signed yet</span>
@@ -80,9 +78,7 @@ export function SigningStep({
                 </div>
 
                 {status.state === "valid" ? (
-                  <span className="rounded-full bg-accent-soft px-3 py-1 text-xs font-medium text-accent">
-                    Done
-                  </span>
+                  <Badge tone="accent">Done</Badge>
                 ) : isConnected ? (
                   <button
                     type="button"
@@ -91,7 +87,7 @@ export function SigningStep({
                     // re-reads the chain live and requests the switch if needed,
                     // so a wallet already on Monad is never blocked by old state.
                     disabled={busy}
-                    className="rounded-lg bg-accent px-4 py-2 text-sm font-medium text-accent-ink transition-opacity hover:opacity-90 disabled:opacity-50"
+                    className="rounded-[8px] bg-accent px-4 py-2 text-sm font-medium text-accent-ink shadow-[0_1px_2px_rgba(16,24,40,0.08)] transition-colors hover:brightness-110 disabled:opacity-50"
                   >
                     {busy ? "Waiting for wallet…" : "Sign with this wallet"}
                   </button>

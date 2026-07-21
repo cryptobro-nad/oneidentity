@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useId, useRef, useState, type FormEvent } from "react";
 import { MAX_NAME_LENGTH, PERSONAL_ID, type Portfolio } from "@/lib/portfolios/types";
+import { Badge } from "./ui/Badge";
 
 /**
  * Portfolio selector and management.
@@ -71,10 +72,10 @@ export function PortfolioSwitcher({
   return (
     <section
       aria-labelledby={headingId}
-      className="rounded-xl border border-line bg-surface p-4 sm:p-5"
+      className="rounded-[12px] border border-line bg-surface p-4 sm:p-5"
     >
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <h2 id={headingId} className="text-sm font-medium text-ink">
+        <h2 id={headingId} className="text-sm font-semibold text-ink">
           Your portfolios
         </h2>
         <button
@@ -85,7 +86,7 @@ export function PortfolioSwitcher({
             setDraftName("");
             setError(null);
           }}
-          className="rounded-lg border border-line-strong bg-surface px-3.5 py-2 text-sm text-ink transition-colors hover:bg-raised"
+          className="rounded-[8px] border border-line-strong bg-surface px-3.5 py-2 text-sm text-ink transition-colors hover:bg-raised"
         >
           New portfolio
         </button>
@@ -98,9 +99,9 @@ export function PortfolioSwitcher({
           return (
             <li
               key={p.id}
-              className={`flex flex-wrap items-center gap-x-3 gap-y-2 rounded-lg border px-3 py-2.5 transition-colors ${
+              className={`flex flex-wrap items-center gap-x-3 gap-y-2 rounded-[10px] border px-3 py-2.5 transition-colors ${
                 isActive
-                  ? "border-accent/50 bg-accent-soft"
+                  ? "border-line border-l-2 border-l-accent bg-raised"
                   : "border-line bg-canvas hover:bg-raised"
               }`}
             >
@@ -113,12 +114,14 @@ export function PortfolioSwitcher({
                 className="min-w-0 flex-1 text-left"
               >
                 <span className="flex items-center gap-2">
-                  <span className={`truncate text-sm ${isActive ? "text-ink" : "text-muted"}`}>
+                  <span
+                    className={`truncate text-sm font-medium ${isActive ? "text-ink" : "text-muted"}`}
+                  >
                     {p.name}
                   </span>
                   {isActive ? (
-                    <span className="shrink-0 rounded-full bg-accent px-2 py-0.5 text-[10px] font-medium text-accent-ink">
-                      Selected
+                    <span className="shrink-0">
+                      <Badge tone="accent">Selected</Badge>
                     </span>
                   ) : null}
                 </span>
@@ -127,7 +130,7 @@ export function PortfolioSwitcher({
                 </span>
               </button>
 
-              <div className="flex shrink-0 items-center gap-1.5">
+              <div className="flex shrink-0 items-center gap-1">
                 <button
                   type="button"
                   onClick={() => {
@@ -136,7 +139,7 @@ export function PortfolioSwitcher({
                     setDraftName(p.name);
                     setError(null);
                   }}
-                  className="rounded-md px-2.5 py-1.5 text-xs text-muted transition-colors hover:bg-surface hover:text-ink"
+                  className="rounded-[6px] px-2.5 py-1.5 text-xs text-muted transition-colors hover:bg-surface hover:text-ink"
                   aria-label={`Rename ${p.name}`}
                 >
                   Edit
@@ -151,7 +154,7 @@ export function PortfolioSwitcher({
                       setTargetId(p.id);
                       setError(null);
                     }}
-                    className="rounded-md px-2.5 py-1.5 text-xs text-muted transition-colors hover:bg-surface hover:text-danger"
+                    className="rounded-[6px] px-2.5 py-1.5 text-xs text-muted transition-colors hover:bg-surface hover:text-danger"
                     aria-label={`Delete ${p.name}`}
                   >
                     Delete
@@ -184,19 +187,19 @@ export function PortfolioSwitcher({
               aria-invalid={error ? true : undefined}
               aria-describedby={error ? `${nameInputId}-error` : undefined}
               placeholder="Trading wallets"
-              className="min-w-0 flex-1 rounded-lg border border-line bg-canvas px-3.5 py-2.5 text-sm text-ink placeholder:text-faint"
+              className="min-w-0 flex-1 rounded-[8px] border border-line-strong bg-canvas px-3.5 py-2.5 text-sm text-ink placeholder:text-faint focus:border-accent"
             />
             <div className="flex gap-2">
               <button
                 type="submit"
-                className="rounded-lg bg-accent px-4 py-2.5 text-sm font-medium text-accent-ink transition-opacity hover:opacity-90"
+                className="rounded-[8px] bg-accent px-4 py-2.5 text-sm font-medium text-accent-ink shadow-[0_1px_2px_rgba(16,24,40,0.08)] transition-colors hover:brightness-110"
               >
                 {mode === "create" ? "Create" : "Save name"}
               </button>
               <button
                 type="button"
                 onClick={close}
-                className="rounded-lg border border-line-strong bg-surface px-4 py-2.5 text-sm text-muted transition-colors hover:bg-raised"
+                className="rounded-[8px] border border-line-strong bg-surface px-4 py-2.5 text-sm text-muted transition-colors hover:bg-raised"
               >
                 Cancel
               </button>
@@ -214,7 +217,7 @@ export function PortfolioSwitcher({
         <div
           role="alertdialog"
           aria-labelledby={`${headingId}-delete`}
-          className="mt-4 rounded-lg border border-danger/30 bg-danger-soft px-4 py-3.5"
+          className="mt-4 rounded-[10px] border border-danger/30 bg-danger-soft px-4 py-3.5"
         >
           <p id={`${headingId}-delete`} className="text-sm font-medium text-ink">
             Delete “{target.name}”?
@@ -230,14 +233,14 @@ export function PortfolioSwitcher({
                 onDelete(target.id);
                 close();
               }}
-              className="rounded-lg bg-danger px-4 py-2 text-sm font-medium text-canvas transition-opacity hover:opacity-90"
+              className="rounded-[8px] bg-danger px-4 py-2 text-sm font-medium text-white shadow-[0_1px_2px_rgba(16,24,40,0.08)] transition-colors hover:brightness-110"
             >
               Delete portfolio
             </button>
             <button
               type="button"
               onClick={close}
-              className="rounded-lg border border-line-strong bg-surface px-4 py-2 text-sm text-ink transition-colors hover:bg-raised"
+              className="rounded-[8px] border border-line-strong bg-surface px-4 py-2 text-sm text-ink transition-colors hover:bg-raised"
             >
               Keep it
             </button>

@@ -49,10 +49,10 @@ describe("page title and framing", () => {
     expect(container.textContent).toMatch(/no wallet connection or signature/i);
   });
 
-  it("states these are private watchlists that do not prove ownership", () => {
+  it("states portfolios are saved locally and do not prove ownership", () => {
     const { container } = render(<PortfolioPage />);
-    expect(container.textContent).toMatch(/private watchlists/i);
-    expect(container.textContent).toMatch(/do not prove ownership/i);
+    expect(container.textContent).toMatch(/saved only in this browser/i);
+    expect(container.textContent).toMatch(/do not prove that you own the wallets/i);
   });
 });
 

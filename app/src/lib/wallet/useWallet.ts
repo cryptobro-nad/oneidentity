@@ -251,9 +251,8 @@ export function useWallet() {
         const name = previous.info.name || "your wallet";
         const host = typeof window !== "undefined" ? window.location.hostname : "this site";
         setDisconnectNotice(
-          `${name} keeps this site connected on its side. ONE has disconnected here, but to ` +
-            `stop ${name} reconnecting automatically, open ${name} and remove ${host} from its ` +
-            `connected apps/sites.`,
+          `ONE has disconnected here. ${name} still has this site connected. To fully disconnect, ` +
+            `open ${name} and remove ${host} from its connected apps.`,
         );
       }
     })();

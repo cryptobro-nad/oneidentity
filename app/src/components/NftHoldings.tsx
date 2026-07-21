@@ -56,7 +56,7 @@ export function NftHoldings({
   return (
     <section aria-labelledby="nft-holdings-heading" className="space-y-4">
       <div className="flex flex-wrap items-baseline justify-between gap-2">
-        <h2 id="nft-holdings-heading" className="text-lg font-medium text-ink">
+        <h2 id="nft-holdings-heading" className="text-xl font-semibold tracking-[-0.01em] text-ink">
           {heading}
         </h2>
         {result?.ok ? (
@@ -77,7 +77,7 @@ export function NftHoldings({
           <DiscoveryStatus discovery={result.discovery} />
 
           {result.verificationPartial ? (
-            <div role="status" className="rounded-xl border border-warn/30 bg-warn-soft px-4 py-3">
+            <div role="status" className="rounded-[10px] border border-warn/30 bg-warn-soft px-4 py-3">
               <p className="text-sm font-medium text-ink">Some balance checks failed</p>
               <p className="mt-1 text-sm text-muted">
                 Rows marked <span className="text-danger">Failed</span> could not be read from the
@@ -88,13 +88,13 @@ export function NftHoldings({
           ) : null}
 
           {result.collections.length === 0 ? (
-            <p className="rounded-xl border border-dashed border-line px-4 py-8 text-center text-sm text-faint">
+            <p className="rounded-[12px] border border-dashed border-line-strong px-4 py-10 text-center text-sm text-faint">
               {result.discovery.state === "complete"
-                ? "No ERC-721 collections held by these wallets."
+                ? "No ERC-721 collections found for these wallets."
                 : "No collections found. Automatic discovery is unavailable, so only known collections were checked."}
             </p>
           ) : (
-            <ul className="divide-y divide-line overflow-hidden rounded-xl border border-line bg-surface">
+            <ul className="divide-y divide-line overflow-hidden rounded-[12px] border border-line bg-surface">
               {result.collections.map((c) => (
                 <CollectionRow
                   key={`${c.chainId}:${c.contractAddress}`}
@@ -130,15 +130,15 @@ function DiscoveryStatus({
 
   if (discovery.state === "partial") {
     return (
-      <div role="status" className="rounded-xl border border-warn/30 bg-warn-soft px-4 py-3">
+      <div role="status" className="rounded-[10px] border border-warn/30 bg-warn-soft px-4 py-3">
         <p className="text-sm font-medium text-ink">Partial discovery</p>
         <p className="mt-1 text-sm text-muted">
           {selfIndexed ? (
             <>
               The transfer-history scan for{" "}
               {discovery.failedWallets.map((w) => shortenAddress(w)).join(", ")} reached its request
-              limit before covering all history — that wallet has an unusually large number of NFT
-              transfers. Older collections may be missing. Everything shown is verified onchain.
+              limit before covering all history. That wallet has an unusually large number of NFT
+              transfers, so older collections may be missing. Everything shown is verified onchain.
             </>
           ) : (
             <>
@@ -157,7 +157,7 @@ function DiscoveryStatus({
   // "temporarily down" call for very different actions.
   const needsPlan = discovery.reason === "tier-required";
   return (
-    <div role="status" className="rounded-xl border border-warn/30 bg-warn-soft px-4 py-3">
+    <div role="status" className="rounded-[10px] border border-warn/30 bg-warn-soft px-4 py-3">
       <p className="text-sm font-medium text-ink">
         {needsPlan
           ? "Automatic discovery requires a paid indexer plan"

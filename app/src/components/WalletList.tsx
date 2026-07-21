@@ -76,12 +76,12 @@ export function WalletList({
             aria-label="Add wallet address"
             aria-invalid={error ? true : undefined}
             aria-describedby={error ? "wallet-error" : undefined}
-            className="min-w-0 flex-1 rounded-lg border border-line bg-surface px-3.5 py-2.5 font-mono text-sm text-ink placeholder:text-faint disabled:opacity-50"
+            className="min-w-0 flex-1 rounded-[8px] border border-line-strong bg-surface px-3.5 py-2.5 font-mono text-sm text-ink placeholder:text-faint focus:border-accent disabled:opacity-50"
           />
           <button
             type="submit"
             disabled={full}
-            className="rounded-lg border border-line-strong bg-surface px-4 py-2.5 text-sm font-medium text-ink transition-colors hover:bg-raised disabled:cursor-not-allowed disabled:opacity-50"
+            className="rounded-[8px] border border-line-strong bg-surface px-4 py-2.5 text-sm font-medium text-ink transition-colors hover:bg-raised disabled:cursor-not-allowed disabled:opacity-50"
           >
             Add wallet
           </button>
@@ -100,7 +100,7 @@ export function WalletList({
       </form>
 
       {addresses.length > 0 ? (
-        <ul className="divide-y divide-line overflow-hidden rounded-xl border border-line bg-surface">
+        <ul className="divide-y divide-line overflow-hidden rounded-[12px] border border-line bg-surface">
           {addresses.map((address, index) => (
             <li
               key={address}
@@ -122,7 +122,7 @@ export function WalletList({
           ))}
         </ul>
       ) : (
-        <p className="rounded-xl border border-dashed border-line px-4 py-8 text-center text-sm text-faint">
+        <p className="rounded-[12px] border border-dashed border-line px-4 py-6 text-center text-sm text-faint">
           Add a Monad Mainnet address to begin.
         </p>
       )}
@@ -132,7 +132,7 @@ export function WalletList({
           type="button"
           onClick={onLoad}
           disabled={addresses.length === 0 || loading}
-          className="rounded-full bg-accent px-5 py-2.5 text-sm font-medium text-accent-ink transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40"
+          className="rounded-[8px] bg-accent px-5 py-2.5 text-sm font-medium text-accent-ink shadow-[0_1px_2px_rgba(16,24,40,0.08)] transition-colors hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-40"
         >
           {loading ? "Loading…" : loadLabel}
         </button>

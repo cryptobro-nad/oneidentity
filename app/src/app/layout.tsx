@@ -19,13 +19,13 @@ export const metadata: Metadata = {
   // the profile-link copy uses window.location.origin so it stays correct on
   // localhost and preview deployments.
   metadataBase: new URL("https://oneidentity.app"),
-  title: "ONE — Many wallets. One view.",
+  title: "ONE. Many wallets. One view.",
   description:
-    "View your MON, stablecoins and NFT collection holdings across multiple Monad wallets.",
+    "Track your MON, stablecoins, supported memecoins and NFTs across up to five Monad wallets.",
   openGraph: {
-    title: "ONE — Many wallets. One onchain identity.",
+    title: "ONE. Many wallets. One view.",
     description:
-      "Combine MON, stablecoins and NFT holdings across multiple Monad wallets, or create one public onchain identity.",
+      "Track your MON, stablecoins, supported memecoins and NFTs across up to five Monad wallets. Keep it watch-only or create a Verified ONE to prove the wallets belong to you.",
     url: "https://oneidentity.app",
     siteName: "ONE",
     type: "website",
@@ -34,8 +34,8 @@ export const metadata: Metadata = {
 
 function Wordmark() {
   return (
-    <Link href="/" className="group inline-flex items-baseline gap-2" aria-label="ONE — home">
-      <span className="text-xl font-semibold tracking-[-0.04em] text-ink">ONE</span>
+    <Link href="/" className="group inline-flex items-baseline gap-1.5" aria-label="ONE home">
+      <span className="text-lg font-semibold tracking-[-0.03em] text-ink">ONE</span>
       <span
         aria-hidden
         className="h-1.5 w-1.5 rounded-full bg-accent transition-transform group-hover:scale-125"
@@ -55,32 +55,45 @@ export default function RootLayout({
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
       <body className="flex min-h-full flex-col font-sans">
-        <header className="border-b border-line">
-          <div className="mx-auto flex w-full max-w-5xl items-center justify-between px-5 py-5 sm:px-8">
-            <Wordmark />
-            <nav className="flex items-center gap-6 text-sm">
-              <Link href="/portfolio" className="text-muted transition-colors hover:text-ink">
-                Portfolio
-              </Link>
-              <Link href="/verified" className="text-muted transition-colors hover:text-ink">
-                Verified ONE
-              </Link>
-              <span className="hidden items-center gap-2 text-faint sm:flex">
-                <span aria-hidden className="h-1.5 w-1.5 rounded-full bg-accent/60" />
-                Monad Mainnet
-              </span>
-            </nav>
+        <header className="sticky top-0 z-40 border-b border-line bg-canvas/85 backdrop-blur-sm">
+          <div className="mx-auto flex w-full max-w-6xl items-center justify-between px-5 py-3.5 sm:px-8">
+            <div className="flex items-center gap-7">
+              <Wordmark />
+              <nav className="hidden items-center gap-6 text-sm sm:flex">
+                <Link href="/portfolio" className="text-muted transition-colors hover:text-ink">
+                  Portfolio
+                </Link>
+                <Link href="/verified" className="text-muted transition-colors hover:text-ink">
+                  Verified ONE
+                </Link>
+              </nav>
+            </div>
+            <span className="inline-flex items-center gap-1.5 rounded-full border border-line bg-raised px-2.5 py-1 text-xs text-muted">
+              <span aria-hidden className="h-1.5 w-1.5 rounded-full bg-success" />
+              Monad Mainnet
+            </span>
           </div>
+          <nav className="flex items-center gap-6 border-t border-line px-5 py-2 text-sm sm:hidden">
+            <Link href="/portfolio" className="text-muted transition-colors hover:text-ink">
+              Portfolio
+            </Link>
+            <Link href="/verified" className="text-muted transition-colors hover:text-ink">
+              Verified ONE
+            </Link>
+          </nav>
         </header>
 
         <main className="flex-1">{children}</main>
 
-        <footer className="border-t border-line">
-          <div className="mx-auto w-full max-w-5xl px-5 py-8 text-xs text-faint sm:px-8">
-            <p>
-              ONE reads public Monad Mainnet data. It never asks for a wallet connection, a
-              signature, or a private key.
-            </p>
+        <footer className="mt-16 border-t border-line bg-raised">
+          <div className="mx-auto w-full max-w-6xl px-5 py-8 sm:px-8">
+            <div className="flex flex-wrap items-center justify-between gap-4">
+              <Wordmark />
+              <p className="max-w-lg text-xs leading-relaxed text-faint">
+                ONE reads public Monad Mainnet data. It never asks for a wallet connection, a
+                signature, or a private key to view balances, and never takes custody of any assets.
+              </p>
+            </div>
           </div>
         </footer>
       </body>
