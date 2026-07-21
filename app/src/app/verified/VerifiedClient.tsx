@@ -419,7 +419,7 @@ export function VerifiedClient() {
     issues.length === 0 && effectiveGasPlan !== null && effectivePredicted !== null;
 
   return (
-    <div className="space-y-12">
+    <div className="space-y-8">
       <WalletConnect wallet={wallet} />
 
       {/* An already-linked wallet sees its identity FIRST, not buried in an
@@ -472,7 +472,7 @@ export function VerifiedClient() {
       />
 
       {draft.members.length >= 2 && draft.primary ? (
-        <div className="border-t border-line pt-12">
+        <div className="border-t border-line pt-8">
           <SigningStep
             draft={draft}
             connectedAddress={wallet.address}
@@ -485,7 +485,7 @@ export function VerifiedClient() {
       ) : null}
 
       {draft.members.length >= 2 && draft.primary ? (
-        <div className="border-t border-line pt-12">
+        <div className="border-t border-line pt-8">
           <ReviewStep
             primary={draft.primary}
             sortedMembers={sortedMembers}

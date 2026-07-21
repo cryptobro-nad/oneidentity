@@ -1,6 +1,7 @@
 "use client";
 
 import { AddressChip } from "@/components/AddressChip";
+import { Badge } from "@/components/ui/Badge";
 import { formatTimestamp, shortenAddress } from "@/lib/format";
 import { signatureStatusFor, type OneDraft } from "@/lib/registry/draft";
 import { secondariesInOrder, sameAddress } from "@/lib/registry/members";
@@ -29,7 +30,7 @@ export function SigningStep({
   return (
     <section aria-labelledby="signing-heading" className="space-y-5">
       <div>
-        <h2 id="signing-heading" className="text-lg font-semibold text-ink">
+        <h2 id="signing-heading" className="text-lg font-semibold tracking-[-0.01em] text-ink">
           2. Sign with each wallet
         </h2>
         <p className="mt-1.5 text-sm text-muted">
@@ -57,7 +58,7 @@ export function SigningStep({
           const busy = signing !== null && sameAddress(signing, wallet);
 
           return (
-            <li key={wallet} className="rounded-[12px] border border-line bg-surface p-4 shadow-[var(--shadow-card)]">
+            <li key={wallet} className="rounded-[12px] border border-line bg-surface p-4">
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <div className="min-w-0">
                   <AddressChip address={wallet} />
@@ -77,9 +78,7 @@ export function SigningStep({
                 </div>
 
                 {status.state === "valid" ? (
-                  <span className="rounded-full bg-accent-soft px-3 py-1 text-xs font-medium text-accent">
-                    Done
-                  </span>
+                  <Badge tone="accent">Done</Badge>
                 ) : isConnected ? (
                   <button
                     type="button"

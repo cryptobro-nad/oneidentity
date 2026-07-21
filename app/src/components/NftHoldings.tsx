@@ -94,7 +94,7 @@ export function NftHoldings({
                 : "No collections found. Automatic discovery is unavailable, so only known collections were checked."}
             </p>
           ) : (
-            <ul className="divide-y divide-line overflow-hidden rounded-[12px] border border-line bg-surface shadow-[var(--shadow-card)]">
+            <ul className="divide-y divide-line overflow-hidden rounded-[12px] border border-line bg-surface">
               {result.collections.map((c) => (
                 <CollectionRow
                   key={`${c.chainId}:${c.contractAddress}`}

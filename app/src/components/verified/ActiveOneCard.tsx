@@ -61,7 +61,7 @@ export function ActiveOneCard({
   return (
     <section
       aria-labelledby="active-one-heading"
-      className="rounded-[16px] border border-line border-l-2 border-l-accent bg-surface p-6 shadow-[var(--shadow-card)]"
+      className="rounded-[12px] border border-line border-l-2 border-l-accent bg-surface p-6"
     >
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>

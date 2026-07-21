@@ -12,7 +12,7 @@ export const metadata: Metadata = {
 export default function PortfolioPage() {
   return (
     <div className="mx-auto w-full max-w-5xl px-5 py-12 sm:px-8 sm:py-14">
-      <header className="mb-9">
+      <header className="mb-8">
         <h1 className="text-3xl font-semibold tracking-[-0.025em] text-ink sm:text-4xl">
           Watch-only portfolios
         </h1>
@@ -26,23 +26,21 @@ export default function PortfolioPage() {
 
       <PortfolioClient />
 
-      <section className="mt-14 border-t border-line pt-10">
-        <div className="flex flex-wrap items-start justify-between gap-5 rounded-[16px] border border-line bg-raised p-6 sm:p-7">
-          <div className="max-w-lg">
-            <h2 className="text-lg font-semibold text-ink">Want these wallets verified?</h2>
-            <p className="mt-2 text-sm leading-relaxed text-muted">
-              This view is unverified. Anyone can type any address. A Verified ONE proves control by
-              having each wallet sign, then records one public identity address onchain. No funds
-              move.
-            </p>
-          </div>
-          <Link
-            href="/verified"
-            className="inline-flex items-center rounded-[8px] border border-line-strong bg-surface px-5 py-2.5 text-sm font-medium text-ink transition-colors hover:bg-canvas"
-          >
-            Create a Verified ONE
-          </Link>
+      <section className="mt-12 flex flex-wrap items-start justify-between gap-x-6 gap-y-4 border-t border-line pt-8">
+        <div className="max-w-lg">
+          <h2 className="text-lg font-semibold text-ink">Want these wallets verified?</h2>
+          <p className="mt-1.5 text-sm leading-relaxed text-muted">
+            This view is unverified. Anyone can type any address. A Verified ONE proves control by
+            having each wallet sign, then records one public identity address onchain. No funds
+            move.
+          </p>
         </div>
+        <Link
+          href="/verified"
+          className="inline-flex shrink-0 items-center rounded-[8px] border border-line-strong bg-surface px-5 py-2.5 text-sm font-medium text-ink transition-colors hover:bg-raised"
+        >
+          Create a Verified ONE
+        </Link>
       </section>
     </div>
   );

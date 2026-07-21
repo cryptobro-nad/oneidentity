@@ -92,7 +92,7 @@ export function ReviewStep({
   return (
     <section aria-labelledby="review-heading" className="space-y-5">
       <div>
-        <h2 id="review-heading" className="text-lg font-semibold text-ink">
+        <h2 id="review-heading" className="text-lg font-semibold tracking-[-0.01em] text-ink">
           3. Review and create
         </h2>
         <p className="mt-1.5 text-sm text-muted">
@@ -108,7 +108,7 @@ export function ReviewStep({
         </p>
       </div>
 
-      <dl className="divide-y divide-line overflow-hidden rounded-[12px] border border-line bg-surface shadow-[var(--shadow-card)]">
+      <dl className="divide-y divide-line overflow-hidden rounded-[12px] border border-line bg-surface">
         <div className="flex flex-wrap items-center justify-between gap-2 px-4 py-3">
           <dt className="text-sm text-faint">Primary wallet</dt>
           <dd>{primary ? <AddressChip address={primary} /> : <span className="text-sm text-faint">Not selected</span>}</dd>
@@ -151,7 +151,7 @@ export function ReviewStep({
       </dl>
 
       {/* Gas: Monad bills the limit, so the buffer is a real cost, not free insurance. */}
-      <div className="rounded-[12px] border border-line bg-surface p-4 shadow-[var(--shadow-card)]">
+      <div className="rounded-[12px] border border-line bg-surface p-4">
         <h3 className="text-sm font-medium text-ink">Gas</h3>
         <p className="mt-1 text-sm text-muted">
           Monad charges the submitted gas limit, not the gas actually used. A larger buffer is

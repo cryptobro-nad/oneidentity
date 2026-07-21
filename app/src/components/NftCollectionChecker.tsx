@@ -56,7 +56,7 @@ export function NftCollectionChecker({ addresses }: { addresses: PortfolioAddres
   return (
     <section aria-labelledby="nft-heading" className="space-y-5">
       <div>
-        <h2 id="nft-heading" className="text-xl font-semibold tracking-[-0.01em] text-ink">
+        <h2 id="nft-heading" className="text-lg font-semibold tracking-[-0.01em] text-ink">
           Advanced: Check a specific NFT collection
         </h2>
         <p className="mt-1.5 text-sm text-muted">
@@ -112,7 +112,7 @@ export function NftCollectionChecker({ addresses }: { addresses: PortfolioAddres
       ) : null}
 
       {result?.status === "ok" ? (
-        <div className="space-y-4 rounded-[12px] border border-line bg-surface p-5 shadow-[var(--shadow-card)]">
+        <div className="space-y-4 rounded-[12px] border border-line bg-surface p-5">
           <div className="flex flex-wrap items-baseline justify-between gap-x-6 gap-y-2">
             <div>
               <p className="text-xs tracking-wide text-faint uppercase">Combined holdings</p>

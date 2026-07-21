@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useId, useRef, useState, type FormEvent } from "react";
 import { MAX_NAME_LENGTH, PERSONAL_ID, type Portfolio } from "@/lib/portfolios/types";
+import { Badge } from "./ui/Badge";
 
 /**
  * Portfolio selector and management.
@@ -71,7 +72,7 @@ export function PortfolioSwitcher({
   return (
     <section
       aria-labelledby={headingId}
-      className="rounded-[12px] border border-line bg-surface p-4 shadow-[var(--shadow-card)] sm:p-5"
+      className="rounded-[12px] border border-line bg-surface p-4 sm:p-5"
     >
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h2 id={headingId} className="text-sm font-semibold text-ink">
@@ -119,8 +120,8 @@ export function PortfolioSwitcher({
                     {p.name}
                   </span>
                   {isActive ? (
-                    <span className="shrink-0 rounded-full border border-accent-line bg-accent-soft px-2 py-0.5 text-[10px] font-medium text-accent">
-                      Selected
+                    <span className="shrink-0">
+                      <Badge tone="accent">Selected</Badge>
                     </span>
                   ) : null}
                 </span>

@@ -25,11 +25,9 @@ export function WalletConnect({ wallet }: { wallet: Wallet }) {
   // as the session having been lost.
   if (wallet.restoring && !wallet.address) {
     return (
-      <div className="rounded-[12px] border border-line bg-surface p-5 shadow-[var(--shadow-card)]">
-        <p role="status" className="text-sm text-muted">
-          Restoring wallet session…
-        </p>
-      </div>
+      <p role="status" className="text-sm text-muted">
+        Restoring wallet session…
+      </p>
     );
   }
 
@@ -38,7 +36,7 @@ export function WalletConnect({ wallet }: { wallet: Wallet }) {
     const hasInjected = wallet.wallets.length > 0;
 
     return (
-      <div className="rounded-[12px] border border-line bg-surface p-5 shadow-[var(--shadow-card)]">
+      <div className="rounded-[12px] border border-line bg-surface p-5">
         <h3 className="text-sm font-medium text-ink">Connect a wallet</h3>
         <p className="mt-1.5 text-sm text-muted">
           ONE never asks for a private key, a token approval, or a transfer.
@@ -133,7 +131,7 @@ export function WalletConnect({ wallet }: { wallet: Wallet }) {
   }
 
   return (
-    <div className="rounded-[12px] border border-line bg-surface p-5 shadow-[var(--shadow-card)]">
+    <div className="rounded-[12px] border border-line bg-surface p-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <p className="text-xs text-faint">Connected</p>

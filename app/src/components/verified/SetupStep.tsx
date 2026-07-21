@@ -54,7 +54,7 @@ export function SetupStep({
   return (
     <section aria-labelledby="setup-heading" className="space-y-5">
       <div>
-        <h2 id="setup-heading" className="text-lg font-semibold text-ink">
+        <h2 id="setup-heading" className="text-lg font-semibold tracking-[-0.01em] text-ink">
           1. Choose wallets
         </h2>
         <p className="mt-1.5 text-sm text-muted">
@@ -101,7 +101,7 @@ export function SetupStep({
 
       {members.length > 0 ? (
         <>
-          <ul className="divide-y divide-line overflow-hidden rounded-[12px] border border-line bg-surface shadow-[var(--shadow-card)]">
+          <ul className="divide-y divide-line overflow-hidden rounded-[12px] border border-line bg-surface">
             {sorted.map((address, index) => {
               const state = stateFor(address);
               const bound = state && state.activeOne !== ZERO;
@@ -167,7 +167,7 @@ export function SetupStep({
           </div>
         </>
       ) : (
-        <p className="rounded-[12px] border border-dashed border-line-strong px-4 py-10 text-center text-sm text-faint">
+        <p className="rounded-[12px] border border-dashed border-line px-4 py-6 text-center text-sm text-faint">
           Add the wallets you want to link.
         </p>
       )}

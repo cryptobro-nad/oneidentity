@@ -5,13 +5,21 @@ import { Notice } from "./ui/Notice";
  * The unverified banner. Deliberately always visible on the portfolio page and
  * never dismissible — this mode makes no claim about who controls the wallets,
  * and the wording avoids calling it "private", which it is not.
+ *
+ * A calm, compact inline note rather than a full soft-filled warning box: the
+ * message is a standing condition, not an alert, so it carries a small marker
+ * and quiet text instead of the heavier Notice treatment reserved for errors.
  */
 export function UnverifiedNotice() {
   return (
-    <Notice tone="warn" title="Watch-only (unverified)">
-      You entered these addresses by hand. ONE has not checked that they belong to the same person.
-      Nothing here is written onchain.
-    </Notice>
+    <div className="flex items-start gap-2.5 text-sm leading-relaxed text-muted">
+      <span aria-hidden className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-warn" />
+      <p>
+        <span className="font-medium text-ink">Watch-only (unverified).</span> You entered these
+        addresses by hand. ONE has not checked that they belong to the same person. Nothing here is
+        written onchain.
+      </p>
+    </div>
   );
 }
 

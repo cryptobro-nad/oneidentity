@@ -122,7 +122,7 @@ export function WalletList({
           ))}
         </ul>
       ) : (
-        <p className="rounded-[12px] border border-dashed border-line-strong px-4 py-10 text-center text-sm text-faint">
+        <p className="rounded-[12px] border border-dashed border-line px-4 py-6 text-center text-sm text-faint">
           Add a Monad Mainnet address to begin.
         </p>
       )}

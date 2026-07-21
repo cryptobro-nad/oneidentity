@@ -60,7 +60,7 @@ function TotalCard({
 }) {
   return (
     <div
-      className={`rounded-[12px] border bg-surface px-4 py-4 shadow-[var(--shadow-card)] sm:px-5 sm:py-5 ${
+      className={`rounded-[12px] border bg-surface px-4 py-4 sm:px-5 sm:py-5 ${
         emphasis ? "border-line border-l-2 border-l-accent" : "border-line"
       }`}
     >
@@ -201,7 +201,7 @@ export function PortfolioResult({ portfolio }: { portfolio: AggregatedPortfolio 
       <div>
         <h3 className="mb-3 text-sm font-semibold text-ink">Per-wallet breakdown</h3>
 
-        <div className="overflow-x-auto rounded-[12px] border border-line bg-surface shadow-[var(--shadow-card)]">
+        <div className="overflow-x-auto rounded-[12px] border border-line bg-surface">
           <table className="w-full min-w-[38rem] border-collapse text-left">
             <thead>
               <tr className="border-b border-line">
