@@ -11,7 +11,7 @@ export const metadata: Metadata = {
 export default function VerifiedPage() {
   return (
     <div className="mx-auto w-full max-w-3xl px-5 py-12 sm:px-8 sm:py-16">
-      <header className="mb-8">
+      <header className="mb-6">
         <h1 className="text-3xl font-semibold tracking-[-0.025em] text-ink sm:text-4xl">
           Create a Verified ONE
         </h1>

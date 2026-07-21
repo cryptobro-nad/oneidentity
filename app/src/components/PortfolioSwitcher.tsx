@@ -70,10 +70,7 @@ export function PortfolioSwitcher({
   );
 
   return (
-    <section
-      aria-labelledby={headingId}
-      className="rounded-[12px] border border-line bg-surface p-4 sm:p-5"
-    >
+    <section aria-labelledby={headingId} className="p-5 sm:p-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h2 id={headingId} className="text-sm font-semibold text-ink">
           Your portfolios

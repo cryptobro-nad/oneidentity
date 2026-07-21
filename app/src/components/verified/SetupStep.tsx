@@ -101,14 +101,20 @@ export function SetupStep({
 
       {members.length > 0 ? (
         <>
-          <ul className="divide-y divide-line overflow-hidden rounded-[12px] border border-line bg-surface">
+          <ul className="depth-soft divide-y divide-line overflow-hidden rounded-[12px] border border-line bg-surface">
             {sorted.map((address, index) => {
               const state = stateFor(address);
               const bound = state && state.activeOne !== ZERO;
               const isPrimary = primary?.toLowerCase() === address.toLowerCase();
 
               return (
-                <li key={address} className="flex flex-wrap items-center gap-3 px-4 py-3">
+                <li
+                  key={address}
+                  className={
+                    "flex flex-wrap items-center gap-3 px-4 py-3 transition-colors " +
+                    (isPrimary ? "border-l-2 border-l-accent bg-accent-soft/40" : "border-l-2 border-l-transparent")
+                  }
+                >
                   <span className="w-[4.5rem] shrink-0 text-xs text-faint">
                     {walletLabel(index)}
                   </span>
@@ -167,9 +173,7 @@ export function SetupStep({
           </div>
         </>
       ) : (
-        <p className="rounded-[12px] border border-dashed border-line px-4 py-6 text-center text-sm text-faint">
-          Add the wallets you want to link.
-        </p>
+        <p className="py-4 text-center text-sm text-faint">Add the wallets you want to link.</p>
       )}
     </section>
   );

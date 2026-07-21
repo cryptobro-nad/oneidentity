@@ -12,7 +12,7 @@ export const metadata: Metadata = {
 export default function PortfolioPage() {
   return (
     <div className="mx-auto w-full max-w-5xl px-5 py-12 sm:px-8 sm:py-14">
-      <header className="mb-8">
+      <header className="mb-6">
         <h1 className="text-3xl font-semibold tracking-[-0.025em] text-ink sm:text-4xl">
           Watch-only portfolios
         </h1>
@@ -37,7 +37,7 @@ export default function PortfolioPage() {
         </div>
         <Link
           href="/verified"
-          className="inline-flex shrink-0 items-center rounded-[8px] border border-line-strong bg-surface px-5 py-2.5 text-sm font-medium text-ink transition-colors hover:bg-raised"
+          className="inline-flex shrink-0 items-center rounded-[8px] border border-line-strong bg-surface px-5 py-2.5 text-sm font-medium text-ink transition-colors hover:border-accent-line hover:bg-raised"
         >
           Create a Verified ONE
         </Link>

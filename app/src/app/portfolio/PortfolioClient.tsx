@@ -155,37 +155,44 @@ export function PortfolioClient() {
     <div className="space-y-8">
       <UnverifiedNotice />
 
-      <PortfolioSwitcher
-        portfolios={state.portfolios}
-        activeId={active.id}
-        onSelect={selectPortfolio}
-        onCreate={handleCreate}
-        onRename={handleRename}
-        onDelete={handleDelete}
-      />
+      {/* One workspace surface: portfolio selection, selected state and wallet
+          count, add-wallet input, wallet list and actions live together as
+          zones separated by dividers, not as separate stacked cards. */}
+      <div className="depth divide-y divide-line overflow-hidden rounded-[16px] border border-line bg-surface">
+        <PortfolioSwitcher
+          portfolios={state.portfolios}
+          activeId={active.id}
+          onSelect={selectPortfolio}
+          onCreate={handleCreate}
+          onRename={handleRename}
+          onDelete={handleDelete}
+        />
 
-      {savedFromPreviousVisit ? <SavedPortfolioNotice count={addresses.length} /> : null}
+        <div className="space-y-5 p-5 sm:p-6">
+          {savedFromPreviousVisit ? <SavedPortfolioNotice count={addresses.length} /> : null}
 
-      <WalletList
-        addresses={addresses}
-        onAdd={add}
-        onRemove={remove}
-        onClear={clear}
-        onLoad={load}
-        loading={loading}
-        heading={`Wallets in “${active.name}”`}
-        loadLabel={
-          shownResult
-            ? "Refresh portfolio"
-            : savedFromPreviousVisit
-              ? "Load saved portfolio"
-              : // One wallet is not a "portfolio" in the user's head, so name
-                // the action after what it actually does in that case.
-                addresses.length === 1
-                ? "Check wallet balances"
-                : "Load portfolio"
-        }
-      />
+          <WalletList
+            addresses={addresses}
+            onAdd={add}
+            onRemove={remove}
+            onClear={clear}
+            onLoad={load}
+            loading={loading}
+            heading={`Wallets in “${active.name}”`}
+            loadLabel={
+              shownResult
+                ? "Refresh portfolio"
+                : savedFromPreviousVisit
+                  ? "Load saved portfolio"
+                  : // One wallet is not a "portfolio" in the user's head, so name
+                    // the action after what it actually does in that case.
+                    addresses.length === 1
+                    ? "Check wallet balances"
+                    : "Load portfolio"
+            }
+          />
+        </div>
+      </div>
 
       {error && resultsMatchActive ? (
         <ErrorNotice title="Could not load the portfolio">{error}</ErrorNotice>
@@ -205,8 +212,13 @@ export function PortfolioClient() {
         </div>
       ) : null}
 
-      <div className="border-t border-line pt-10">
-        <NftCollectionChecker key={active.id} addresses={addresses} />
+      {/* Advanced NFT checker: kept visible and functional, framed as a quiet
+          secondary tool (faint fill, no depth). The component is shared with the
+          public profile and is not modified. */}
+      <div className="border-t border-line pt-8">
+        <div className="rounded-[12px] bg-raised/50 p-5 sm:p-6">
+          <NftCollectionChecker key={active.id} addresses={addresses} />
+        </div>
       </div>
     </div>
   );

@@ -51,20 +51,27 @@ export function SigningStep({
         </p>
       </div>
 
-      <ul className="space-y-3">
+      <ul className="depth-soft divide-y divide-line overflow-hidden rounded-[12px] border border-line bg-surface">
         {secondaries.map((wallet) => {
           const status = signatureStatusFor(draft, wallet);
           const isConnected = sameAddress(connectedAddress, wallet);
           const busy = signing !== null && sameAddress(signing, wallet);
 
           return (
-            <li key={wallet} className="rounded-[12px] border border-line bg-surface p-4">
+            <li key={wallet} className="px-4 py-3.5">
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <div className="min-w-0">
-                  <AddressChip address={wallet} />
+                  <div className="flex flex-wrap items-center gap-2">
+                    <AddressChip address={wallet} />
+                    {isConnected ? (
+                      <span className="rounded-full border border-line bg-raised px-2 py-0.5 text-[10px] font-medium text-muted">
+                        Connected
+                      </span>
+                    ) : null}
+                  </div>
                   <p className="mt-1 text-xs">
                     {status.state === "valid" ? (
-                      <span className="text-accent">Signed · nonce {status.signature.nonce}</span>
+                      <span className="text-success">Signed · nonce {status.signature.nonce}</span>
                     ) : status.state === "expired" ? (
                       <span className="text-danger">Signature expired. Sign again.</span>
                     ) : status.state === "stale-config" ? (
@@ -78,7 +85,7 @@ export function SigningStep({
                 </div>
 
                 {status.state === "valid" ? (
-                  <Badge tone="accent">Done</Badge>
+                  <Badge tone="success">Signed</Badge>
                 ) : isConnected ? (
                   <button
                     type="button"

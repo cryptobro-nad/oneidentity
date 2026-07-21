@@ -8,6 +8,7 @@ import { ErrorNotice } from "@/components/Notices";
 import { SetupStep } from "@/components/verified/SetupStep";
 import { SigningStep } from "@/components/verified/SigningStep";
 import { ReviewStep } from "@/components/verified/ReviewStep";
+import { StepProgress, type StepState } from "@/components/verified/StepProgress";
 import { WalletConnect } from "@/components/verified/WalletConnect";
 import { monad, ONE_REGISTRY_ADDRESS, PRIMARY_RPC } from "@/lib/chain";
 import { ONE_REGISTRY_ABI } from "@/lib/registry/abi";
@@ -35,7 +36,13 @@ import {
 import { buildJoinOneTypedData, deadlineFromNow, generateSalt } from "@/lib/registry/eip712";
 import { decodeRegistryError, type DecodedError } from "@/lib/registry/errors";
 import { DEFAULT_GAS_BUFFER_PERCENT, type GasPlan } from "@/lib/registry/gas";
-import { computeMembersHash, sameAddress, sortMembers } from "@/lib/registry/members";
+import {
+  computeMembersHash,
+  MIN_MEMBERS,
+  sameAddress,
+  secondariesInOrder,
+  sortMembers,
+} from "@/lib/registry/members";
 import { useWallet } from "@/lib/wallet/useWallet";
 import type { PortfolioAddress } from "@/lib/types";
 import {
@@ -418,9 +425,31 @@ export function VerifiedClient() {
   const canSubmit =
     issues.length === 0 && effectiveGasPlan !== null && effectivePredicted !== null;
 
+  // Progress states, derived purely from the real draft using the existing
+  // validation helpers. This never writes state or changes availability; it
+  // only reflects where the flow already is.
+  const hasValidSet = draft.members.length >= MIN_MEMBERS && draft.primary !== null;
+  const secondaries = draft.primary ? secondariesInOrder(draft.members, draft.primary) : [];
+  const allSigned =
+    hasValidSet &&
+    secondaries.length > 0 &&
+    secondaries.every((w) => signatureStatusFor(draft, w).state === "valid");
+  const stepState = (choose: StepState, sign: StepState, review: StepState) => [
+    { label: "Choose wallets", state: choose },
+    { label: "Sign with each wallet", state: sign },
+    { label: "Review and create", state: review },
+  ];
+  const steps = !hasValidSet
+    ? stepState("current", "upcoming", "upcoming")
+    : !allSigned
+      ? stepState("complete", "current", "upcoming")
+      : stepState("complete", "complete", "current");
+
   return (
     <div className="space-y-8">
-      <WalletConnect wallet={wallet} />
+      <StepProgress steps={steps} />
+
+      <WalletConnect wallet={wallet} elevated />
 
       {/* An already-linked wallet sees its identity FIRST, not buried in an
           error. The creation guardrail still appears further down. */}
