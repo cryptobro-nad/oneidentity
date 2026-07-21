@@ -195,14 +195,11 @@ export default function LandingPage() {
   return (
     <div className="mx-auto w-full max-w-6xl px-5 sm:px-8">
       {/* Hero */}
-      <section className="relative overflow-hidden py-14 sm:py-16">
+      <section className="relative overflow-hidden pt-8 pb-14 sm:pt-10 sm:pb-16">
         <HeroBackground />
         <div className="relative grid gap-10 lg:grid-cols-[46fr_54fr] lg:items-center lg:gap-14">
           <div>
-            <Badge tone="neutral" dot>
-              Built on Monad Mainnet
-            </Badge>
-            <h1 className="mt-5 text-4xl leading-[1.03] font-semibold tracking-[-0.035em] text-balance text-ink sm:text-6xl">
+            <h1 className="text-4xl leading-[1.03] font-semibold tracking-[-0.035em] text-balance text-ink sm:text-6xl">
               Many wallets.
               <br />
               One view.
