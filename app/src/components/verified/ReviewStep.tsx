@@ -17,7 +17,7 @@ export function ErrorPanel({ error }: { error: DecodedError }) {
         <summary className="cursor-pointer text-xs text-faint hover:text-muted">
           Technical details
         </summary>
-        <pre className="mt-2 overflow-x-auto rounded-lg bg-raised p-3 font-mono text-[11px] leading-relaxed text-muted">
+        <pre className="mt-2 overflow-x-auto rounded-[8px] bg-raised p-3 font-mono text-[11px] leading-relaxed text-muted">
           {error.name}
           {"\n"}
           {error.technical}
@@ -100,7 +100,7 @@ export function ReviewStep({
         </p>
       </div>
 
-      <div className="rounded-xl border border-warn/30 bg-warn-soft px-4 py-3.5">
+      <div className="rounded-[10px] border border-warn/30 bg-warn-soft px-4 py-3.5">
         <p className="text-sm font-medium text-ink">Verified ONE is public.</p>
         <p className="mt-1 text-sm text-muted">
           The selected wallets and their relationship will be visible onchain. Membership is
@@ -109,7 +109,7 @@ export function ReviewStep({
         </p>
       </div>
 
-      <dl className="divide-y divide-line overflow-hidden rounded-xl border border-line bg-surface">
+      <dl className="divide-y divide-line overflow-hidden rounded-[12px] border border-line bg-surface shadow-[var(--shadow-card)]">
         <div className="flex flex-wrap items-center justify-between gap-2 px-4 py-3">
           <dt className="text-sm text-faint">Primary wallet</dt>
           <dd>{primary ? <AddressChip address={primary} /> : <span className="text-sm text-faint">—</span>}</dd>
@@ -152,7 +152,7 @@ export function ReviewStep({
       </dl>
 
       {/* Gas: Monad bills the limit, so the buffer is a real cost, not free insurance. */}
-      <div className="rounded-xl border border-line bg-surface p-4">
+      <div className="rounded-[12px] border border-line bg-surface p-4 shadow-[var(--shadow-card)]">
         <h3 className="text-sm font-medium text-ink">Gas</h3>
         <p className="mt-1 text-sm text-muted">
           Monad charges the submitted gas limit, not the gas actually used. A larger buffer is
@@ -176,21 +176,21 @@ export function ReviewStep({
 
         {gasPlan ? (
           <dl className="mt-4 grid gap-2 sm:grid-cols-2">
-            <div className="flex justify-between gap-3 rounded-lg bg-raised px-3 py-2">
+            <div className="flex justify-between gap-3 rounded-[8px] bg-raised px-3 py-2">
               <dt className="text-xs text-faint">Estimated gas</dt>
               <dd className="tnum text-sm text-ink">{gasPlan.estimatedGas.toLocaleString()}</dd>
             </div>
-            <div className="flex justify-between gap-3 rounded-lg bg-raised px-3 py-2">
+            <div className="flex justify-between gap-3 rounded-[8px] bg-raised px-3 py-2">
               <dt className="text-xs text-faint">Gas limit submitted</dt>
               <dd className="tnum text-sm text-ink">{gasPlan.gasLimit.toLocaleString()}</dd>
             </div>
-            <div className="flex justify-between gap-3 rounded-lg bg-raised px-3 py-2">
+            <div className="flex justify-between gap-3 rounded-[8px] bg-raised px-3 py-2">
               <dt className="text-xs text-faint">Gas price</dt>
               <dd className="tnum text-sm text-ink">
                 {formatAmount(gasPlan.gasPrice, 9, 2)} gwei
               </dd>
             </div>
-            <div className="flex justify-between gap-3 rounded-lg bg-accent-soft px-3 py-2">
+            <div className="flex justify-between gap-3 rounded-[8px] border border-accent-line bg-accent-soft px-3 py-2">
               <dt className="text-xs text-accent">Maximum cost</dt>
               <dd className="tnum text-sm font-medium text-ink">
                 {formatAmount(gasPlan.maxCostWei, 18, 6)} MON
@@ -208,7 +208,7 @@ export function ReviewStep({
       </div>
 
       {issues.length > 0 ? (
-        <div role="status" className="rounded-xl border border-warn/30 bg-warn-soft px-4 py-3.5">
+        <div role="status" className="rounded-[10px] border border-warn/30 bg-warn-soft px-4 py-3.5">
           <p className="text-sm font-medium text-ink">Not ready to submit</p>
           <ul className="mt-2 space-y-1.5">
             {issues.map((issue, i) => (
@@ -227,7 +227,7 @@ export function ReviewStep({
           type="button"
           onClick={onSimulate}
           disabled={simulating || submitting}
-          className="rounded-lg border border-line-strong bg-surface px-4 py-2.5 text-sm font-medium text-ink transition-colors hover:bg-raised disabled:opacity-50"
+          className="rounded-[8px] border border-line-strong bg-surface px-4 py-2.5 text-sm font-medium text-ink transition-colors hover:bg-raised disabled:opacity-50"
         >
           {simulating ? "Simulating…" : "Simulate transaction"}
         </button>
@@ -236,7 +236,7 @@ export function ReviewStep({
           type="button"
           onClick={onSubmit}
           disabled={!canSubmit || submitting}
-          className="rounded-full bg-accent px-6 py-2.5 text-sm font-medium text-accent-ink transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40"
+          className="rounded-[8px] bg-accent px-6 py-2.5 text-sm font-medium text-accent-ink shadow-[0_1px_2px_rgba(16,24,40,0.08)] transition-colors hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-40"
         >
           {submitting ? "Waiting for confirmation…" : "Create Verified ONE"}
         </button>

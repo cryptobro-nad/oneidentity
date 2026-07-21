@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { Notice } from "./ui/Notice";
 
 /**
  * The unverified banner. Deliberately always visible on the portfolio page and
@@ -7,33 +8,18 @@ import type { ReactNode } from "react";
  */
 export function UnverifiedNotice() {
   return (
-    <div className="rounded-xl border border-warn/30 bg-warn-soft px-4 py-3.5 sm:px-5">
-      <div className="flex items-start gap-3">
-        <span
-          aria-hidden
-          className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-warn"
-        />
-        <div>
-          <p className="text-sm font-medium text-ink">Unverified portfolio</p>
-          <p className="mt-1 text-sm leading-relaxed text-muted">
-            These addresses were entered manually. ONE has not verified that they belong to the
-            same person.
-          </p>
-        </div>
-      </div>
-    </div>
+    <Notice tone="warn" title="Unverified — watch-only">
+      These addresses were entered manually. ONE has not verified that they belong to the same
+      person, and nothing here is written onchain.
+    </Notice>
   );
 }
 
 export function ErrorNotice({ title, children }: { title: string; children?: ReactNode }) {
   return (
-    <div
-      role="alert"
-      className="rounded-xl border border-danger/30 bg-danger-soft px-4 py-3.5 sm:px-5"
-    >
-      <p className="text-sm font-medium text-danger">{title}</p>
-      {children ? <div className="mt-1 text-sm text-muted">{children}</div> : null}
-    </div>
+    <Notice tone="danger" role="alert" title={title}>
+      {children}
+    </Notice>
   );
 }
 
@@ -41,18 +27,10 @@ export function ErrorNotice({ title, children }: { title: string; children?: Rea
  * Shown when some reads succeeded and others failed. Lists exactly which calls
  * failed so the user knows the totals are a lower bound, not the whole picture.
  */
-export function PartialNotice({
-  failures,
-}: {
-  failures: { label: string; detail: string }[];
-}) {
+export function PartialNotice({ failures }: { failures: { label: string; detail: string }[] }) {
   return (
-    <div
-      role="status"
-      className="rounded-xl border border-warn/30 bg-warn-soft px-4 py-3.5 sm:px-5"
-    >
-      <p className="text-sm font-medium text-ink">Partial data loaded</p>
-      <p className="mt-1 text-sm text-muted">
+    <Notice tone="warn" role="status" title="Partial data loaded">
+      <p>
         {failures.length} {failures.length === 1 ? "call" : "calls"} failed. The totals below
         exclude {failures.length === 1 ? "it" : "them"} rather than counting{" "}
         {failures.length === 1 ? "it" : "them"} as zero.
@@ -64,6 +42,6 @@ export function PartialNotice({
           </li>
         ))}
       </ul>
-    </div>
+    </Notice>
   );
 }

@@ -25,7 +25,7 @@ export function WalletConnect({ wallet }: { wallet: Wallet }) {
   // as the session having been lost.
   if (wallet.restoring && !wallet.address) {
     return (
-      <div className="rounded-xl border border-line bg-surface p-5">
+      <div className="rounded-[12px] border border-line bg-surface p-5 shadow-[var(--shadow-card)]">
         <p role="status" className="text-sm text-muted">
           Restoring wallet session…
         </p>
@@ -38,7 +38,7 @@ export function WalletConnect({ wallet }: { wallet: Wallet }) {
     const hasInjected = wallet.wallets.length > 0;
 
     return (
-      <div className="rounded-xl border border-line bg-surface p-5">
+      <div className="rounded-[12px] border border-line bg-surface p-5 shadow-[var(--shadow-card)]">
         <h3 className="text-sm font-medium text-ink">Connect a wallet</h3>
         <p className="mt-1.5 text-sm text-muted">
           ONE never asks for a private key, a token approval, or a transfer.
@@ -50,7 +50,7 @@ export function WalletConnect({ wallet }: { wallet: Wallet }) {
         {wallet.disconnectNotice ? (
           <div
             role="status"
-            className="mt-4 rounded-lg border border-warn/30 bg-warn-soft px-4 py-3 text-sm text-muted"
+            className="mt-4 rounded-[10px] border border-warn/30 bg-warn-soft px-4 py-3 text-sm text-muted"
           >
             {wallet.disconnectNotice}
           </div>
@@ -66,7 +66,7 @@ export function WalletConnect({ wallet }: { wallet: Wallet }) {
                     type="button"
                     onClick={() => void wallet.connect(w)}
                     disabled={wallet.connecting}
-                    className="inline-flex items-center gap-2 rounded-lg border border-line-strong bg-surface px-4 py-2.5 text-sm text-ink transition-colors hover:bg-raised disabled:opacity-50"
+                    className="inline-flex items-center gap-2 rounded-[8px] border border-line-strong bg-surface px-4 py-2.5 text-sm text-ink transition-colors hover:bg-raised disabled:opacity-50"
                   >
                     {w.info.icon ? (
                       <Image src={w.info.icon} alt="" width={18} height={18} unoptimized />
@@ -92,8 +92,8 @@ export function WalletConnect({ wallet }: { wallet: Wallet }) {
               disabled={wallet.connecting}
               className={
                 hasInjected
-                  ? "inline-flex items-center gap-2 rounded-lg border border-line-strong bg-surface px-4 py-2.5 text-sm text-ink transition-colors hover:bg-raised disabled:opacity-50"
-                  : "inline-flex w-full items-center justify-center gap-2 rounded-lg bg-accent px-4 py-3 text-sm font-medium text-accent-ink transition-opacity hover:opacity-90 disabled:opacity-50 sm:w-auto"
+                  ? "inline-flex items-center gap-2 rounded-[8px] border border-line-strong bg-surface px-4 py-2.5 text-sm text-ink transition-colors hover:bg-raised disabled:opacity-50"
+                  : "inline-flex w-full items-center justify-center gap-2 rounded-[8px] bg-accent px-4 py-3 text-sm font-medium text-accent-ink shadow-[0_1px_2px_rgba(16,24,40,0.08)] transition-colors hover:brightness-110 disabled:opacity-50 sm:w-auto"
               }
             >
               {wallet.connecting
@@ -133,7 +133,7 @@ export function WalletConnect({ wallet }: { wallet: Wallet }) {
   }
 
   return (
-    <div className="rounded-xl border border-line bg-surface p-5">
+    <div className="rounded-[12px] border border-line bg-surface p-5 shadow-[var(--shadow-card)]">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <p className="text-xs text-faint">Connected</p>
@@ -154,7 +154,7 @@ export function WalletConnect({ wallet }: { wallet: Wallet }) {
       </div>
 
       {!wallet.isOnMonad ? (
-        <div className="mt-4 rounded-lg border border-warn/30 bg-warn-soft px-4 py-3">
+        <div className="mt-4 rounded-[10px] border border-warn/30 bg-warn-soft px-4 py-3">
           <p className="text-sm font-medium text-ink">Wrong network</p>
           <p className="mt-1 text-sm text-muted">
             This wallet is on chain {wallet.chainId ?? "unknown"}. Verified ONE requires Monad
@@ -166,7 +166,7 @@ export function WalletConnect({ wallet }: { wallet: Wallet }) {
               type="button"
               onClick={() => void wallet.switchNetwork()}
               disabled={wallet.switching}
-              className="rounded-lg bg-accent px-4 py-2 text-sm font-medium text-accent-ink transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+              className="rounded-[8px] bg-accent px-4 py-2 text-sm font-medium text-accent-ink shadow-[0_1px_2px_rgba(16,24,40,0.08)] transition-colors hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-50"
             >
               {wallet.switching ? "Switching network…" : "Switch to Monad Mainnet"}
             </button>
@@ -174,7 +174,7 @@ export function WalletConnect({ wallet }: { wallet: Wallet }) {
               type="button"
               onClick={() => void wallet.checkNetwork()}
               disabled={wallet.switching}
-              className="rounded-lg border border-line-strong bg-surface px-4 py-2 text-sm text-ink transition-colors hover:bg-raised disabled:opacity-50"
+              className="rounded-[8px] border border-line-strong bg-surface px-4 py-2 text-sm text-ink transition-colors hover:bg-raised disabled:opacity-50"
             >
               Check network again
             </button>

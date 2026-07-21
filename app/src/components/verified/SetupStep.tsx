@@ -76,12 +76,12 @@ export function SetupStep({
             autoComplete="off"
             disabled={full || locked}
             aria-label="Wallet address"
-            className="min-w-0 flex-1 rounded-lg border border-line bg-surface px-3.5 py-2.5 font-mono text-sm text-ink placeholder:text-faint disabled:opacity-50"
+            className="min-w-0 flex-1 rounded-[8px] border border-line-strong bg-surface px-3.5 py-2.5 font-mono text-sm text-ink placeholder:text-faint focus:border-accent disabled:opacity-50"
           />
           <button
             type="submit"
             disabled={full || locked}
-            className="rounded-lg border border-line-strong bg-surface px-4 py-2.5 text-sm font-medium text-ink transition-colors hover:bg-raised disabled:cursor-not-allowed disabled:opacity-50"
+            className="rounded-[8px] border border-line-strong bg-surface px-4 py-2.5 text-sm font-medium text-ink transition-colors hover:bg-raised disabled:cursor-not-allowed disabled:opacity-50"
           >
             Add wallet
           </button>
@@ -101,7 +101,7 @@ export function SetupStep({
 
       {members.length > 0 ? (
         <>
-          <ul className="divide-y divide-line overflow-hidden rounded-xl border border-line bg-surface">
+          <ul className="divide-y divide-line overflow-hidden rounded-[12px] border border-line bg-surface shadow-[var(--shadow-card)]">
             {sorted.map((address, index) => {
               const state = stateFor(address);
               const bound = state && state.activeOne !== ZERO;
@@ -167,7 +167,7 @@ export function SetupStep({
           </div>
         </>
       ) : (
-        <p className="rounded-xl border border-dashed border-line px-4 py-8 text-center text-sm text-faint">
+        <p className="rounded-[12px] border border-dashed border-line-strong px-4 py-10 text-center text-sm text-faint">
           Add the wallets you want to link.
         </p>
       )}

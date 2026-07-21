@@ -59,7 +59,11 @@ function TotalCard({
   emphasis?: boolean;
 }) {
   return (
-    <div className="rounded-xl border border-line bg-surface px-4 py-4 sm:px-5 sm:py-5">
+    <div
+      className={`rounded-[12px] border bg-surface px-4 py-4 shadow-[var(--shadow-card)] sm:px-5 sm:py-5 ${
+        emphasis ? "border-line border-l-2 border-l-accent" : "border-line"
+      }`}
+    >
       <div className="flex items-center gap-2">
         <p className="text-xs tracking-wide text-faint uppercase">{symbol}</p>
         {incomplete ? (
@@ -113,7 +117,7 @@ export function PortfolioResult({ portfolio }: { portfolio: AggregatedPortfolio 
   return (
     <section aria-labelledby="combined-heading" className="space-y-6">
       <div className="flex flex-wrap items-baseline justify-between gap-x-6 gap-y-2">
-        <h2 id="combined-heading" className="text-lg font-medium text-ink">
+        <h2 id="combined-heading" className="text-xl font-semibold tracking-[-0.01em] text-ink">
           Combined balances
         </h2>
         <dl className="flex flex-wrap items-baseline gap-x-5 gap-y-1 text-xs text-faint">
@@ -176,7 +180,7 @@ export function PortfolioResult({ portfolio }: { portfolio: AggregatedPortfolio 
           type="button"
           onClick={() => setShowZero((v) => !v)}
           aria-pressed={showZero}
-          className="rounded-lg border border-line-strong bg-surface px-3.5 py-2 text-sm text-ink transition-colors hover:bg-raised"
+          className="rounded-[8px] border border-line-strong bg-surface px-3.5 py-2 text-sm text-ink transition-colors hover:bg-raised"
         >
           {showZero ? "Hide zero balances" : "Show zero balances"}
         </button>
@@ -195,9 +199,9 @@ export function PortfolioResult({ portfolio }: { portfolio: AggregatedPortfolio 
       ) : null}
 
       <div>
-        <h3 className="mb-3 text-sm font-medium text-ink">Per-wallet breakdown</h3>
+        <h3 className="mb-3 text-sm font-semibold text-ink">Per-wallet breakdown</h3>
 
-        <div className="overflow-x-auto rounded-xl border border-line bg-surface">
+        <div className="overflow-x-auto rounded-[12px] border border-line bg-surface shadow-[var(--shadow-card)]">
           <table className="w-full min-w-[38rem] border-collapse text-left">
             <thead>
               <tr className="border-b border-line">

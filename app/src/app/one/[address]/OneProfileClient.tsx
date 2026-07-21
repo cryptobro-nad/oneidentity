@@ -5,6 +5,8 @@ import Link from "next/link";
 import { createPublicClient, http } from "viem";
 import { AddressChip } from "@/components/AddressChip";
 import { ErrorNotice } from "@/components/Notices";
+import { Badge } from "@/components/ui/Badge";
+import { Notice } from "@/components/ui/Notice";
 import { NftCollectionChecker } from "@/components/NftCollectionChecker";
 import { NftHoldings } from "@/components/NftHoldings";
 import { OneLookup } from "@/components/OneLookup";
@@ -143,50 +145,46 @@ export function OneProfileClient({ initial }: { initial: WireProfile }) {
   return (
     <div className="space-y-10">
       {/* Identity header */}
-      <section className="rounded-2xl border border-line bg-surface p-6">
+      <section className="rounded-[16px] border border-line bg-surface p-6 shadow-[var(--shadow-card)]">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div className="min-w-0">
-            <p className="text-xs tracking-wide text-faint uppercase">ONE identity</p>
-            <p className="mt-2 font-mono text-lg break-all text-ink">{profile.address}</p>
+            <div className="flex items-center gap-2.5">
+              <p className="eyebrow">ONE identity</p>
+              <Badge tone={profile.isActive ? "success" : "neutral"} dot>
+                {profile.isActive ? "Active" : "Inactive"}
+              </Badge>
+            </div>
+            <p className="mt-2.5 font-mono text-base break-all text-ink sm:text-lg">
+              {profile.address}
+            </p>
             <div className="mt-2">
               <AddressChip address={profile.address} />
             </div>
           </div>
-
-          <span
-            className={`rounded-full px-3 py-1 text-xs font-medium ${
-              profile.isActive
-                ? "bg-accent-soft text-accent"
-                : "border border-line-strong bg-raised text-muted"
-            }`}
-          >
-            {profile.isActive ? "Active" : "Inactive"}
-          </span>
         </div>
 
         {!profile.isActive ? (
-          <div className="mt-5 rounded-xl border border-warn/30 bg-warn-soft px-4 py-3.5">
-            <p className="text-sm font-medium text-ink">This ONE is inactive.</p>
-            <p className="mt-1 text-sm text-muted">
-              Only the historical primary wallet remains, so this identity no longer represents a
-              group of wallets. Its membership history stays permanently visible, but it must not
-              be treated as valid for current eligibility, and combined balances are not shown.
-            </p>
-          </div>
+          <Notice tone="warn" title="This ONE is inactive." className="mt-5">
+            Only the historical primary wallet remains, so this identity no longer represents a
+            group of wallets. Its membership history stays permanently visible, but it must not be
+            treated as valid for current eligibility, and combined balances are not shown.
+          </Notice>
         ) : null}
 
         <dl className="mt-6 grid gap-4 sm:grid-cols-3">
-          <div>
-            <dt className="text-xs text-faint">Wallets in this ONE</dt>
+          <div className="rounded-[10px] border border-line bg-raised px-4 py-3">
+            <dt className="eyebrow">Wallets in this ONE</dt>
             <dd className="tnum mt-1 text-2xl font-semibold text-ink">{profile.memberCount}</dd>
           </div>
-          <div>
-            <dt className="text-xs text-faint">Network</dt>
-            <dd className="mt-1 text-sm text-ink">Monad Mainnet · 143</dd>
+          <div className="rounded-[10px] border border-line bg-raised px-4 py-3">
+            <dt className="eyebrow">Network</dt>
+            <dd className="mt-1 text-sm font-medium text-ink">Monad Mainnet · 143</dd>
           </div>
-          <div>
-            <dt className="text-xs text-faint">Block</dt>
-            <dd className="tnum mt-1 text-sm text-ink">{formatBlockNumber(profile.blockNumber)}</dd>
+          <div className="rounded-[10px] border border-line bg-raised px-4 py-3">
+            <dt className="eyebrow">Block</dt>
+            <dd className="tnum mt-1 text-sm font-medium text-ink">
+              {formatBlockNumber(profile.blockNumber)}
+            </dd>
           </div>
         </dl>
 
@@ -197,11 +195,11 @@ export function OneProfileClient({ initial }: { initial: WireProfile }) {
 
       {/* Members */}
       <section aria-labelledby="members-heading" className="space-y-4">
-        <h2 id="members-heading" className="text-lg font-medium text-ink">
+        <h2 id="members-heading" className="text-xl font-semibold tracking-[-0.01em] text-ink">
           Linked wallets
         </h2>
 
-        <ul className="divide-y divide-line overflow-hidden rounded-xl border border-line bg-surface">
+        <ul className="divide-y divide-line overflow-hidden rounded-[12px] border border-line bg-surface shadow-[var(--shadow-card)]">
           {profile.members.map((member, index) => {
             const isPrimary = sameAddress(member, profile.primary);
             const permission = canRemove(profile, member, wallet.address);
@@ -216,11 +214,9 @@ export function OneProfileClient({ initial }: { initial: WireProfile }) {
                   <AddressChip address={member} />
                 </div>
                 {isPrimary ? (
-                  <span className="rounded-full bg-accent-soft px-2.5 py-0.5 text-xs text-accent">
-                    Primary
-                  </span>
+                  <Badge tone="accent">Primary</Badge>
                 ) : (
-                  <span className="text-xs text-faint">Secondary</span>
+                  <Badge tone="neutral">Secondary</Badge>
                 )}
 
                 {permission.allowed ? (
@@ -278,7 +274,7 @@ export function OneProfileClient({ initial }: { initial: WireProfile }) {
         </section>
       ) : (
         <section className="border-t border-line pt-10">
-          <h2 className="text-lg font-medium text-ink">Combined balances</h2>
+          <h2 className="text-xl font-semibold tracking-[-0.01em] text-ink">Combined balances</h2>
           <p className="mt-2 text-sm text-muted">
             Not shown for an inactive identity. Aggregation is disabled on-chain once only the
             primary remains, and a single wallet&apos;s balance must not be presented as a combined
@@ -301,8 +297,8 @@ export function OneProfileClient({ initial }: { initial: WireProfile }) {
 
       {/* Registry / explorer */}
       <section className="border-t border-line pt-10">
-        <h2 className="text-lg font-medium text-ink">Registry</h2>
-        <dl className="mt-4 divide-y divide-line overflow-hidden rounded-xl border border-line bg-surface">
+        <h2 className="text-xl font-semibold tracking-[-0.01em] text-ink">Registry</h2>
+        <dl className="mt-4 divide-y divide-line overflow-hidden rounded-[12px] border border-line bg-surface shadow-[var(--shadow-card)]">
           <div className="flex flex-wrap items-center justify-between gap-2 px-4 py-3">
             <dt className="text-sm text-faint">ONERegistry</dt>
             <dd>

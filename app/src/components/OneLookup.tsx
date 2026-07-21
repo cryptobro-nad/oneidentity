@@ -54,22 +54,22 @@ export function OneLookup({ compact = false }: { compact?: boolean }) {
       aria-labelledby={`${inputId}-heading`}
       className={
         compact
-          ? "rounded-xl border border-line bg-surface p-5"
-          : "rounded-2xl border border-line bg-surface p-6 sm:p-8"
+          ? "rounded-[12px] border border-line bg-surface p-5 shadow-[var(--shadow-card)]"
+          : "rounded-[16px] border border-line bg-surface p-6 shadow-[var(--shadow-card)] sm:p-8"
       }
     >
       <h2
         id={`${inputId}-heading`}
-        className={compact ? "text-sm font-medium text-ink" : "text-lg font-medium text-ink"}
+        className={compact ? "text-sm font-semibold text-ink" : "text-xl font-semibold tracking-[-0.01em] text-ink"}
       >
         {compact ? "Look up another ONE" : "Look up a Verified ONE"}
       </h2>
       <p className="mt-1.5 text-sm text-muted">
-        Paste a ONE identity address or a wallet currently linked to one.
+        Paste a ONE identity address or a wallet currently linked to one. No connection needed.
       </p>
 
       <form onSubmit={submit} noValidate className="mt-4 space-y-2">
-        <label htmlFor={inputId} className="block text-xs text-faint">
+        <label htmlFor={inputId} className="eyebrow block">
           ONE identity or wallet address
         </label>
         <div className="flex flex-col gap-2 sm:flex-row">
@@ -86,12 +86,12 @@ export function OneLookup({ compact = false }: { compact?: boolean }) {
             inputMode="text"
             aria-invalid={error ? true : undefined}
             aria-describedby={error ? `${inputId}-error` : undefined}
-            className="min-w-0 flex-1 rounded-lg border border-line bg-canvas px-3.5 py-2.5 font-mono text-sm text-ink placeholder:text-faint"
+            className="min-w-0 flex-1 rounded-[8px] border border-line-strong bg-canvas px-3.5 py-2.5 font-mono text-sm text-ink placeholder:text-faint focus:border-accent"
           />
           <button
             type="submit"
             disabled={loading}
-            className="shrink-0 rounded-lg bg-accent px-5 py-2.5 text-sm font-medium text-accent-ink transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+            className="shrink-0 rounded-[8px] bg-accent px-5 py-2.5 text-sm font-medium text-accent-ink shadow-[0_1px_2px_rgba(16,24,40,0.08)] transition-colors hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-50"
           >
             {loading ? "Looking up…" : "View identity"}
           </button>

@@ -43,7 +43,7 @@ export function SigningStep({
         ) : null}
       </div>
 
-      <div className="rounded-xl border border-line bg-raised px-4 py-3">
+      <div className="rounded-[12px] border border-line bg-raised px-4 py-3">
         <p className="text-sm text-muted">
           <span className="font-medium text-ink">
             Wallet signatures authorize identity membership only.
@@ -60,7 +60,7 @@ export function SigningStep({
           const busy = signing !== null && sameAddress(signing, wallet);
 
           return (
-            <li key={wallet} className="rounded-xl border border-line bg-surface p-4">
+            <li key={wallet} className="rounded-[12px] border border-line bg-surface p-4 shadow-[var(--shadow-card)]">
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <div className="min-w-0">
                   <AddressChip address={wallet} />
@@ -91,7 +91,7 @@ export function SigningStep({
                     // re-reads the chain live and requests the switch if needed,
                     // so a wallet already on Monad is never blocked by old state.
                     disabled={busy}
-                    className="rounded-lg bg-accent px-4 py-2 text-sm font-medium text-accent-ink transition-opacity hover:opacity-90 disabled:opacity-50"
+                    className="rounded-[8px] bg-accent px-4 py-2 text-sm font-medium text-accent-ink shadow-[0_1px_2px_rgba(16,24,40,0.08)] transition-colors hover:brightness-110 disabled:opacity-50"
                   >
                     {busy ? "Waiting for wallet…" : "Sign with this wallet"}
                   </button>

@@ -439,7 +439,7 @@ export function VerifiedClient() {
       ) : null}
 
       {invalidatedNotice ? (
-        <div role="status" className="rounded-xl border border-warn/30 bg-warn-soft px-4 py-3.5">
+        <div role="status" className="rounded-[10px] border border-warn/30 bg-warn-soft px-4 py-3.5">
           <p className="text-sm font-medium text-ink">
             The identity configuration changed. Previous signatures are no longer valid.
           </p>
