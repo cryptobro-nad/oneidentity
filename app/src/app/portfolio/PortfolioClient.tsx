@@ -158,7 +158,7 @@ export function PortfolioClient() {
       {/* One workspace surface: portfolio selection, selected state and wallet
           count, add-wallet input, wallet list and actions live together as
           zones separated by dividers, not as separate stacked cards. */}
-      <div className="depth divide-y divide-line overflow-hidden rounded-[16px] border border-line bg-surface">
+      <div className="card divide-y divide-line overflow-hidden">
         <PortfolioSwitcher
           portfolios={state.portfolios}
           activeId={active.id}
@@ -216,7 +216,7 @@ export function PortfolioClient() {
           secondary tool (faint fill, no depth). The component is shared with the
           public profile and is not modified. */}
       <div className="border-t border-line pt-8">
-        <div className="rounded-[12px] bg-raised/50 p-5 sm:p-6">
+        <div className="rounded-[16px] border border-line bg-surface-2/40 p-5 sm:p-6">
           <NftCollectionChecker key={active.id} addresses={addresses} />
         </div>
       </div>

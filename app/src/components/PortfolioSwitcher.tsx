@@ -72,7 +72,7 @@ export function PortfolioSwitcher({
   return (
     <section aria-labelledby={headingId} className="p-5 sm:p-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <h2 id={headingId} className="text-sm font-semibold text-ink">
+        <h2 id={headingId} className="font-serif text-[1.2rem] leading-tight text-ink">
           Your portfolios
         </h2>
         <button
@@ -83,7 +83,7 @@ export function PortfolioSwitcher({
             setDraftName("");
             setError(null);
           }}
-          className="rounded-[8px] border border-line-strong bg-surface px-3.5 py-2 text-sm text-ink transition-colors hover:bg-raised"
+          className="rounded-[9px] border border-line-strong bg-surface px-3.5 py-2 font-mono text-[0.78rem] text-ink-2 transition-colors hover:border-accent hover:text-ink"
         >
           New portfolio
         </button>
@@ -96,10 +96,10 @@ export function PortfolioSwitcher({
           return (
             <li
               key={p.id}
-              className={`flex flex-wrap items-center gap-x-3 gap-y-2 rounded-[10px] border px-3 py-2.5 transition-colors ${
+              className={`flex flex-wrap items-center gap-x-3 gap-y-2 rounded-[12px] border px-3.5 py-3 transition-colors ${
                 isActive
-                  ? "border-line border-l-2 border-l-accent bg-raised"
-                  : "border-line bg-canvas hover:bg-raised"
+                  ? "border-accent/45 bg-surface-2 shadow-[inset_2px_0_0_0_var(--accent)]"
+                  : "border-line bg-surface hover:border-line-strong hover:bg-surface-2/60"
               }`}
             >
               {/* The row body selects. min-w-0 lets a long name truncate
@@ -122,7 +122,7 @@ export function PortfolioSwitcher({
                     </span>
                   ) : null}
                 </span>
-                <span className="mt-0.5 block text-xs text-faint">
+                <span className="mt-1 block font-mono text-[0.72rem] tabular-nums text-ink-3">
                   {p.addresses.length} {p.addresses.length === 1 ? "wallet" : "wallets"}
                 </span>
               </button>
@@ -165,12 +165,12 @@ export function PortfolioSwitcher({
 
       {mode === "create" || mode === "rename" ? (
         <form onSubmit={submit} noValidate className="mt-4 border-t border-line pt-4">
-          <label htmlFor={nameInputId} className="block text-xs text-faint">
+          <label htmlFor={nameInputId} className="eyebrow block">
             {mode === "create"
               ? "Name for the new portfolio"
               : `New name for “${target?.name ?? ""}”`}
           </label>
-          <div className="mt-1 flex flex-col gap-2 sm:flex-row">
+          <div className="mt-2 flex flex-col gap-2.5 sm:flex-row">
             <input
               id={nameInputId}
               ref={inputRef}
@@ -184,20 +184,13 @@ export function PortfolioSwitcher({
               aria-invalid={error ? true : undefined}
               aria-describedby={error ? `${nameInputId}-error` : undefined}
               placeholder="Trading wallets"
-              className="min-w-0 flex-1 rounded-[8px] border border-line-strong bg-canvas px-3.5 py-2.5 text-sm text-ink placeholder:text-faint focus:border-accent"
+              className="min-w-0 flex-1 rounded-[11px] border border-line-strong bg-bg px-4 py-3 text-sm text-ink transition-[border-color,box-shadow] placeholder:text-ink-3 focus:border-accent focus:shadow-[0_0_0_3px_var(--glow)]"
             />
-            <div className="flex gap-2">
-              <button
-                type="submit"
-                className="rounded-[8px] bg-accent px-4 py-2.5 text-sm font-medium text-accent-ink shadow-[0_1px_2px_rgba(16,24,40,0.08)] transition-colors hover:brightness-110"
-              >
+            <div className="flex gap-2.5">
+              <button type="submit" className="btn btn-primary">
                 {mode === "create" ? "Create" : "Save name"}
               </button>
-              <button
-                type="button"
-                onClick={close}
-                className="rounded-[8px] border border-line-strong bg-surface px-4 py-2.5 text-sm text-muted transition-colors hover:bg-raised"
-              >
+              <button type="button" onClick={close} className="btn btn-ghost">
                 Cancel
               </button>
             </div>
