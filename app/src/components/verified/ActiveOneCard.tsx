@@ -61,14 +61,16 @@ export function ActiveOneCard({
   return (
     <section
       aria-labelledby="active-one-heading"
-      className="depth rounded-[12px] border border-line border-l-2 border-l-accent bg-surface p-6"
+      className="card border-line-strong p-6 sm:p-7"
+      style={{ background: "linear-gradient(160deg, var(--surface-2), var(--surface))" }}
     >
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h2 id="active-one-heading" className="text-xl font-semibold tracking-[-0.01em] text-ink">
+          <span className="eyebrow">Your Verified ONE</span>
+          <h2 id="active-one-heading" className="mt-2 font-serif text-[1.6rem] leading-tight text-ink">
             Your active ONE
           </h2>
-          <p className="mt-1 text-sm text-muted">
+          <p className="mt-1.5 text-sm text-ink-2">
             This wallet is already linked to a Verified ONE.
           </p>
         </div>
@@ -79,55 +81,57 @@ export function ActiveOneCard({
 
       <dl className="mt-5 space-y-4">
         <div>
-          <dt className="eyebrow">ONE address</dt>
-          <dd className="mt-1 font-mono text-sm break-all text-ink">{membership.oneAddress}</dd>
+          <dt className="eyebrow">ONE identity address</dt>
+          <dd className="mono mt-1.5 text-[clamp(0.95rem,2.2vw,1.15rem)] break-all text-ink">
+            {membership.oneAddress}
+          </dd>
+          <p className="mt-2 max-w-[46ch] text-[0.8rem] leading-relaxed text-ink-3">
+            This is an identity address, not a wallet. Do not send funds to it.
+          </p>
         </div>
 
-        <div className="flex flex-wrap gap-x-8 gap-y-3">
+        <div className="flex flex-wrap gap-x-8 gap-y-3 border-t border-line pt-4">
           <div>
             <dt className="eyebrow">Your role</dt>
-            <dd className="mt-1 text-sm text-ink">
+            <dd className="mt-1.5 font-mono text-sm text-ink">
               {membership.role === "primary" ? "Primary" : "Secondary"}
             </dd>
           </div>
           <div>
             <dt className="eyebrow">Connected wallet</dt>
-            <dd className="mt-1 font-mono text-sm text-ink" title={connectedAddress}>
+            <dd className="mt-1.5 font-mono text-sm text-ink" title={connectedAddress}>
               {shortenAddress(connectedAddress)}
             </dd>
           </div>
           <div>
             <dt className="eyebrow">Linked wallets</dt>
-            <dd className="tnum mt-1 text-sm text-ink">{membership.memberCount}</dd>
+            <dd className="tnum mt-1.5 font-mono text-sm text-ink">{membership.memberCount}</dd>
           </div>
         </div>
       </dl>
 
       <div className="mt-6 flex flex-wrap items-center gap-3">
-        <Link
-          href={oneProfilePath(membership.oneAddress)}
-          className="rounded-[8px] bg-accent px-5 py-2.5 text-sm font-medium text-accent-ink shadow-[0_1px_2px_rgba(16,24,40,0.08)] transition-colors hover:brightness-110"
-        >
+        <Link href={oneProfilePath(membership.oneAddress)} className="btn btn-primary">
           View my ONE
         </Link>
         <button
           type="button"
           onClick={() => void copy("address")}
-          className="rounded-[8px] border border-line-strong bg-surface px-4 py-2.5 text-sm text-ink transition-colors hover:bg-raised"
+          className="btn btn-ghost"
         >
           {copied === "address" ? "Copied" : "Copy ONE address"}
         </button>
         <button
           type="button"
           onClick={() => void copy("link")}
-          className="rounded-[8px] border border-line-strong bg-surface px-4 py-2.5 text-sm text-ink transition-colors hover:bg-raised"
+          className="btn btn-ghost"
         >
           {copied === "link" ? "Copied" : "Copy profile link"}
         </button>
       </div>
 
       {/* Announced to screen readers without stealing focus. */}
-      <p aria-live="polite" role="status" className="mt-3 min-h-[1.25rem] text-xs text-accent">
+      <p aria-live="polite" role="status" className="mt-3 min-h-[1.25rem] font-mono text-[0.72rem] text-accent-live">
         {announcement}
       </p>
     </section>

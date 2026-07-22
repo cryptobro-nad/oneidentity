@@ -20,9 +20,12 @@ function isLikelyMobile(): boolean {
 }
 
 export function WalletConnect({ wallet, elevated = false }: { wallet: Wallet; elevated?: boolean }) {
-  // Opt-in surface depth. Defaults off so the public profile's call site keeps
-  // its current output byte-for-byte; only the Verified flow passes `elevated`.
-  const surface = `rounded-[12px] border border-line bg-surface p-5${elevated ? " depth" : ""}`;
+  // Opt-in surface treatment. Defaults to the original so the public profile's
+  // call site keeps its current output byte-for-byte; only the Verified flow
+  // passes `elevated`, which upgrades to the green card surface.
+  const surface = elevated
+    ? "card p-5 sm:p-6"
+    : "rounded-[12px] border border-line bg-surface p-5";
 
   // Checking for a saved session first. Without this the page briefly shows
   // "Connect a wallet" to someone who is in fact still connected, which reads

@@ -54,34 +54,35 @@ export function SetupStep({
   return (
     <section aria-labelledby="setup-heading" className="space-y-5">
       <div>
-        <h2 id="setup-heading" className="text-lg font-semibold tracking-[-0.01em] text-ink">
-          1. Choose wallets
+        <span className="eyebrow">Step 1</span>
+        <h2 id="setup-heading" className="mt-2 font-serif text-[1.5rem] leading-tight text-ink">
+          Choose wallets
         </h2>
-        <p className="mt-1.5 text-sm text-muted">
+        <p className="mt-2 text-[0.95rem] leading-relaxed text-ink-2">
           Add {MIN_MEMBERS} to {MAX_MEMBERS} wallets. Pick one as the primary wallet, which submits
           the transaction. The others sign to join.
         </p>
       </div>
 
       <form onSubmit={submit} noValidate className="space-y-2">
-        <div className="flex flex-col gap-2 sm:flex-row">
+        <div className="flex flex-col gap-2.5 sm:flex-row">
           <input
             value={draft}
             onChange={(e) => {
               setDraft(e.target.value);
               if (error) setError(null);
             }}
-            placeholder="0x…"
+            placeholder="0x… wallet address"
             spellCheck={false}
             autoComplete="off"
             disabled={full || locked}
             aria-label="Wallet address"
-            className="min-w-0 flex-1 rounded-[8px] border border-line-strong bg-surface px-3.5 py-2.5 font-mono text-sm text-ink placeholder:text-faint focus:border-accent disabled:opacity-50"
+            className="min-w-0 flex-1 rounded-[11px] border border-line-strong bg-bg px-4 py-3 font-mono text-sm text-ink transition-[border-color,box-shadow] placeholder:text-ink-3 focus:border-accent focus:shadow-[0_0_0_3px_var(--glow)] disabled:opacity-50"
           />
           <button
             type="submit"
             disabled={full || locked}
-            className="rounded-[8px] border border-line-strong bg-surface px-4 py-2.5 text-sm font-medium text-ink transition-colors hover:bg-raised disabled:cursor-not-allowed disabled:opacity-50"
+            className="btn btn-ghost shrink-0 justify-center disabled:cursor-not-allowed disabled:opacity-50"
           >
             Add wallet
           </button>
@@ -101,7 +102,7 @@ export function SetupStep({
 
       {members.length > 0 ? (
         <>
-          <ul className="depth-soft divide-y divide-line overflow-hidden rounded-[12px] border border-line bg-surface">
+          <ul className="space-y-2">
             {sorted.map((address, index) => {
               const state = stateFor(address);
               const bound = state && state.activeOne !== ZERO;
@@ -111,29 +112,42 @@ export function SetupStep({
                 <li
                   key={address}
                   className={
-                    "flex flex-wrap items-center gap-3 px-4 py-3 transition-colors " +
-                    (isPrimary ? "border-l-2 border-l-accent bg-accent-soft/40" : "border-l-2 border-l-transparent")
+                    "flex flex-wrap items-center gap-3 rounded-[12px] border px-4 py-3 transition-colors " +
+                    (isPrimary
+                      ? "border-accent/45 bg-surface-2 shadow-[inset_2px_0_0_0_var(--accent)]"
+                      : "border-line bg-surface")
                   }
                 >
-                  <span className="w-[4.5rem] shrink-0 text-xs text-faint">
+                  <span className="shrink-0 rounded-[6px] border border-line-strong px-2 py-1 font-mono text-[0.66rem] tracking-[0.08em] text-ink-3 uppercase">
                     {walletLabel(index)}
                   </span>
 
                   <div className="min-w-0 flex-1">
-                    <AddressChip address={address} />
+                    <div className="flex flex-wrap items-center gap-2">
+                      <AddressChip address={address} />
+                      {primary ? (
+                        isPrimary ? (
+                          <span className="rounded-[5px] border border-accent px-2 py-[3px] font-mono text-[0.6rem] tracking-[0.1em] text-accent-deep">
+                            PRIMARY
+                          </span>
+                        ) : (
+                          <span className="rounded-[5px] border border-line-strong px-2 py-[3px] font-mono text-[0.6rem] tracking-[0.1em] text-ink-3">
+                            SECONDARY
+                          </span>
+                        )
+                      ) : null}
+                    </div>
                     {bound ? (
-                      <p className="mt-1 text-xs text-danger">
+                      <p className="mt-1 font-mono text-[0.72rem] text-danger">
                         Already in an active ONE ({shortenAddress(state!.activeOne)}). Remove it or
                         leave that ONE first.
                       </p>
                     ) : state ? (
-                      <p className="mt-1 text-xs text-faint">
-                        Unbound · nonce {state.nonce}
-                      </p>
+                      <p className="mt-1 font-mono text-[0.72rem] text-ink-3">Unbound · nonce {state.nonce}</p>
                     ) : null}
                   </div>
 
-                  <label className="flex items-center gap-1.5 text-xs text-muted">
+                  <label className="flex items-center gap-1.5 font-mono text-[0.72rem] text-ink-2">
                     <input
                       type="radio"
                       name="primary"
@@ -147,7 +161,7 @@ export function SetupStep({
                   <button
                     type="button"
                     onClick={() => onRemove(address)}
-                    className="text-xs text-faint transition-colors hover:text-danger"
+                    className="rounded-[7px] px-2 py-1 font-mono text-[0.72rem] text-ink-3 transition-colors hover:text-danger"
                     aria-label={`Remove ${address}`}
                   >
                     Remove
@@ -158,7 +172,7 @@ export function SetupStep({
           </ul>
 
           <div className="flex flex-wrap items-center justify-between gap-3">
-            <p className="text-xs text-faint">
+            <p className="max-w-md text-[0.75rem] leading-relaxed text-ink-3">
               Canonical order shown above is the ascending order the registry requires. Your entry
               order is not used.
             </p>
@@ -166,7 +180,7 @@ export function SetupStep({
               type="button"
               onClick={onRefresh}
               disabled={checking}
-              className="text-xs text-muted transition-colors hover:text-ink disabled:opacity-50"
+              className="font-mono text-[0.72rem] text-ink-2 transition-colors hover:text-ink disabled:opacity-50"
             >
               {checking ? "Checking…" : "Re-check onchain state"}
             </button>
