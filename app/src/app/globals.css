@@ -204,9 +204,15 @@ body::before {
   .wrap {
     width: min(1180px, 100% - 32px);
   }
-  /* Compact the status pill on small screens without dropping the label. */
+  /* Keep the status pill compact on small screens, but readable. */
   .net-name {
-    font-size: 0.68rem;
+    font-size: 0.72rem;
+  }
+  /* Nudge eyebrow labels up for legibility on small screens without
+     disturbing the desktop rhythm. */
+  .eyebrow {
+    font-size: 0.72rem;
+    letter-spacing: 0.12em;
   }
 }
 

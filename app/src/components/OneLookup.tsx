@@ -55,14 +55,14 @@ export function OneLookup({ compact = false }: { compact?: boolean }) {
       className={
         compact
           ? "rounded-[12px] border border-line bg-surface p-5 shadow-[var(--shadow-card)]"
-          : "depth mx-auto max-w-xl rounded-[16px] border border-line bg-surface p-5"
+          : "card p-6 sm:p-[30px]"
       }
     >
       <div className={compact ? "" : "flex flex-wrap items-start justify-between gap-4"}>
         <div className="min-w-0">
           <h2
             id={`${inputId}-heading`}
-            className={compact ? "text-sm font-semibold text-ink" : "text-xl font-semibold tracking-[-0.01em] text-ink"}
+            className={compact ? "text-sm font-semibold text-ink" : "font-serif text-[1.6rem] leading-tight text-ink"}
           >
             {compact ? "Look up another ONE" : "Look up a Verified ONE"}
           </h2>
@@ -112,7 +112,7 @@ export function OneLookup({ compact = false }: { compact?: boolean }) {
               "min-w-0 flex-1 rounded-[8px] border border-line-strong bg-canvas px-3.5 py-2.5 font-mono text-sm text-ink placeholder:text-faint focus:border-accent" +
               (compact
                 ? ""
-                : " transition-[border-color,box-shadow] focus:shadow-[0_0_0_3px_var(--accent-soft)]")
+                : " transition-[border-color,box-shadow] focus:shadow-[0_0_0_3px_var(--glow)]")
             }
           />
           <button

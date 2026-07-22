@@ -10,7 +10,7 @@ type FootLink = { href: string; label: string; external?: boolean };
 function FootCol({ title, links }: { title: string; links: FootLink[] }) {
   return (
     <div>
-      <h2 className="mb-4 font-mono text-[0.66rem] font-normal tracking-[0.15em] text-ink-3 uppercase">
+      <h2 className="mb-3 font-mono text-[0.7rem] font-normal tracking-[0.13em] text-ink-3 uppercase sm:mb-4 sm:text-[0.66rem] sm:tracking-[0.15em]">
         {title}
       </h2>
       <ul className="space-y-0">
@@ -39,12 +39,12 @@ export function SiteFooter() {
   return (
     <footer className="relative z-[1] mt-5 border-t border-line bg-surface">
       <div className="wrap">
-        <div className="grid grid-cols-1 gap-9 py-12 sm:grid-cols-2 md:grid-cols-[1.6fr_1fr_1fr] md:py-14">
+        <div className="grid grid-cols-1 gap-7 py-9 sm:grid-cols-2 sm:gap-9 md:grid-cols-[1.6fr_1fr_1fr] md:py-14">
           <div>
             <Link href="/" aria-label="ONE home" className="inline-flex">
               <OneLogo />
             </Link>
-            <p className="mt-[18px] max-w-[34ch] text-[0.875rem] text-ink-2">
+            <p className="mt-3.5 max-w-[34ch] text-[0.9rem] text-ink-2 sm:mt-[18px] sm:text-[0.875rem]">
               Many wallets, one view. Built on public Monad Mainnet data, with no custody of any
               assets.
             </p>
@@ -65,7 +65,7 @@ export function SiteFooter() {
             ]}
           />
         </div>
-        <div className="flex flex-wrap items-center justify-between gap-4 border-t border-line py-[18px] font-mono text-[0.73rem] text-ink-3">
+        <div className="flex flex-wrap items-center justify-between gap-3 border-t border-line py-[14px] font-mono text-[0.78rem] text-ink-3 sm:gap-4 sm:py-[18px] sm:text-[0.73rem]">
           <span>Many wallets. One view.</span>
           <StatusPill className="!bg-transparent" />
           <span>Never asks for a private key</span>
