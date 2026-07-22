@@ -48,13 +48,13 @@ export function WalletList({
 
   return (
     <section aria-labelledby="wallets-heading" className="space-y-5">
-      <div className="flex flex-wrap items-baseline justify-between gap-2">
-        <h2 id="wallets-heading" className="min-w-0 truncate text-lg font-medium text-ink">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <h2 id="wallets-heading" className="min-w-0 truncate text-lg font-semibold tracking-[-0.01em] text-ink">
           {heading}
         </h2>
-        <p className="text-sm text-faint">
+        <span className="shrink-0 rounded-full border border-line bg-raised px-2.5 py-0.5 text-xs font-medium tabular-nums text-muted">
           {addresses.length} of {MAX_WALLETS} added
-        </p>
+        </span>
       </div>
 
       <form onSubmit={submit} noValidate className="space-y-2">
@@ -100,12 +100,9 @@ export function WalletList({
       </form>
 
       {addresses.length > 0 ? (
-        <ul className="divide-y divide-line overflow-hidden rounded-[12px] border border-line bg-surface">
+        <ul className="divide-y divide-line border-t border-b border-line">
           {addresses.map((address, index) => (
-            <li
-              key={address}
-              className="flex flex-wrap items-center justify-between gap-3 px-4 py-3"
-            >
+            <li key={address} className="flex flex-wrap items-center justify-between gap-3 py-3">
               <div className="flex min-w-0 items-center gap-3">
                 <span className="w-[4.5rem] shrink-0 text-xs text-faint">{walletLabel(index)}</span>
                 <AddressChip address={address} />
@@ -122,9 +119,7 @@ export function WalletList({
           ))}
         </ul>
       ) : (
-        <p className="rounded-[12px] border border-dashed border-line px-4 py-6 text-center text-sm text-faint">
-          Add a Monad Mainnet address to begin.
-        </p>
+        <p className="py-4 text-center text-sm text-faint">Add a Monad Mainnet address to begin.</p>
       )}
 
       <div className="flex flex-wrap items-center gap-3">

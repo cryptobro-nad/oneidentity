@@ -19,7 +19,11 @@ function isLikelyMobile(): boolean {
   return /android|iphone|ipad|ipod|mobile/i.test(navigator.userAgent);
 }
 
-export function WalletConnect({ wallet }: { wallet: Wallet }) {
+export function WalletConnect({ wallet, elevated = false }: { wallet: Wallet; elevated?: boolean }) {
+  // Opt-in surface depth. Defaults off so the public profile's call site keeps
+  // its current output byte-for-byte; only the Verified flow passes `elevated`.
+  const surface = `rounded-[12px] border border-line bg-surface p-5${elevated ? " depth" : ""}`;
+
   // Checking for a saved session first. Without this the page briefly shows
   // "Connect a wallet" to someone who is in fact still connected, which reads
   // as the session having been lost.
@@ -36,7 +40,7 @@ export function WalletConnect({ wallet }: { wallet: Wallet }) {
     const hasInjected = wallet.wallets.length > 0;
 
     return (
-      <div className="rounded-[12px] border border-line bg-surface p-5">
+      <div className={surface}>
         <h3 className="text-sm font-medium text-ink">Connect a wallet</h3>
         <p className="mt-1.5 text-sm text-muted">
           ONE never asks for a private key, a token approval, or a transfer.
@@ -131,7 +135,7 @@ export function WalletConnect({ wallet }: { wallet: Wallet }) {
   }
 
   return (
-    <div className="rounded-[12px] border border-line bg-surface p-5">
+    <div className={surface}>
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <p className="text-xs text-faint">Connected</p>

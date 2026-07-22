@@ -55,18 +55,40 @@ export function OneLookup({ compact = false }: { compact?: boolean }) {
       className={
         compact
           ? "rounded-[12px] border border-line bg-surface p-5 shadow-[var(--shadow-card)]"
-          : "max-w-2xl"
+          : "depth mx-auto max-w-xl rounded-[16px] border border-line bg-surface p-5"
       }
     >
-      <h2
-        id={`${inputId}-heading`}
-        className={compact ? "text-sm font-semibold text-ink" : "text-xl font-semibold tracking-[-0.01em] text-ink"}
-      >
-        {compact ? "Look up another ONE" : "Look up a Verified ONE"}
-      </h2>
-      <p className="mt-1.5 text-sm text-muted">
-        Enter a ONE identity address or a linked wallet address. No wallet connection needed.
-      </p>
+      <div className={compact ? "" : "flex flex-wrap items-start justify-between gap-4"}>
+        <div className="min-w-0">
+          <h2
+            id={`${inputId}-heading`}
+            className={compact ? "text-sm font-semibold text-ink" : "text-xl font-semibold tracking-[-0.01em] text-ink"}
+          >
+            {compact ? "Look up another ONE" : "Look up a Verified ONE"}
+          </h2>
+          <p className="mt-1.5 text-sm text-muted">
+            Enter a ONE identity address or a linked wallet address. No wallet connection needed.
+          </p>
+        </div>
+
+        {/* Schematic address -> identity motif (full mode). Decorative: a
+            placeholder and the ONE mark only, never real profile data. */}
+        {!compact ? (
+          <div aria-hidden className="hidden items-center gap-2 text-xs sm:flex">
+            <span className="rounded-[6px] border border-line bg-raised px-2 py-1 font-mono text-faint">
+              0x…
+            </span>
+            <svg width="18" height="8" viewBox="0 0 18 8" fill="none" className="shrink-0">
+              <path d="M0 4h14" stroke="var(--line-strong)" strokeWidth="1.25" />
+              <path d="M12 1l4 3-4 3" stroke="var(--accent)" strokeWidth="1.25" fill="none" />
+            </svg>
+            <span className="inline-flex items-center gap-1.5 rounded-[6px] border border-accent-line bg-accent-soft px-2 py-1">
+              <span className="h-1.5 w-1.5 rounded-full bg-accent" />
+              <span className="font-medium text-accent">ONE</span>
+            </span>
+          </div>
+        ) : null}
+      </div>
 
       <form onSubmit={submit} noValidate className="mt-4 space-y-2">
         <label htmlFor={inputId} className="eyebrow block">
@@ -86,12 +108,22 @@ export function OneLookup({ compact = false }: { compact?: boolean }) {
             inputMode="text"
             aria-invalid={error ? true : undefined}
             aria-describedby={error ? `${inputId}-error` : undefined}
-            className="min-w-0 flex-1 rounded-[8px] border border-line-strong bg-canvas px-3.5 py-2.5 font-mono text-sm text-ink placeholder:text-faint focus:border-accent"
+            className={
+              "min-w-0 flex-1 rounded-[8px] border border-line-strong bg-canvas px-3.5 py-2.5 font-mono text-sm text-ink placeholder:text-faint focus:border-accent" +
+              (compact
+                ? ""
+                : " transition-[border-color,box-shadow] focus:shadow-[0_0_0_3px_var(--accent-soft)]")
+            }
           />
           <button
             type="submit"
             disabled={loading}
-            className="shrink-0 rounded-[8px] bg-accent px-5 py-2.5 text-sm font-medium text-accent-ink shadow-[0_1px_2px_rgba(16,24,40,0.08)] transition-colors hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-50"
+            className={
+              "shrink-0 rounded-[8px] bg-accent px-5 py-2.5 text-sm font-medium text-accent-ink shadow-[0_1px_2px_rgba(16,24,40,0.08)] hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-50 " +
+              (compact
+                ? "transition-colors"
+                : "transition-[transform,filter] hover:-translate-y-px disabled:hover:translate-y-0")
+            }
           >
             {loading ? "Looking up…" : "View identity"}
           </button>

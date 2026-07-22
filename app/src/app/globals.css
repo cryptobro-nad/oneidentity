@@ -59,6 +59,14 @@
   --warn-soft: #fbf1de;
   --danger: #b02a1f;
   --danger-soft: #fcece9;
+
+  /* Restrained surface depth (homepage experiment). Lighter top edge + darker
+     lower edge from insets, plus one soft bottom-weighted drop shadow. */
+  --depth-hi: rgba(255, 255, 255, 0.6);
+  --depth-lo: transparent;
+  --depth-shadow: 0 1px 2px rgba(16, 24, 40, 0.05), 0 6px 16px -8px rgba(16, 24, 40, 0.1);
+  --depth-shadow-soft: 0 1px 2px rgba(16, 24, 40, 0.05);
+  --depth-shadow-hover: 0 2px 4px rgba(16, 24, 40, 0.06), 0 12px 22px -10px rgba(16, 24, 40, 0.13);
 }
 
 @media (prefers-color-scheme: dark) {
@@ -81,6 +89,12 @@
     --warn-soft: #241b0d;
     --danger: #f2938c;
     --danger-soft: #2a1513;
+
+    --depth-hi: rgba(255, 255, 255, 0.05);
+    --depth-lo: rgba(0, 0, 0, 0.28);
+    --depth-shadow: 0 1px 2px rgba(0, 0, 0, 0.4), 0 8px 20px -10px rgba(0, 0, 0, 0.55);
+    --depth-shadow-soft: 0 1px 2px rgba(0, 0, 0, 0.4);
+    --depth-shadow-hover: 0 2px 6px rgba(0, 0, 0, 0.5), 0 14px 26px -10px rgba(0, 0, 0, 0.62);
   }
 }
 
@@ -116,11 +130,38 @@ body {
   border-radius: 4px;
 }
 
+/*
+ * Restrained surface depth (homepage experiment, Variant A).
+ * .depth       — hero product visual and the lookup tool.
+ * .depth-soft  — the lighter Two ways surfaces.
+ * .depth-lift  — a 1px hover lift, disabled under reduced motion.
+ * No gloss, no gradient, no tilt.
+ */
+.depth {
+  box-shadow: inset 0 1px 0 var(--depth-hi), inset 0 -1px 0 var(--depth-lo), var(--depth-shadow);
+}
+.depth-soft {
+  box-shadow: inset 0 1px 0 var(--depth-hi), inset 0 -1px 0 var(--depth-lo), var(--depth-shadow-soft);
+}
+.depth-lift {
+  transition:
+    box-shadow 0.2s ease,
+    transform 0.2s ease,
+    border-color 0.2s ease;
+}
+.depth-lift:hover {
+  transform: translateY(-1px);
+  box-shadow: inset 0 1px 0 var(--depth-hi), inset 0 -1px 0 var(--depth-lo), var(--depth-shadow-hover);
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
   *::after {
     animation-duration: 0.01ms !important;
     transition-duration: 0.01ms !important;
+  }
+  .depth-lift:hover {
+    transform: none;
   }
 }

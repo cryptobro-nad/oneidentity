@@ -86,13 +86,34 @@ export default function RootLayout({
         <main className="flex-1">{children}</main>
 
         <footer className="mt-16 border-t border-line bg-raised">
-          <div className="mx-auto w-full max-w-6xl px-5 py-8 sm:px-8">
-            <div className="flex flex-wrap items-center justify-between gap-4">
-              <Wordmark />
-              <p className="max-w-lg text-xs leading-relaxed text-faint">
-                ONE reads public Monad Mainnet data. It never asks for a wallet connection, a
-                signature, or a private key to view balances, and never takes custody of any assets.
-              </p>
+          <div className="mx-auto w-full max-w-6xl px-5 py-6 sm:px-8">
+            <div className="flex flex-col gap-6 sm:flex-row sm:items-start sm:justify-between">
+              <div className="max-w-md">
+                <Link
+                  href="/"
+                  className="group inline-flex items-baseline gap-1.5"
+                  aria-label="ONE home"
+                >
+                  <span className="text-xl font-semibold tracking-[-0.03em] text-ink">ONE</span>
+                  <span
+                    aria-hidden
+                    className="h-2 w-2 rounded-full bg-accent transition-transform group-hover:scale-125"
+                  />
+                </Link>
+                <p className="mt-3 text-xs leading-relaxed text-faint">
+                  ONE reads public Monad Mainnet data. It never asks for a wallet connection, a
+                  signature, or a private key to view balances, and never takes custody of any
+                  assets.
+                </p>
+              </div>
+              <nav className="flex flex-col gap-2.5 text-sm sm:items-end" aria-label="Footer">
+                <Link href="/portfolio" className="text-muted transition-colors hover:text-ink">
+                  Portfolio
+                </Link>
+                <Link href="/verified" className="text-muted transition-colors hover:text-ink">
+                  Verified ONE
+                </Link>
+              </nav>
             </div>
           </div>
         </footer>
