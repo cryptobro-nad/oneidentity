@@ -165,3 +165,62 @@ body {
     transform: none;
   }
 }
+
+/*
+ * Homepage brand-direction experiment (scoped).
+ *
+ * All overrides live beneath `.home`; the :root theme values above are NOT
+ * touched, so Portfolio, Verified ONE and the public profile are unaffected.
+ * `--canvas` is deliberately left unchanged so the shared header/footer stay
+ * seamless with the homepage background. The accent is isolated in
+ * `--home-accent` so it can be retuned in one place after screenshot review.
+ */
+.home {
+  --home-accent: #1e5f55;
+  --home-accent-ink: #ffffff;
+  --surface: #f7f1e5;
+  --raised: #eee7d8;
+  --line: #e2dccd;
+  --line-strong: #cbc3af;
+  --ink: #221f18;
+  --muted: #565149;
+  --faint: #7f7867;
+  --accent: var(--home-accent);
+  --accent-ink: var(--home-accent-ink);
+  --accent-soft: #e2ede9;
+  --accent-line: #bcd4ce;
+  /* Lit top edge + soft warm drop = premium depth on the identity object. */
+  --obj-shadow: 0 14px 36px -12px rgba(58, 46, 24, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.7);
+}
+
+@media (prefers-color-scheme: dark) {
+  .home {
+    --home-accent: #5fb3a4;
+    --home-accent-ink: #10201c;
+    --surface: #1a1813;
+    --raised: #221f18;
+    --line: #2c2920;
+    --line-strong: #454031;
+    --ink: #ece6d6;
+    --muted: #b4ad99;
+    --faint: #948d7a;
+    --accent-soft: #14231f;
+    --accent-line: #2b4139;
+    --obj-shadow: 0 20px 50px -16px rgba(0, 0, 0, 0.66), inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  }
+}
+
+/* Serif display face (Fraunces), used only on homepage headlines. The font
+   variable is provided by next/font on the .home wrapper in page.tsx. */
+.home .serif {
+  font-family: var(--font-fraunces), Georgia, "Times New Roman", serif;
+  font-weight: 500;
+  letter-spacing: -0.02em;
+}
+
+/* Homepage eyebrows: a touch larger and higher-contrast for readability. */
+.home .eyebrow {
+  font-size: 0.72rem;
+  letter-spacing: 0.11em;
+  color: var(--muted);
+}

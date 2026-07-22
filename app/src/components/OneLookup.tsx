@@ -55,7 +55,7 @@ export function OneLookup({ compact = false }: { compact?: boolean }) {
       className={
         compact
           ? "rounded-[12px] border border-line bg-surface p-5 shadow-[var(--shadow-card)]"
-          : "depth mx-auto max-w-xl rounded-[16px] border border-line bg-surface p-5"
+          : "max-w-xl"
       }
     >
       <div className={compact ? "" : "flex flex-wrap items-start justify-between gap-4"}>
