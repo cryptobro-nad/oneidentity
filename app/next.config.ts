@@ -7,6 +7,10 @@ const nextConfig: NextConfig = {
   turbopack: {
     root: fileURLToPath(new URL(".", import.meta.url)),
   },
+  // The Envio HyperSync client is a native (napi) module used only in
+  // server-side asset discovery. Keep it external so the bundler never tries
+  // to inline its .node binary, and it is only ever loaded in the Node runtime.
+  serverExternalPackages: ["@envio-dev/hypersync-client"],
 };
 
 export default nextConfig;

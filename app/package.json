@@ -11,6 +11,7 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "@envio-dev/hypersync-client": "^1.4.0",
     "@walletconnect/ethereum-provider": "^2.23.10",
     "next": "16.2.10",
     "react": "19.2.4",
