@@ -45,7 +45,7 @@ export function SiteFooter() {
               <OneLogo />
             </Link>
             <p className="mt-3.5 max-w-[34ch] text-[0.9rem] text-ink-2 sm:mt-[18px] sm:text-[0.875rem]">
-              Many wallets, one view. Built on public Monad Mainnet data, with no custody of any
+              Multiple wallets, one view. Built on public Monad Mainnet data, with no custody of any
               assets.
             </p>
           </div>
@@ -66,7 +66,7 @@ export function SiteFooter() {
           />
         </div>
         <div className="flex flex-wrap items-center justify-between gap-3 border-t border-line py-[14px] font-mono text-[0.78rem] text-ink-3 sm:gap-4 sm:py-[18px] sm:text-[0.73rem]">
-          <span>Many wallets. One view.</span>
+          <span>Multiple wallets. One view.</span>
           <StatusPill className="!bg-transparent" />
           <span>Never asks for a private key</span>
         </div>

@@ -117,7 +117,7 @@ export function NetworkDiagram({ className = "" }: { className?: string }) {
         NFTs
       </text>
       <text x="368" y="250" style={MONO} fontSize="10.5" letterSpacing="0.1em" fill="var(--accent-live)">
-        MANY WALLETS, ONE VIEW
+        MULTIPLE WALLETS, ONE VIEW
       </text>
     </svg>
   );

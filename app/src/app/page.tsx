@@ -84,7 +84,7 @@ export default function LandingPage() {
             </Reveal>
             <Reveal delay={70}>
               <h1 className="display mt-5 text-[clamp(2.9rem,6.6vw,5.1rem)]">
-                Many wallets.
+                Multiple wallets.
                 <br />
                 One <em>view</em>.
               </h1>

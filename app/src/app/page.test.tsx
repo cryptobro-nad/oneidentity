@@ -78,3 +78,12 @@ describe("Homepage smoke", () => {
     expect(text).not.toMatch(/block\s*(number|height|#|\d)/i);
   });
 });
+
+describe("Homepage product statement wording", () => {
+  it("uses 'Multiple wallets' and no longer says 'Many wallets'", () => {
+    const { container } = renderHome();
+    const text = container.textContent ?? "";
+    expect(text).toMatch(/multiple wallets/i);
+    expect(text).not.toMatch(/many wallets/i);
+  });
+});

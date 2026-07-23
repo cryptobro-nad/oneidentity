@@ -20,6 +20,7 @@ import {
   emptyState,
   generatePortfolioId,
   MAX_NAME_LENGTH,
+  normalizePortfolioColor,
   PERSONAL_ID,
   PERSONAL_NAME,
   SCHEMA_VERSION,
@@ -86,7 +87,9 @@ function normalisePortfolio(
   seenIds.add(uniqueId);
   seenNames.add(uniqueName.toLowerCase());
 
-  return { id: uniqueId, name: uniqueName, addresses };
+  // Missing colour (pre-colour data) is coerced to the default green here, so
+  // every portfolio read back has a valid colour without losing any addresses.
+  return { id: uniqueId, name: uniqueName, addresses, color: normalizePortfolioColor(raw.color) };
 }
 
 /** Repairs any parsed value into a usable state. Never throws. */
@@ -212,6 +215,7 @@ export function writeState(
         id: p.id,
         name: p.name,
         addresses: p.addresses,
+        color: normalizePortfolioColor(p.color),
       })),
       activeId: state.activeId,
     };

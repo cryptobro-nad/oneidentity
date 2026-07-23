@@ -1,8 +1,66 @@
 "use client";
 
 import { useCallback, useEffect, useId, useRef, useState, type FormEvent } from "react";
-import { MAX_NAME_LENGTH, PERSONAL_ID, type Portfolio } from "@/lib/portfolios/types";
+import {
+  DEFAULT_PORTFOLIO_COLOR,
+  MAX_NAME_LENGTH,
+  normalizePortfolioColor,
+  PERSONAL_ID,
+  PORTFOLIO_COLORS,
+  type Portfolio,
+  type PortfolioColor,
+} from "@/lib/portfolios/types";
 import { Badge } from "./ui/Badge";
+
+/** Curated accents. Mid-tones chosen to read on both the dark and light ground. */
+const COLOR_HEX: Record<PortfolioColor, string> = {
+  green: "#3fc792",
+  violet: "#8b7cf6",
+  blue: "#5b9df6",
+  amber: "#e0a44d",
+  rose: "#e5789b",
+  teal: "#37b6c7",
+};
+const COLOR_LABEL: Record<PortfolioColor, string> = {
+  green: "Green",
+  violet: "Violet",
+  blue: "Blue",
+  amber: "Amber",
+  rose: "Rose",
+  teal: "Teal",
+};
+
+/** Accessible swatch group. A fixed palette, never a free-form colour input. */
+function ColorPalette({
+  value,
+  onChange,
+}: {
+  value: PortfolioColor;
+  onChange: (color: PortfolioColor) => void;
+}) {
+  return (
+    <div role="radiogroup" aria-label="Portfolio color" className="flex flex-wrap gap-2">
+      {PORTFOLIO_COLORS.map((c) => {
+        const selected = c === value;
+        return (
+          <button
+            key={c}
+            type="button"
+            role="radio"
+            aria-checked={selected}
+            aria-label={COLOR_LABEL[c]}
+            onClick={() => onChange(c)}
+            className="flex h-8 w-8 items-center justify-center rounded-full border-2 transition-transform hover:scale-105"
+            style={{ borderColor: selected ? COLOR_HEX[c] : "transparent" }}
+          >
+            <span className="h-[15px] w-[15px] rounded-full" style={{ background: COLOR_HEX[c] }} />
+            {selected ? <span className="sr-only"> (selected)</span> : null}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
 
 /**
  * Portfolio selector and management.
@@ -23,13 +81,17 @@ export function PortfolioSwitcher({
   onCreate,
   onRename,
   onDelete,
+  onColorChange,
 }: {
   portfolios: Portfolio[];
   activeId: string;
   onSelect: (id: string) => void;
-  onCreate: (name: string) => { ok: boolean; message?: string };
+  onCreate: (name: string) => { ok: boolean; message?: string; id?: string };
   onRename: (id: string, name: string) => { ok: boolean; message?: string };
   onDelete: (id: string) => void;
+  /** Sets a portfolio's curated accent colour. Optional so other call sites and
+   *  tests that do not use colour keep working unchanged. */
+  onColorChange?: (id: string, color: PortfolioColor) => void;
 }) {
   const headingId = useId();
   const nameInputId = useId();
@@ -38,6 +100,7 @@ export function PortfolioSwitcher({
   /** Which portfolio the rename/delete form is acting on. */
   const [targetId, setTargetId] = useState<string | null>(null);
   const [draftName, setDraftName] = useState("");
+  const [draftColor, setDraftColor] = useState<PortfolioColor>(DEFAULT_PORTFOLIO_COLOR);
   const [error, setError] = useState<string | null>(null);
 
   const inputRef = useRef<HTMLInputElement>(null);
@@ -52,21 +115,34 @@ export function PortfolioSwitcher({
     setMode("idle");
     setTargetId(null);
     setDraftName("");
+    setDraftColor(DEFAULT_PORTFOLIO_COLOR);
     setError(null);
   }, []);
 
   const submit = useCallback(
     (event: FormEvent) => {
       event.preventDefault();
-      const result = mode === "create" ? onCreate(draftName) : onRename(targetId ?? "", draftName);
 
-      if (!result.ok) {
-        setError(result.message ?? "That name could not be used.");
-        return;
+      if (mode === "create") {
+        const result = onCreate(draftName);
+        if (!result.ok) {
+          setError(result.message ?? "That name could not be used.");
+          return;
+        }
+        // Colour is applied after creation via the returned id, so onCreate's
+        // signature stays name-only.
+        if (result.id) onColorChange?.(result.id, draftColor);
+      } else {
+        const result = onRename(targetId ?? "", draftName);
+        if (!result.ok) {
+          setError(result.message ?? "That name could not be used.");
+          return;
+        }
+        if (targetId) onColorChange?.(targetId, draftColor);
       }
       close();
     },
-    [mode, draftName, onCreate, onRename, targetId, close],
+    [mode, draftName, draftColor, onCreate, onRename, onColorChange, targetId, close],
   );
 
   return (
@@ -81,6 +157,7 @@ export function PortfolioSwitcher({
             setMode("create");
             setTargetId(null);
             setDraftName("");
+            setDraftColor(DEFAULT_PORTFOLIO_COLOR);
             setError(null);
           }}
           className="rounded-[9px] border border-line-strong bg-surface px-3.5 py-2 font-mono text-[0.78rem] text-ink-2 transition-colors hover:border-accent hover:text-ink"
@@ -93,14 +170,20 @@ export function PortfolioSwitcher({
         {portfolios.map((p) => {
           const isActive = p.id === activeId;
           const isDefault = p.id === PERSONAL_ID;
+          const color = normalizePortfolioColor(p.color);
+          const hex = COLOR_HEX[color];
           return (
             <li
               key={p.id}
+              data-portfolio-color={color}
               className={`flex flex-wrap items-center gap-x-3 gap-y-2 rounded-[12px] border px-3.5 py-3 transition-colors ${
                 isActive
-                  ? "border-accent/45 bg-surface-2 shadow-[inset_2px_0_0_0_var(--accent)]"
+                  ? "border-line-strong bg-surface-2"
                   : "border-line bg-surface hover:border-line-strong hover:bg-surface-2/60"
               }`}
+              // Colour is a restrained accent: a stronger left inset for the
+              // active row, a faint one otherwise — never a full colour block.
+              style={{ boxShadow: `inset ${isActive ? 3 : 2}px 0 0 0 ${hex}` }}
             >
               {/* The row body selects. min-w-0 lets a long name truncate
                   instead of pushing the action buttons off a narrow screen. */}
@@ -111,6 +194,11 @@ export function PortfolioSwitcher({
                 className="min-w-0 flex-1 text-left"
               >
                 <span className="flex items-center gap-2">
+                  <span
+                    aria-hidden
+                    className="h-2 w-2 shrink-0 rounded-full"
+                    style={{ background: hex }}
+                  />
                   <span
                     className={`truncate text-sm font-medium ${isActive ? "text-ink" : "text-muted"}`}
                   >
@@ -134,6 +222,7 @@ export function PortfolioSwitcher({
                     setMode("rename");
                     setTargetId(p.id);
                     setDraftName(p.name);
+                    setDraftColor(normalizePortfolioColor(p.color));
                     setError(null);
                   }}
                   className="rounded-[6px] px-2.5 py-1.5 text-xs text-muted transition-colors hover:bg-surface hover:text-ink"
@@ -195,6 +284,12 @@ export function PortfolioSwitcher({
               </button>
             </div>
           </div>
+
+          <div className="mt-4">
+            <span className="eyebrow mb-2 block">Color (a visual aid, optional)</span>
+            <ColorPalette value={draftColor} onChange={setDraftColor} />
+          </div>
+
           {error ? (
             <p id={`${nameInputId}-error`} role="alert" className="mt-2 text-sm text-danger">
               {error}

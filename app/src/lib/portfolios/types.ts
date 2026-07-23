@@ -14,10 +14,29 @@ export const PERSONAL_NAME = "Personal" as const;
 
 export const MAX_NAME_LENGTH = 40;
 
+/**
+ * Curated palette for saved portfolios. A fixed set (never a free-form picker)
+ * keeps every portfolio's accent tasteful and theme-safe. The colour is a purely
+ * visual aid: it never affects wallet data, lookup, balances, or any logic.
+ */
+export const PORTFOLIO_COLORS = ["green", "violet", "blue", "amber", "rose", "teal"] as const;
+export type PortfolioColor = (typeof PORTFOLIO_COLORS)[number];
+export const DEFAULT_PORTFOLIO_COLOR: PortfolioColor = "green";
+
+/** Missing or unknown colours (older saved data, hand-edited storage) → green. */
+export function normalizePortfolioColor(value: unknown): PortfolioColor {
+  return typeof value === "string" && (PORTFOLIO_COLORS as readonly string[]).includes(value)
+    ? (value as PortfolioColor)
+    : DEFAULT_PORTFOLIO_COLOR;
+}
+
 export type Portfolio = {
   id: string;
   name: string;
   addresses: PortfolioAddress[];
+  /** Optional so pre-colour saved data and older code keep working; a missing
+   *  value is treated as the default green everywhere it is read. */
+  color?: PortfolioColor;
 };
 
 /** Current persisted shape. Bump `version` if this changes incompatibly. */
@@ -98,7 +117,7 @@ export function generatePortfolioId(): string {
 }
 
 export function createPersonal(addresses: PortfolioAddress[] = []): Portfolio {
-  return { id: PERSONAL_ID, name: PERSONAL_NAME, addresses };
+  return { id: PERSONAL_ID, name: PERSONAL_NAME, addresses, color: DEFAULT_PORTFOLIO_COLOR };
 }
 
 export function emptyState(): PortfolioState {

@@ -496,7 +496,7 @@ describe("only watchlist data is persisted", () => {
     "fetchedAt",
   ];
 
-  it("writes exactly version, portfolios (id/name/addresses) and activeId", () => {
+  it("writes exactly version, portfolios (id/name/addresses/color) and activeId", () => {
     const storage = installStorage();
     addAddressTo(PERSONAL_ID, A);
     createPortfolio("Trading");
@@ -506,7 +506,8 @@ describe("only watchlist data is persisted", () => {
 
     expect(Object.keys(parsed).sort()).toEqual(["activeId", "portfolios", "version"]);
     for (const p of parsed.portfolios as Record<string, unknown>[]) {
-      expect(Object.keys(p).sort()).toEqual(["addresses", "id", "name"]);
+      // The curated accent colour is the only added field; nothing else leaks.
+      expect(Object.keys(p).sort()).toEqual(["addresses", "color", "id", "name"]);
     }
     for (const forbidden of FORBIDDEN) expect(raw).not.toContain(forbidden);
   });

@@ -11,11 +11,13 @@ import type { PortfolioAddress } from "@/lib/types";
 import { loadState, writeState } from "./storage";
 import {
   activePortfolio,
+  DEFAULT_PORTFOLIO_COLOR,
   emptyState,
   generatePortfolioId,
   PERSONAL_ID,
   validatePortfolioName,
   type Portfolio,
+  type PortfolioColor,
   type PortfolioState,
 } from "./types";
 
@@ -26,6 +28,7 @@ const SERVER_SNAPSHOT: PortfolioState = Object.freeze({
       id: PERSONAL_ID,
       name: "Personal",
       addresses: Object.freeze([]),
+      color: DEFAULT_PORTFOLIO_COLOR,
     }),
   ]),
   activeId: PERSONAL_ID,
@@ -90,6 +93,7 @@ export function createPortfolio(name: string): PortfolioActionResult {
     id: generatePortfolioId(),
     name: validation.name,
     addresses: [],
+    color: DEFAULT_PORTFOLIO_COLOR,
   };
 
   // A new portfolio becomes active immediately: creating one is an explicit
@@ -150,6 +154,22 @@ export function deletePortfolio(id: string): PortfolioActionResult {
   });
 
   return { ok: true, state: next, id: PERSONAL_ID };
+}
+
+/**
+ * Sets a portfolio's curated accent colour. Visual only: it touches nothing but
+ * the `color` field, and never the addresses, active selection, or any read.
+ */
+export function setPortfolioColor(id: string, color: PortfolioColor): PortfolioActionResult {
+  const state = current();
+  if (!state.portfolios.some((p) => p.id === id)) {
+    return { ok: false, message: "That portfolio no longer exists." };
+  }
+  const next = commit({
+    ...state,
+    portfolios: state.portfolios.map((p) => (p.id === id ? { ...p, color } : p)),
+  });
+  return { ok: true, state: next, id };
 }
 
 export function setActivePortfolio(id: string): PortfolioActionResult {

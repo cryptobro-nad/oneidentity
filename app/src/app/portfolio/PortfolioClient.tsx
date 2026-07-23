@@ -18,9 +18,10 @@ import {
   removeAddressFrom,
   renamePortfolio,
   setActivePortfolio,
+  setPortfolioColor,
   subscribe,
 } from "@/lib/portfolios/store";
-import { activePortfolio } from "@/lib/portfolios/types";
+import { activePortfolio, type PortfolioColor } from "@/lib/portfolios/types";
 import type { AggregatedPortfolio, PortfolioAddress } from "@/lib/types";
 import { decodePortfolio } from "@/lib/wire";
 import { loadPortfolioAction } from "./actions";
@@ -75,6 +76,9 @@ export function PortfolioClient() {
       return {
         ok: outcome.ok,
         message: outcome.ok ? undefined : outcome.message,
+        // The new id lets the switcher apply the chosen colour without changing
+        // the create signature the existing tests rely on.
+        id: outcome.ok ? outcome.id : undefined,
       };
     },
     [clearResults],
@@ -87,6 +91,11 @@ export function PortfolioClient() {
       ok: outcome.ok,
       message: outcome.ok ? undefined : outcome.message,
     };
+  }, []);
+
+  // Colour is a visual aid only; setting it never touches addresses or results.
+  const handleSetColor = useCallback((id: string, color: PortfolioColor) => {
+    setPortfolioColor(id, color);
   }, []);
 
   const handleDelete = useCallback(
@@ -166,6 +175,7 @@ export function PortfolioClient() {
           onCreate={handleCreate}
           onRename={handleRename}
           onDelete={handleDelete}
+          onColorChange={handleSetColor}
         />
 
         <div className="space-y-5 p-5 sm:p-6">

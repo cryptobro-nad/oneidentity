@@ -40,11 +40,11 @@ const THEME_INIT = `(function(){try{var t=localStorage.getItem('one-theme');if(t
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://oneidentity.app"),
-  title: "ONE. Many wallets. One view.",
+  title: "ONE. Multiple wallets. One view.",
   description:
     "Track your MON, stablecoins, supported memecoins and NFTs across up to five Monad wallets.",
   openGraph: {
-    title: "ONE. Many wallets. One view.",
+    title: "ONE. Multiple wallets. One view.",
     description:
       "Track your MON, stablecoins, supported memecoins and NFTs across up to five Monad wallets. Keep it watch-only or create a Verified ONE to prove the wallets belong to you.",
     url: "https://oneidentity.app",
