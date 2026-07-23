@@ -54,6 +54,51 @@ export function OneProfileClient({ initial }: { initial: WireProfile }) {
   const [removalError, setRemovalError] = useState<DecodedError | null>(null);
   const [removalNotice, setRemovalNotice] = useState<string | null>(null);
 
+  // Copy / share of the public identity. Presentational only: it copies the
+  // real full address or the real profile URL (origin resolved at click time,
+  // never hardcoded), and never changes any registry behavior.
+  const [copied, setCopied] = useState<"address" | "link" | null>(null);
+  const [shareNote, setShareNote] = useState("");
+
+  useEffect(() => {
+    if (!copied) return;
+    const timer = setTimeout(() => setCopied(null), 2000);
+    return () => clearTimeout(timer);
+  }, [copied]);
+
+  const profileUrl = useCallback(() => {
+    const origin = typeof window === "undefined" ? "" : window.location.origin;
+    return `${origin}/one/${profile.address}`;
+  }, [profile.address]);
+
+  const copyValue = useCallback(
+    async (what: "address" | "link") => {
+      const value = what === "address" ? profile.address : profileUrl();
+      try {
+        await navigator.clipboard.writeText(value);
+        setCopied(what);
+        setShareNote(what === "address" ? "Identity address copied." : "Profile link copied.");
+      } catch {
+        setShareNote("Copying failed. You can select and copy it manually.");
+      }
+    },
+    [profile.address, profileUrl],
+  );
+
+  const share = useCallback(async () => {
+    const url = profileUrl();
+    const nav = typeof navigator === "undefined" ? undefined : navigator;
+    if (nav && typeof nav.share === "function") {
+      try {
+        await nav.share({ title: "Verified ONE", url });
+        return;
+      } catch {
+        // User dismissed the share sheet, or it is unavailable: fall back to copy.
+      }
+    }
+    await copyValue("link");
+  }, [profileUrl, copyValue]);
+
   const mayAggregateNow = profile.isActive && profile.memberCount >= 2;
 
   const refreshProfile = useCallback(async () => {
@@ -143,23 +188,80 @@ export function OneProfileClient({ initial }: { initial: WireProfile }) {
   );
 
   return (
-    <div className="space-y-10">
-      {/* Identity header */}
-      <section className="rounded-[16px] border border-line bg-surface p-6 shadow-[var(--shadow-card)]">
-        <div className="flex flex-wrap items-start justify-between gap-4">
-          <div className="min-w-0">
-            <div className="flex items-center gap-2.5">
-              <p className="eyebrow">ONE identity</p>
+    <div className="space-y-9 sm:space-y-10">
+      {/* Identity hero — a resolved identity object */}
+      <section className="pt-3.5 pr-3.5">
+        <div className="relative">
+          <div
+            aria-hidden
+            className="absolute inset-0 -translate-y-3.5 translate-x-3.5 rounded-[20px] border border-line bg-surface opacity-40"
+          />
+          <div
+            aria-hidden
+            className="absolute inset-0 -translate-y-[7px] translate-x-[7px] rounded-[20px] border border-line bg-surface opacity-70"
+          />
+          <div
+            className="card relative border-line-strong p-6 sm:p-8"
+            style={{ background: "linear-gradient(160deg, var(--surface-2), var(--surface))" }}
+          >
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <span className="eyebrow">Verified ONE</span>
               <Badge tone={profile.isActive ? "success" : "neutral"} dot>
                 {profile.isActive ? "Active" : "Inactive"}
               </Badge>
             </div>
-            <p className="mt-2.5 font-mono text-base break-all text-ink sm:text-lg">
+
+            <p className="mono mt-4 text-[clamp(1.1rem,3.4vw,1.8rem)] break-all tracking-[-0.01em] text-ink">
               {profile.address}
             </p>
-            <div className="mt-2">
-              <AddressChip address={profile.address} />
+            <p className="mt-3 max-w-[52ch] text-[0.85rem] leading-relaxed text-ink-2">
+              <span className="text-ink">This is an identity address, not a wallet. Do not send funds to it.</span>{" "}
+              The wallets below each authorized this Verified ONE. Their link is public on Monad
+              Mainnet.
+            </p>
+
+            <div className="mt-6 flex flex-wrap items-center gap-3">
+              <button type="button" onClick={() => void copyValue("address")} className="btn btn-ghost">
+                {copied === "address" ? "Copied" : "Copy identity address"}
+              </button>
+              <button type="button" onClick={() => void copyValue("link")} className="btn btn-ghost">
+                {copied === "link" ? "Copied" : "Copy profile link"}
+              </button>
+              <button type="button" onClick={() => void share()} className="btn btn-ghost">
+                Share
+              </button>
+              <a
+                href={`${EXPLORER_URL}/address/${profile.address}`}
+                target="_blank"
+                rel="noreferrer noopener"
+                className="font-mono text-[0.78rem] text-ink-2 transition-colors hover:text-ink"
+              >
+                View on explorer
+              </a>
             </div>
+
+            <p aria-live="polite" role="status" className="mt-3 min-h-[1.1rem] font-mono text-[0.72rem] text-accent-live">
+              {shareNote}
+            </p>
+
+            <dl className="mt-6 grid gap-3 border-t border-line pt-5 sm:grid-cols-3">
+              <div>
+                <dt className="eyebrow">Linked wallets</dt>
+                <dd className="tnum mt-1.5 font-serif text-[1.6rem] leading-none text-ink">
+                  {profile.memberCount}
+                </dd>
+              </div>
+              <div>
+                <dt className="eyebrow">Network</dt>
+                <dd className="mt-1.5 font-mono text-[0.85rem] text-ink">Monad Mainnet · 143</dd>
+              </div>
+              <div>
+                <dt className="eyebrow">Block</dt>
+                <dd className="tnum mt-1.5 font-mono text-[0.85rem] text-ink">
+                  {formatBlockNumber(profile.blockNumber)}
+                </dd>
+              </div>
+            </dl>
           </div>
         </div>
 
@@ -170,45 +272,31 @@ export function OneProfileClient({ initial }: { initial: WireProfile }) {
             treated as valid for current eligibility, and combined balances are not shown.
           </Notice>
         ) : null}
-
-        <dl className="mt-6 grid gap-4 sm:grid-cols-3">
-          <div className="rounded-[10px] border border-line bg-raised px-4 py-3">
-            <dt className="eyebrow">Wallets in this ONE</dt>
-            <dd className="tnum mt-1 text-2xl font-semibold text-ink">{profile.memberCount}</dd>
-          </div>
-          <div className="rounded-[10px] border border-line bg-raised px-4 py-3">
-            <dt className="eyebrow">Network</dt>
-            <dd className="mt-1 text-sm font-medium text-ink">Monad Mainnet · 143</dd>
-          </div>
-          <div className="rounded-[10px] border border-line bg-raised px-4 py-3">
-            <dt className="eyebrow">Block</dt>
-            <dd className="tnum mt-1 text-sm font-medium text-ink">
-              {formatBlockNumber(profile.blockNumber)}
-            </dd>
-          </div>
-        </dl>
-
-        <p className="mt-5 text-xs text-faint">
-          This is an identity address, not a wallet. Do not send funds to it. Wallet links created
-          through Verified ONE are public onchain.
-        </p>
       </section>
 
       {/* Members */}
       <section aria-labelledby="members-heading" className="space-y-4">
-        <h2 id="members-heading" className="text-xl font-semibold tracking-[-0.01em] text-ink">
+        <h2 id="members-heading" className="font-serif text-[1.6rem] leading-tight text-ink">
           Linked wallets
         </h2>
 
-        <ul className="divide-y divide-line overflow-hidden rounded-[12px] border border-line bg-surface shadow-[var(--shadow-card)]">
+        <ul className="space-y-2">
           {profile.members.map((member, index) => {
             const isPrimary = sameAddress(member, profile.primary);
             const permission = canRemove(profile, member, wallet.address);
             const deactivates = removalCausesDeactivation(profile, member);
 
             return (
-              <li key={member} className="flex flex-wrap items-center gap-3 px-4 py-3">
-                <span className="w-[4.5rem] shrink-0 text-xs text-faint">
+              <li
+                key={member}
+                className={
+                  "flex flex-wrap items-center gap-3 rounded-[12px] border px-4 py-3 " +
+                  (isPrimary
+                    ? "border-accent/45 bg-surface-2 shadow-[inset_2px_0_0_0_var(--accent)]"
+                    : "border-line bg-surface")
+                }
+              >
+                <span className="shrink-0 rounded-[6px] border border-line-strong px-2 py-1 font-mono text-[0.66rem] tracking-[0.08em] text-ink-3 uppercase">
                   {walletLabel(index)}
                 </span>
                 <div className="min-w-0 flex-1">
@@ -225,7 +313,7 @@ export function OneProfileClient({ initial }: { initial: WireProfile }) {
                     type="button"
                     onClick={() => void remove(member)}
                     disabled={removing !== null}
-                    className="text-xs text-faint transition-colors hover:text-danger disabled:opacity-50"
+                    className="rounded-[7px] px-2 py-1 font-mono text-[0.72rem] text-ink-3 transition-colors hover:text-danger disabled:opacity-50"
                     title={
                       deactivates
                         ? "Removing the last secondary makes this ONE permanently inactive."
@@ -241,7 +329,7 @@ export function OneProfileClient({ initial }: { initial: WireProfile }) {
         </ul>
 
         {profile.isActive ? (
-          <p className="text-xs text-faint">
+          <p className="max-w-[62ch] text-[0.78rem] leading-relaxed text-ink-3">
             Wallets can leave, but none can be added: membership only ever shrinks. The primary
             cannot be removed, and when the last secondary leaves, the ONE becomes permanently
             inactive.
@@ -249,7 +337,7 @@ export function OneProfileClient({ initial }: { initial: WireProfile }) {
         ) : null}
 
         {removalNotice ? (
-          <p role="status" className="text-sm text-muted">
+          <p role="status" className="text-sm text-ink-2">
             {removalNotice}
           </p>
         ) : null}
@@ -262,11 +350,39 @@ export function OneProfileClient({ initial }: { initial: WireProfile }) {
         ) : null}
       </section>
 
+      {/* What this proves */}
+      <section className="rounded-[16px] border border-line bg-surface p-6 sm:p-7">
+        <span className="eyebrow">What this proves</span>
+        <h2 className="mt-2 font-serif text-[1.5rem] leading-tight text-ink">
+          One identity, {profile.memberCount} wallets
+        </h2>
+        <ul className="mt-4 grid gap-2.5 sm:grid-cols-2">
+          {[
+            "Each wallet above authorized the same Verified ONE by signature.",
+            "No funds moved, no token approvals, and ONE never took custody.",
+            "The link is recorded on Monad Mainnet, so other apps can look it up.",
+            "The identity address is not a wallet and holds nothing.",
+          ].map((point) => (
+            <li key={point} className="flex gap-2.5 text-[0.9rem] leading-relaxed text-ink-2">
+              <span aria-hidden className="mt-2 h-1 w-1 shrink-0 rounded-full bg-accent" />
+              {point}
+            </li>
+          ))}
+        </ul>
+      </section>
+
       {/* Balances — active identities only */}
       {mayAggregateNow ? (
-        <section className="border-t border-line pt-10">
+        <section className="border-t border-line pt-9">
           {loadingBalances ? (
-            <p className="text-sm text-faint">Loading combined balances…</p>
+            <div className="space-y-3" role="status" aria-label="Loading combined balances">
+              <p className="font-mono text-[0.78rem] text-ink-3">Loading combined balances…</p>
+              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                {[0, 1, 2, 3].map((i) => (
+                  <div key={i} className="h-[92px] animate-pulse rounded-[14px] border border-line bg-surface-2/50" />
+                ))}
+              </div>
+            </div>
           ) : balanceError ? (
             <ErrorNotice title="Could not load combined balances">{balanceError}</ErrorNotice>
           ) : shownPortfolio ? (
@@ -274,9 +390,9 @@ export function OneProfileClient({ initial }: { initial: WireProfile }) {
           ) : null}
         </section>
       ) : (
-        <section className="border-t border-line pt-10">
-          <h2 className="text-xl font-semibold tracking-[-0.01em] text-ink">Combined balances</h2>
-          <p className="mt-2 text-sm text-muted">
+        <section className="border-t border-line pt-9">
+          <h2 className="font-serif text-[1.5rem] leading-tight text-ink">Combined balances</h2>
+          <p className="mt-2 text-sm leading-relaxed text-ink-2">
             Not shown for an inactive identity. Aggregation is disabled on-chain once only the
             primary remains, and a single wallet&apos;s balance must not be presented as a combined
             total.
@@ -285,29 +401,29 @@ export function OneProfileClient({ initial }: { initial: WireProfile }) {
       )}
 
       {mayAggregateNow ? (
-        <section className="border-t border-line pt-10">
+        <section className="border-t border-line pt-9">
           <NftHoldings addresses={profile.members} />
         </section>
       ) : null}
 
       {mayAggregateNow ? (
-        <section className="border-t border-line pt-10">
+        <section className="border-t border-line pt-9">
           <NftCollectionChecker addresses={profile.members} />
         </section>
       ) : null}
 
       {/* Registry / explorer */}
-      <section className="border-t border-line pt-10">
-        <h2 className="text-xl font-semibold tracking-[-0.01em] text-ink">Registry</h2>
-        <dl className="mt-4 divide-y divide-line overflow-hidden rounded-[12px] border border-line bg-surface shadow-[var(--shadow-card)]">
-          <div className="flex flex-wrap items-center justify-between gap-2 px-4 py-3">
-            <dt className="text-sm text-faint">ONERegistry</dt>
+      <section className="border-t border-line pt-9">
+        <h2 className="font-serif text-[1.5rem] leading-tight text-ink">Registry</h2>
+        <dl className="mt-4 divide-y divide-line overflow-hidden rounded-[14px] border border-line bg-surface">
+          <div className="flex flex-wrap items-center justify-between gap-2 px-4 py-3.5">
+            <dt className="font-mono text-[0.78rem] text-ink-3">ONERegistry</dt>
             <dd>
               <AddressChip address={profile.registry} />
             </dd>
           </div>
-          <div className="flex flex-wrap items-center justify-between gap-2 px-4 py-3">
-            <dt className="text-sm text-faint">Explorer</dt>
+          <div className="flex flex-wrap items-center justify-between gap-2 px-4 py-3.5">
+            <dt className="font-mono text-[0.78rem] text-ink-3">Explorer</dt>
             <dd className="flex gap-3 text-sm">
               <a
                 href={`${EXPLORER_URL}/address/${profile.address}`}
@@ -336,7 +452,7 @@ export function OneProfileClient({ initial }: { initial: WireProfile }) {
         </p>
       </section>
 
-      <section className="border-t border-line pt-10">
+      <section className="border-t border-line pt-9">
         <OneLookup compact />
       </section>
     </div>

@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { PageEyebrow } from "@/components/ui/PageEyebrow";
+import { Reveal } from "@/components/motion/Reveal";
 import { MAX_WALLETS } from "@/lib/chain";
 import { PortfolioClient } from "./PortfolioClient";
 
@@ -11,37 +13,53 @@ export const metadata: Metadata = {
 
 export default function PortfolioPage() {
   return (
-    <div className="mx-auto w-full max-w-5xl px-5 py-12 sm:px-8 sm:py-14">
-      <header className="mb-6">
-        <h1 className="text-3xl font-semibold tracking-[-0.025em] text-ink sm:text-4xl">
-          Watch-only portfolios
-        </h1>
-        <p className="mt-3 max-w-2xl text-pretty text-[15px] leading-relaxed text-muted">
-          Add a single wallet or up to {MAX_WALLETS}. One wallet shows that wallet&apos;s full
-          balances. Several show combined totals with a per-wallet breakdown. No wallet connection
-          or signature is required. Your portfolios are saved only in this browser and do not prove
-          that you own the wallets.
-        </p>
+    <div className="mx-auto w-full max-w-5xl px-5 pt-10 pb-16 sm:px-8 sm:pt-14 sm:pb-20">
+      <header className="mb-8 sm:mb-10">
+        <Reveal>
+          <PageEyebrow>Private, browser-saved</PageEyebrow>
+          <h1 className="display mt-4 text-[clamp(2.4rem,5vw,3.4rem)]">
+            Watch-only <em>portfolios</em>
+          </h1>
+          <p className="mt-5 max-w-2xl text-[1.02rem] leading-relaxed text-ink-2">
+            Add a single wallet or up to {MAX_WALLETS}. One wallet shows that wallet&apos;s full
+            balances. Several show combined totals with a per-wallet breakdown. No wallet connection
+            or signature is required. Your portfolios are saved only in this browser and do not prove
+            that you own the wallets.
+          </p>
+          <p className="mt-6 inline-flex flex-wrap items-center gap-x-4 gap-y-1.5 border-l border-line pl-3.5 font-mono text-[0.75rem] text-ink-3">
+            <span>No wallet connection</span>
+            <span aria-hidden className="text-line-strong">
+              ·
+            </span>
+            <span>No signatures</span>
+            <span aria-hidden className="text-line-strong">
+              ·
+            </span>
+            <span>No transactions</span>
+          </p>
+        </Reveal>
       </header>
 
       <PortfolioClient />
 
-      <section className="mt-12 flex flex-wrap items-start justify-between gap-x-6 gap-y-4 border-t border-line pt-8">
-        <div className="max-w-lg">
-          <h2 className="text-lg font-semibold text-ink">Want these wallets verified?</h2>
-          <p className="mt-1.5 text-sm leading-relaxed text-muted">
+      <Reveal
+        as="section"
+        className="mt-14 flex flex-wrap items-center justify-between gap-x-6 gap-y-5 rounded-[18px] border border-line bg-surface p-6 sm:mt-16 sm:p-8"
+      >
+        <div className="max-w-xl">
+          <span className="eyebrow text-accent-deep">Proves control</span>
+          <h2 className="mt-3 font-serif text-[1.5rem] leading-tight text-ink">
+            Want these wallets verified?
+          </h2>
+          <p className="mt-2 text-[0.95rem] leading-relaxed text-ink-2">
             This view is unverified. Anyone can type any address. A Verified ONE proves control by
-            having each wallet sign, then records one public identity address onchain. No funds
-            move.
+            having each wallet sign, then records one public identity address onchain. No funds move.
           </p>
         </div>
-        <Link
-          href="/verified"
-          className="inline-flex shrink-0 items-center rounded-[8px] border border-line-strong bg-surface px-5 py-2.5 text-sm font-medium text-ink transition-colors hover:border-accent-line hover:bg-raised"
-        >
+        <Link href="/verified" className="btn btn-ghost shrink-0">
           Create a Verified ONE
         </Link>
-      </section>
+      </Reveal>
     </div>
   );
 }

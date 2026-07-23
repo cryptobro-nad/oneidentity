@@ -447,7 +447,9 @@ export function VerifiedClient() {
 
   return (
     <div className="space-y-8">
-      <StepProgress steps={steps} />
+      <div className="rounded-[14px] border border-line bg-surface px-5 py-4">
+        <StepProgress steps={steps} />
+      </div>
 
       <WalletConnect wallet={wallet} elevated />
 
@@ -468,14 +470,17 @@ export function VerifiedClient() {
       ) : null}
 
       {invalidatedNotice ? (
-        <div role="status" className="rounded-[10px] border border-warn/30 bg-warn-soft px-4 py-3.5">
+        <div
+          role="status"
+          className="rounded-[12px] border border-warn/40 bg-warn-soft px-4 py-3.5 shadow-[inset_2px_0_0_0_var(--warn)]"
+        >
           <p className="text-sm font-medium text-ink">
             The identity configuration changed. Previous signatures are no longer valid.
           </p>
           <button
             type="button"
             onClick={() => setInvalidatedNotice(false)}
-            className="mt-2 text-xs text-muted hover:text-ink"
+            className="mt-2 font-mono text-[0.72rem] text-ink-2 transition-colors hover:text-ink"
           >
             Dismiss
           </button>

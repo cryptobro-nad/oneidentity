@@ -30,41 +30,42 @@ export function SigningStep({
   return (
     <section aria-labelledby="signing-heading" className="space-y-5">
       <div>
-        <h2 id="signing-heading" className="text-lg font-semibold tracking-[-0.01em] text-ink">
-          2. Sign with each wallet
+        <span className="eyebrow">Step 2</span>
+        <h2 id="signing-heading" className="mt-2 font-serif text-[1.5rem] leading-tight text-ink">
+          Sign with each wallet
         </h2>
-        <p className="mt-1.5 text-sm text-muted">
+        <p className="mt-2 text-[0.95rem] leading-relaxed text-ink-2">
           Each secondary wallet signs a gasless authorization to join this ONE. The primary wallet
           does not sign. It confirms the group by submitting the transaction.
         </p>
         {deadline ? (
-          <p className="mt-1.5 text-sm text-faint">
-            Signatures expire at <span className="text-muted">{formatTimestamp(deadline)}</span>.
+          <p className="mt-2 font-mono text-[0.78rem] text-ink-3">
+            Signatures expire at <span className="text-ink-2">{formatTimestamp(deadline)}</span>.
           </p>
         ) : null}
       </div>
 
-      <div className="rounded-[12px] border border-line bg-raised px-4 py-3">
-        <p className="text-sm text-muted">
+      <div className="rounded-[12px] border border-accent/25 bg-surface-2/50 px-4 py-3.5">
+        <p className="text-sm leading-relaxed text-ink-2">
           <span className="font-medium text-ink">Signing does not move funds or approve tokens.</span>{" "}
           It only records that the wallet agrees to join this ONE. ONE never takes custody.
         </p>
       </div>
 
-      <ul className="depth-soft divide-y divide-line overflow-hidden rounded-[12px] border border-line bg-surface">
+      <ul className="space-y-2">
         {secondaries.map((wallet) => {
           const status = signatureStatusFor(draft, wallet);
           const isConnected = sameAddress(connectedAddress, wallet);
           const busy = signing !== null && sameAddress(signing, wallet);
 
           return (
-            <li key={wallet} className="px-4 py-3.5">
+            <li key={wallet} className="rounded-[12px] border border-line bg-surface px-4 py-3.5">
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <div className="min-w-0">
                   <div className="flex flex-wrap items-center gap-2">
                     <AddressChip address={wallet} />
                     {isConnected ? (
-                      <span className="rounded-full border border-line bg-raised px-2 py-0.5 text-[10px] font-medium text-muted">
+                      <span className="rounded-full border border-accent/40 bg-surface-2 px-2 py-0.5 font-mono text-[0.6rem] tracking-[0.08em] text-accent-deep uppercase">
                         Connected
                       </span>
                     ) : null}
@@ -94,7 +95,7 @@ export function SigningStep({
                     // re-reads the chain live and requests the switch if needed,
                     // so a wallet already on Monad is never blocked by old state.
                     disabled={busy}
-                    className="rounded-[8px] bg-accent px-4 py-2 text-sm font-medium text-accent-ink shadow-[0_1px_2px_rgba(16,24,40,0.08)] transition-colors hover:brightness-110 disabled:opacity-50"
+                    className="btn btn-primary shrink-0 disabled:opacity-50"
                   >
                     {busy ? "Waiting for wallet…" : "Sign with this wallet"}
                   </button>

@@ -92,23 +92,25 @@ export function ReviewStep({
   return (
     <section aria-labelledby="review-heading" className="space-y-5">
       <div>
-        <h2 id="review-heading" className="text-lg font-semibold tracking-[-0.01em] text-ink">
-          3. Review and create
+        <span className="eyebrow">Step 3</span>
+        <h2 id="review-heading" className="mt-2 font-serif text-[1.5rem] leading-tight text-ink">
+          Review and create
         </h2>
-        <p className="mt-1.5 text-sm text-muted">
-          Everything below is re-read from the chain when you simulate, not taken from the draft.
+        <p className="mt-2 text-[0.95rem] leading-relaxed text-ink-2">
+          The primary wallet submits one transaction on Monad Mainnet. No assets move. Everything
+          below is re-read from the chain when you simulate, not taken from the draft.
         </p>
       </div>
 
-      <div className="rounded-[10px] border border-warn/30 bg-warn-soft px-4 py-3.5">
+      <div className="rounded-[12px] border border-warn/40 bg-warn-soft px-4 py-3.5 shadow-[inset_2px_0_0_0_var(--warn)]">
         <p className="text-sm font-medium text-ink">A Verified ONE is public.</p>
-        <p className="mt-1 text-sm text-muted">
+        <p className="mt-1 text-sm leading-relaxed text-ink-2">
           The wallets and their link will be visible onchain. Wallets can leave later, but the
           record that they were linked stays.
         </p>
       </div>
 
-      <dl className="depth-soft divide-y divide-line overflow-hidden rounded-[12px] border border-line bg-surface">
+      <dl className="divide-y divide-line overflow-hidden rounded-[14px] border border-line bg-surface">
         <div className="flex flex-wrap items-center justify-between gap-2 px-4 py-3">
           <dt className="text-sm text-faint">Primary wallet</dt>
           <dd>{primary ? <AddressChip address={primary} /> : <span className="text-sm text-faint">Not selected</span>}</dd>
@@ -122,9 +124,13 @@ export function ReviewStep({
                 <span className="w-[4.5rem] shrink-0 text-xs text-faint">{walletLabel(i)}</span>
                 <AddressChip address={m} />
                 {primary?.toLowerCase() === m.toLowerCase() ? (
-                  <span className="text-xs text-accent">primary</span>
+                  <span className="rounded-[5px] border border-accent px-2 py-[3px] font-mono text-[0.6rem] tracking-[0.1em] text-accent-deep">
+                    PRIMARY
+                  </span>
                 ) : (
-                  <span className="text-xs text-faint">secondary</span>
+                  <span className="rounded-[5px] border border-line-strong px-2 py-[3px] font-mono text-[0.6rem] tracking-[0.1em] text-ink-3">
+                    SECONDARY
+                  </span>
                 )}
               </div>
             ))}
@@ -226,7 +232,7 @@ export function ReviewStep({
           type="button"
           onClick={onSimulate}
           disabled={simulating || submitting}
-          className="rounded-[8px] border border-line-strong bg-surface px-4 py-2.5 text-sm font-medium text-ink transition-colors hover:bg-raised disabled:opacity-50"
+          className="btn btn-ghost disabled:opacity-50"
         >
           {simulating ? "Simulating…" : "Simulate transaction"}
         </button>
@@ -235,7 +241,7 @@ export function ReviewStep({
           type="button"
           onClick={onSubmit}
           disabled={!canSubmit || submitting}
-          className="rounded-[8px] bg-accent px-6 py-2.5 text-sm font-medium text-accent-ink shadow-[0_1px_2px_rgba(16,24,40,0.08)] transition-colors hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-40"
+          className="btn btn-primary disabled:cursor-not-allowed disabled:opacity-40"
         >
           {submitting ? "Waiting for confirmation…" : "Create Verified ONE"}
         </button>

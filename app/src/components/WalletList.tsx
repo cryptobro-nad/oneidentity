@@ -49,19 +49,22 @@ export function WalletList({
   return (
     <section aria-labelledby="wallets-heading" className="space-y-5">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <h2 id="wallets-heading" className="min-w-0 truncate text-lg font-semibold tracking-[-0.01em] text-ink">
+        <h2
+          id="wallets-heading"
+          className="min-w-0 truncate font-serif text-[1.35rem] leading-tight text-ink"
+        >
           {heading}
         </h2>
-        <span className="shrink-0 rounded-full border border-line bg-raised px-2.5 py-0.5 text-xs font-medium tabular-nums text-muted">
+        <span className="shrink-0 rounded-full border border-line bg-surface-2 px-3 py-1 font-mono text-[0.72rem] font-medium tabular-nums text-ink-2">
           {addresses.length} of {MAX_WALLETS} added
         </span>
       </div>
 
       <form onSubmit={submit} noValidate className="space-y-2">
-        <label htmlFor={inputId} className="block text-xs text-faint">
+        <label htmlFor={inputId} className="eyebrow block">
           Add wallet address
         </label>
-        <div className="flex flex-col gap-2 sm:flex-row">
+        <div className="flex flex-col gap-2.5 sm:flex-row">
           <input
             id={inputId}
             value={draft}
@@ -76,13 +79,9 @@ export function WalletList({
             aria-label="Add wallet address"
             aria-invalid={error ? true : undefined}
             aria-describedby={error ? "wallet-error" : undefined}
-            className="min-w-0 flex-1 rounded-[8px] border border-line-strong bg-surface px-3.5 py-2.5 font-mono text-sm text-ink placeholder:text-faint focus:border-accent disabled:opacity-50"
+            className="min-w-0 flex-1 rounded-[11px] border border-line-strong bg-bg px-4 py-3 font-mono text-sm text-ink transition-[border-color,box-shadow] placeholder:text-ink-3 focus:border-accent focus:shadow-[0_0_0_3px_var(--glow)] disabled:opacity-50"
           />
-          <button
-            type="submit"
-            disabled={full}
-            className="rounded-[8px] border border-line-strong bg-surface px-4 py-2.5 text-sm font-medium text-ink transition-colors hover:bg-raised disabled:cursor-not-allowed disabled:opacity-50"
-          >
+          <button type="submit" disabled={full} className="btn btn-ghost shrink-0 justify-center">
             Add wallet
           </button>
         </div>
@@ -93,24 +92,29 @@ export function WalletList({
           </p>
         ) : null}
         {full && !error ? (
-          <p className="text-sm text-faint">
+          <p className="text-sm text-ink-3">
             You have reached the {MAX_WALLETS}-wallet limit. Remove one to add another.
           </p>
         ) : null}
       </form>
 
       {addresses.length > 0 ? (
-        <ul className="divide-y divide-line border-t border-b border-line">
+        <ul className="space-y-2">
           {addresses.map((address, index) => (
-            <li key={address} className="flex flex-wrap items-center justify-between gap-3 py-3">
+            <li
+              key={address}
+              className="flex flex-wrap items-center justify-between gap-3 rounded-[12px] border border-line bg-surface-2/50 px-3.5 py-2.5"
+            >
               <div className="flex min-w-0 items-center gap-3">
-                <span className="w-[4.5rem] shrink-0 text-xs text-faint">{walletLabel(index)}</span>
+                <span className="shrink-0 rounded-[6px] border border-line-strong px-2 py-1 font-mono text-[0.66rem] tracking-[0.08em] text-ink-3 uppercase">
+                  {walletLabel(index)}
+                </span>
                 <AddressChip address={address} />
               </div>
               <button
                 type="button"
                 onClick={() => onRemove(address)}
-                className="text-xs text-faint transition-colors hover:text-danger"
+                className="rounded-[7px] px-2 py-1 font-mono text-[0.72rem] text-ink-3 transition-colors hover:text-danger"
                 aria-label={`Remove ${address}`}
               >
                 Remove
@@ -119,15 +123,17 @@ export function WalletList({
           ))}
         </ul>
       ) : (
-        <p className="py-4 text-center text-sm text-faint">Add a Monad Mainnet address to begin.</p>
+        <p className="rounded-[12px] border border-dashed border-line py-5 text-center text-sm text-ink-3">
+          Add a Monad Mainnet address to begin.
+        </p>
       )}
 
-      <div className="flex flex-wrap items-center gap-3">
+      <div className="flex flex-wrap items-center gap-4">
         <button
           type="button"
           onClick={onLoad}
           disabled={addresses.length === 0 || loading}
-          className="rounded-[8px] bg-accent px-5 py-2.5 text-sm font-medium text-accent-ink shadow-[0_1px_2px_rgba(16,24,40,0.08)] transition-colors hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-40"
+          className="btn btn-primary disabled:cursor-not-allowed disabled:opacity-40"
         >
           {loading ? "Loading…" : loadLabel}
         </button>
@@ -135,7 +141,7 @@ export function WalletList({
           <button
             type="button"
             onClick={onClear}
-            className="text-sm text-muted transition-colors hover:text-danger"
+            className="font-mono text-[0.78rem] text-ink-2 transition-colors hover:text-danger"
           >
             Clear all
           </button>
