@@ -116,19 +116,18 @@ export function NetworkDiagram({ className = "" }: { className?: string }) {
       <text x="368" y="224" style={SANS} fontSize="12.5" fill="var(--ink-2)">
         NFTs
       </text>
-      {/* Tagline constrained to the card's inner content box (x 368 → the
-          dashed line at 532). A smaller size + tighter tracking bring it under
-          width, and textLength/lengthAdjust hard-cap it at 158px so it can never
-          reach the card border (552) — at every screen width, since the SVG
-          scales uniformly. Wording unchanged. */}
+      {/* Tagline sized to fit the card's inner content box by its NATURAL width
+          (no textLength trickery): JetBrains Mono has a 0.6em advance, so 26
+          chars at fontSize 9 with 0.02em tracking is ~145px. Starting at x=368
+          it ends at ~513 — 19px inside the dashed content line (532) and 39px
+          clear of the card's right border (552). The SVG scales uniformly, so
+          this padding holds at every width. Wording unchanged. */}
       <text
         x="368"
         y="250"
         style={MONO}
-        fontSize="9.5"
-        letterSpacing="0.04em"
-        textLength="158"
-        lengthAdjust="spacingAndGlyphs"
+        fontSize="9"
+        letterSpacing="0.02em"
         fill="var(--accent-live)"
       >
         MULTIPLE WALLETS, ONE VIEW
