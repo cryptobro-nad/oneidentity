@@ -6,7 +6,8 @@ import { makeMonadIndexerClient } from "@/lib/v2link/indexerClient";
 import { signAttestation } from "@/lib/v2link/attest";
 import { resolveOneAddress, ONE_REGISTRY_V2_ADDRESS } from "@/lib/v2link/registry";
 import { DEFAULT_CONFIRMATIONS, type LinkAttestation } from "@/lib/v2link/types";
-import { rateLimit, clientKey } from "@/lib/v2link/rateLimit";
+import { getRateLimiter, clientIp } from "@/lib/v2link/rateLimit";
+import { tooManyRequests } from "@/lib/v2link/http";
 import { safeErrorMessage } from "@/lib/v2link/errors";
 
 export const dynamic = "force-dynamic";
@@ -17,12 +18,18 @@ export const dynamic = "force-dynamic";
  * (VERIFIER_PRIVATE_KEY) never leaves the server.
  */
 export async function GET(req: Request, ctx: { params: Promise<{ id: string }> }) {
-  // Polling can be frequent; throttle per caller (defense in depth).
-  if (!rateLimit(clientKey(req, "v2status"), { capacity: 30, refillPerSec: 1 })) {
-    return NextResponse.json({ error: "Too many requests. Try again shortly." }, { status: 429 });
-  }
-
   const { id } = await ctx.params;
+
+  // Polling can be frequent; throttle by IP and by challenge id (defense in
+  // depth — the per-id bucket caps polling of any single challenge).
+  const limiter = getRateLimiter();
+  const [byIp, byId] = await Promise.all([
+    limiter.check(`status:ip:${clientIp(req)}`, { capacity: 30, refillPerSec: 1 }),
+    limiter.check(`status:challenge:${id}`, { capacity: 30, refillPerSec: 1 }),
+  ]);
+  if (!byIp.allowed) return tooManyRequests(byIp.retryAfterSeconds);
+  if (!byId.allowed) return tooManyRequests(byId.retryAfterSeconds);
+
   const store = getChallengeStore();
   const now = Math.floor(Date.now() / 1000);
 
@@ -100,4 +107,20 @@ export async function GET(req: Request, ctx: { params: Promise<{ id: string }> }
     },
     signature,
   });
+}
+
+/**
+ * DELETE → cancel a pending/verified attempt so the pair is free for a fresh one
+ * immediately (rather than waiting out the 5-minute window). Idempotent and safe:
+ * cancelling a terminal or unknown challenge is a no-op. No attestation is issued.
+ */
+export async function DELETE(req: Request, ctx: { params: Promise<{ id: string }> }) {
+  const { id } = await ctx.params;
+  const limiter = getRateLimiter();
+  const byIp = await limiter.check(`cancel:ip:${clientIp(req)}`, { capacity: 20, refillPerSec: 1 });
+  if (!byIp.allowed) return tooManyRequests(byIp.retryAfterSeconds);
+
+  const store = getChallengeStore();
+  await store.cancel(id);
+  return NextResponse.json({ status: "cancelled" });
 }

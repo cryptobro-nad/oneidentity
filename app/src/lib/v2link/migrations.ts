@@ -1,6 +1,13 @@
 /**
- * V2 link schema. Idempotent (IF NOT EXISTS), so `migrate` is safe to run on
- * every boot and in tests. See docs/verified-one-v2.md for rollback.
+ * V2 link schema, applied in order. Idempotent (IF NOT EXISTS / IF EXISTS), so
+ * `migrate` is safe to run on every boot and in tests. The `.sql` files under
+ * app/migrations mirror these strings and are the canonical psql artifacts; keep
+ * the two in sync. See docs/verified-one-v2.md for rollback.
+ *
+ * Migration 001 shipped an amount-scoped active-uniqueness index; 002 replaces
+ * it (see the file header) and adds the rate-limit table. 002 is additive/
+ * forward-only rather than an edit to 001, so any environment that already ran
+ * 001 migrates cleanly.
  */
 
 import type { Sql } from "./sql";
@@ -53,24 +60,60 @@ create table if not exists v2_scan_lease (
 insert into v2_scan_lease (id, locked_until) values (1, 0) on conflict (id) do nothing;
 `;
 
+export const MIGRATION_002 = `
+-- Replace amount-scoped active uniqueness with pair-scoped uniqueness (one active
+-- challenge per pair regardless of amount) plus a per-recipient amount index.
+drop index if exists v2_uniq_active_amount;
+
+create unique index if not exists v2_uniq_active_pair
+  on v2_challenges (secondary_addr, primary_addr)
+  where status in ('pending','verified');
+
+create unique index if not exists v2_uniq_active_recipient_amount
+  on v2_challenges (primary_addr, amount_wei)
+  where status in ('pending','verified');
+
+-- DB-backed rate limiting, shared across serverless instances.
+create table if not exists v2_rate_limits (
+  bucket     text primary key,
+  tokens     double precision not null,
+  updated_at double precision not null   -- unix seconds; fractional allowed
+);
+create index if not exists v2_rate_limits_updated_idx on v2_rate_limits (updated_at);
+`;
+
+/** Ordered migrations. Appending a new one is the only supported way to evolve
+ *  the schema; never edit a shipped migration in place. */
+export const MIGRATIONS = [MIGRATION_001, MIGRATION_002] as const;
+
 /**
- * Individual statements. Postgres' extended protocol (used by both PGlite and
- * node-postgres parameterised queries) rejects multiple commands in one query,
- * so we run them one at a time. Splitting on `;` is safe here: no statement
- * body contains a semicolon inside a string literal.
+ * Splits a migration into individual statements. Postgres' extended protocol
+ * (used by both PGlite and node-postgres parameterised queries) rejects multiple
+ * commands in one query, so we run them one at a time.
+ *
+ * Line comments are stripped FIRST (whole-line and inline `-- …`), so a `;`
+ * inside a comment can't be mistaken for a statement terminator. No statement
+ * body contains a semicolon inside a string literal, so splitting on `;` is then
+ * safe.
  */
-export const MIGRATION_001_STATEMENTS = MIGRATION_001.split(";")
-  .map((s) =>
-    s
-      .split("\n")
-      .filter((line) => !line.trim().startsWith("--"))
-      .join("\n")
-      .trim(),
-  )
-  .filter((s) => s.length > 0);
+export function toStatements(sql: string): string[] {
+  const withoutComments = sql
+    .split("\n")
+    .map((line) => {
+      const i = line.indexOf("--");
+      return i === -1 ? line : line.slice(0, i);
+    })
+    .join("\n");
+  return withoutComments
+    .split(";")
+    .map((s) => s.trim())
+    .filter((s) => s.length > 0);
+}
 
 export async function migrate(sql: Sql): Promise<void> {
-  for (const stmt of MIGRATION_001_STATEMENTS) {
-    await sql.query(stmt);
+  for (const migration of MIGRATIONS) {
+    for (const stmt of toStatements(migration)) {
+      await sql.query(stmt);
+    }
   }
 }

@@ -1,32 +1,50 @@
 import { beforeEach, describe, expect, it } from "vitest";
-import { rateLimit, clientKey, __resetRateLimits } from "./rateLimit";
+import { InMemoryRateLimiter, clientIp } from "./rateLimit";
 
-beforeEach(() => __resetRateLimits());
+let limiter: InMemoryRateLimiter;
+beforeEach(() => {
+  limiter = new InMemoryRateLimiter();
+});
 
-describe("rateLimit", () => {
-  it("allows up to capacity then blocks", () => {
-    const opts = { capacity: 3, refillPerSec: 0, now: 100 };
-    expect(rateLimit("k", opts)).toBe(true);
-    expect(rateLimit("k", opts)).toBe(true);
-    expect(rateLimit("k", opts)).toBe(true);
-    expect(rateLimit("k", opts)).toBe(false); // exhausted, no refill
+describe("InMemoryRateLimiter", () => {
+  it("allows up to capacity then denies with retry timing", async () => {
+    const opts = { capacity: 3, refillPerSec: 0.5, now: 100 };
+    expect((await limiter.check("k", opts)).allowed).toBe(true);
+    expect((await limiter.check("k", opts)).allowed).toBe(true);
+    expect((await limiter.check("k", opts)).allowed).toBe(true);
+    const denied = await limiter.check("k", opts);
+    expect(denied.allowed).toBe(false);
+    expect(denied.retryAfterSeconds).toBeGreaterThanOrEqual(1); // ~1/0.5 = 2s
   });
 
-  it("refills over time", () => {
-    expect(rateLimit("k", { capacity: 1, refillPerSec: 1, now: 100 })).toBe(true);
-    expect(rateLimit("k", { capacity: 1, refillPerSec: 1, now: 100 })).toBe(false);
-    expect(rateLimit("k", { capacity: 1, refillPerSec: 1, now: 101 })).toBe(true); // 1s → +1 token
+  it("refills over time", async () => {
+    expect((await limiter.check("k", { capacity: 1, refillPerSec: 1, now: 100 })).allowed).toBe(true);
+    expect((await limiter.check("k", { capacity: 1, refillPerSec: 1, now: 100 })).allowed).toBe(false);
+    expect((await limiter.check("k", { capacity: 1, refillPerSec: 1, now: 101 })).allowed).toBe(true);
   });
 
-  it("keys are independent", () => {
+  it("keys are independent", async () => {
     const opts = { capacity: 1, refillPerSec: 0, now: 100 };
-    expect(rateLimit("a", opts)).toBe(true);
-    expect(rateLimit("b", opts)).toBe(true);
-    expect(rateLimit("a", opts)).toBe(false);
+    expect((await limiter.check("a", opts)).allowed).toBe(true);
+    expect((await limiter.check("b", opts)).allowed).toBe(true);
+    expect((await limiter.check("a", opts)).allowed).toBe(false);
+  });
+});
+
+describe("clientIp", () => {
+  it("prefers the platform-set x-real-ip over a client-supplied x-forwarded-for", () => {
+    const req = new Request("https://x/", {
+      headers: { "x-real-ip": "9.9.9.9", "x-forwarded-for": "1.2.3.4, 5.6.7.8" },
+    });
+    expect(clientIp(req)).toBe("9.9.9.9");
   });
 
-  it("derives a key from the forwarded IP", () => {
+  it("falls back to the first x-forwarded-for entry only when x-real-ip is absent", () => {
     const req = new Request("https://x/", { headers: { "x-forwarded-for": "1.2.3.4, 5.6.7.8" } });
-    expect(clientKey(req, "scope")).toBe("scope:1.2.3.4");
+    expect(clientIp(req)).toBe("1.2.3.4");
+  });
+
+  it("returns 'unknown' when no address header is present", () => {
+    expect(clientIp(new Request("https://x/"))).toBe("unknown");
   });
 });

@@ -68,13 +68,32 @@ describe("createChallenge", () => {
 
   it("generates a completely new challenge after the previous one expires", async () => {
     const store = new InMemoryChallengeStore();
-    const a = await createChallenge(store, { primary: PRIMARY, secondary: SECONDARY }, { ...baseDeps, now: () => 1000 });
+    // Deterministic, distinct step indices so the two amounts are guaranteed
+    // different (the point of the test is a fresh id + amount, not randomness).
+    let step = 0n;
+    const deps = { ...baseDeps, randomWei: () => step++ };
+    const a = await createChallenge(store, { primary: PRIMARY, secondary: SECONDARY }, { ...deps, now: () => 1000 });
     // Advance past the 5-minute window.
-    const b = await createChallenge(store, { primary: PRIMARY, secondary: SECONDARY }, { ...baseDeps, now: () => 1000 + 301 });
+    const b = await createChallenge(store, { primary: PRIMARY, secondary: SECONDARY }, { ...deps, now: () => 1000 + 301 });
     expect(a.ok && b.ok).toBe(true);
     if (a.ok && b.ok) {
       expect(a.challenge.id).not.toBe(b.challenge.id);
       expect(a.challenge.amountWei).not.toBe(b.challenge.amountWei);
     }
+  });
+
+  it("returns a clear conflict when the pair is already active (concurrent race)", async () => {
+    const store = new InMemoryChallengeStore();
+    // Simulate the race: the pre-check misses (returns null), but create() then
+    // hits the active-pair unique index. Force it by pre-seeding an active one.
+    await createChallenge(store, { primary: PRIMARY, secondary: SECONDARY }, baseDeps);
+    // A store whose findActiveForPair lies (null) so createChallenge proceeds to
+    // create() and must surface the DB conflict rather than a generic error.
+    const racing = Object.assign(Object.create(Object.getPrototypeOf(store)), store, {
+      findActiveForPair: async () => null,
+    });
+    const res = await createChallenge(racing, { primary: PRIMARY, secondary: SECONDARY }, baseDeps);
+    expect(res.ok).toBe(false);
+    if (!res.ok) expect(res.conflict).toBe(true);
   });
 });

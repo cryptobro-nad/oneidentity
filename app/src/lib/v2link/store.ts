@@ -12,9 +12,35 @@
 import type { Challenge } from "./types";
 import type { PortfolioAddress } from "@/lib/types";
 
+/** Statuses that count as an active (blocking) challenge for a pair. Terminal
+ *  statuses — expired, cancelled, linked — never block a fresh attempt. */
+export const ACTIVE_STATUSES = ["pending", "verified"] as const;
+
+/** DB constraint names, shared by the migration and both store implementations
+ *  so a violation can be classified identically everywhere. */
+export const CONSTRAINT = {
+  ACTIVE_PAIR: "v2_uniq_active_pair", // one active challenge per (secondary, primary)
+  RECIPIENT_AMOUNT: "v2_uniq_active_recipient_amount", // amount unique per recipient while active
+  VERIFIER_NONCE: "v2_uniq_verifier_nonce",
+  CHALLENGE_ID: "v2_challenges_pkey",
+  TX_HASH: "v2_uniq_tx_hash",
+} as const;
+
+export type ConstraintName = (typeof CONSTRAINT)[keyof typeof CONSTRAINT];
+
+/** Thrown by `create`/`update` when a unique index rejects the write. Carries the
+ *  constraint so the caller can decide whether to regenerate (amount/nonce/id)
+ *  or surface a conflict (active pair). */
+export class UniqueViolation extends Error {
+  constructor(public readonly constraint: string) {
+    super(`unique violation: ${constraint}`);
+    this.name = "UniqueViolation";
+  }
+}
+
 export interface ChallengeStore {
-  /** Insert a new pending challenge. Rejects on any uniqueness violation:
-   *  amount active for the pair, verifier nonce, or challenge id. */
+  /** Insert a new pending challenge. Throws `UniqueViolation` on any uniqueness
+   *  violation: active pair, active recipient+amount, verifier nonce, or id. */
   create(c: Challenge): Promise<void>;
   get(id: string): Promise<Challenge | null>;
   /** The single active challenge for a pair (pending & unexpired, or verified &
@@ -22,9 +48,19 @@ export interface ChallengeStore {
   findActiveForPair(secondary: PortfolioAddress, primary: PortfolioAddress, now: number): Promise<Challenge | null>;
   /** Pending, unexpired challenges whose recipient + amount match a transfer. */
   findMatchable(to: PortfolioAddress, amountWei: string): Promise<Challenge[]>;
-  amountActiveForPair(secondary: PortfolioAddress, primary: PortfolioAddress, amountWei: string): Promise<boolean>;
+  /** True if an active challenge already targets this recipient with this exact
+   *  amount (keeps the amount → challenge match unambiguous). */
+  amountActiveForRecipient(primary: PortfolioAddress, amountWei: string): Promise<boolean>;
   txUsed(txHash: `0x${string}`): Promise<boolean>;
   update(c: Challenge): Promise<void>;
+  /** Marks a pending/verified challenge cancelled (terminal), freeing the pair
+   *  for a fresh attempt immediately. No-op if it is not currently active. */
+  cancel(id: string): Promise<void>;
+  /** Flips any time-expired pending/verified challenges for a pair to `expired`,
+   *  freeing the active-pair unique index so a fresh attempt can be created.
+   *  (The partial index is status-based; a lapsed challenge still reads
+   *  `pending` until flipped.) */
+  expireStaleForPair(secondary: PortfolioAddress, primary: PortfolioAddress, now: number): Promise<void>;
 
   getCursor(): Promise<{ block: bigint; hash: string | null } | null>;
   setCursor(block: bigint, hash: string | null): Promise<void>;
@@ -42,16 +78,23 @@ export class InMemoryChallengeStore implements ChallengeStore {
   private leaseUntil = 0;
 
   private active(c: Challenge): boolean {
-    return c.status === "pending" || c.status === "verified";
+    return (ACTIVE_STATUSES as readonly string[]).includes(c.status);
   }
 
   async create(c: Challenge): Promise<void> {
-    if (await this.amountActiveForPair(c.secondary, c.primary, c.amountWei)) {
-      throw new Error("amount already active for this pair");
-    }
-    if (this.byId.has(c.id)) throw new Error("duplicate challenge id");
+    if (this.byId.has(c.id)) throw new UniqueViolation(CONSTRAINT.CHALLENGE_ID);
     for (const e of this.byId.values()) {
-      if (e.verifierNonce === c.verifierNonce) throw new Error("duplicate verifier nonce");
+      if (e.verifierNonce === c.verifierNonce) throw new UniqueViolation(CONSTRAINT.VERIFIER_NONCE);
+      if (!this.active(e)) continue;
+      if (
+        e.secondary.toLowerCase() === c.secondary.toLowerCase() &&
+        e.primary.toLowerCase() === c.primary.toLowerCase()
+      ) {
+        throw new UniqueViolation(CONSTRAINT.ACTIVE_PAIR);
+      }
+      if (e.primary.toLowerCase() === c.primary.toLowerCase() && e.amountWei === c.amountWei) {
+        throw new UniqueViolation(CONSTRAINT.RECIPIENT_AMOUNT);
+      }
     }
     this.byId.set(c.id, { ...c });
   }
@@ -89,18 +132,9 @@ export class InMemoryChallengeStore implements ChallengeStore {
     return out;
   }
 
-  async amountActiveForPair(
-    secondary: PortfolioAddress,
-    primary: PortfolioAddress,
-    amountWei: string,
-  ): Promise<boolean> {
+  async amountActiveForRecipient(primary: PortfolioAddress, amountWei: string): Promise<boolean> {
     for (const c of this.byId.values()) {
-      if (
-        this.active(c) &&
-        c.secondary.toLowerCase() === secondary.toLowerCase() &&
-        c.primary.toLowerCase() === primary.toLowerCase() &&
-        c.amountWei === amountWei
-      ) {
+      if (this.active(c) && c.primary.toLowerCase() === primary.toLowerCase() && c.amountWei === amountWei) {
         return true;
       }
     }
@@ -116,6 +150,26 @@ export class InMemoryChallengeStore implements ChallengeStore {
 
   async update(c: Challenge): Promise<void> {
     this.byId.set(c.id, { ...c });
+  }
+
+  async cancel(id: string): Promise<void> {
+    const c = this.byId.get(id);
+    if (c && this.active(c)) this.byId.set(id, { ...c, status: "cancelled" });
+  }
+
+  async expireStaleForPair(
+    secondary: PortfolioAddress,
+    primary: PortfolioAddress,
+    now: number,
+  ): Promise<void> {
+    for (const c of this.byId.values()) {
+      if (c.secondary.toLowerCase() !== secondary.toLowerCase()) continue;
+      if (c.primary.toLowerCase() !== primary.toLowerCase()) continue;
+      const stale =
+        (c.status === "pending" && now >= c.expiresAt) ||
+        (c.status === "verified" && now >= (c.approvalDeadline ?? 0));
+      if (stale) this.byId.set(c.id, { ...c, status: "expired" });
+    }
   }
 
   async getCursor() {

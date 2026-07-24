@@ -8,10 +8,21 @@
  */
 
 import { getAddress } from "viem";
-import type { ChallengeStore } from "./store";
+import { UniqueViolation, type ChallengeStore } from "./store";
 import type { Sql } from "./sql";
 import type { Challenge, ChallengeStatus } from "./types";
 import type { PortfolioAddress } from "@/lib/types";
+
+/** Postgres unique-violation SQLSTATE. */
+const PG_UNIQUE_VIOLATION = "23505";
+
+/** Rethrows a driver unique-violation as our typed `UniqueViolation` (carrying
+ *  the constraint/index name), leaving every other error untouched. */
+function rethrowUnique(err: unknown): never {
+  const e = err as { code?: string; constraint?: string };
+  if (e && e.code === PG_UNIQUE_VIOLATION) throw new UniqueViolation(e.constraint ?? "unknown");
+  throw err;
+}
 
 type Row = {
   id: string;
@@ -55,23 +66,27 @@ export class PostgresChallengeStore implements ChallengeStore {
   constructor(private readonly sql: Sql) {}
 
   async create(c: Challenge): Promise<void> {
-    await this.sql.query(
-      `insert into v2_challenges
-        (id, primary_addr, secondary_addr, amount_wei, created_at, created_at_block,
-         expires_at, status, verifier_nonce)
-       values ($1,$2,$3,$4,$5,$6,$7,$8,$9)`,
-      [
-        c.id,
-        lc(c.primary),
-        lc(c.secondary),
-        c.amountWei,
-        c.createdAt,
-        c.createdAtBlock.toString(),
-        c.expiresAt,
-        c.status,
-        c.verifierNonce.toString(),
-      ],
-    );
+    try {
+      await this.sql.query(
+        `insert into v2_challenges
+          (id, primary_addr, secondary_addr, amount_wei, created_at, created_at_block,
+           expires_at, status, verifier_nonce)
+         values ($1,$2,$3,$4,$5,$6,$7,$8,$9)`,
+        [
+          c.id,
+          lc(c.primary),
+          lc(c.secondary),
+          c.amountWei,
+          c.createdAt,
+          c.createdAtBlock.toString(),
+          c.expiresAt,
+          c.status,
+          c.verifierNonce.toString(),
+        ],
+      );
+    } catch (err) {
+      rethrowUnique(err);
+    }
   }
 
   async get(id: string): Promise<Challenge | null> {
@@ -103,16 +118,12 @@ export class PostgresChallengeStore implements ChallengeStore {
     return rows.map(toChallenge);
   }
 
-  async amountActiveForPair(
-    secondary: PortfolioAddress,
-    primary: PortfolioAddress,
-    amountWei: string,
-  ): Promise<boolean> {
+  async amountActiveForRecipient(primary: PortfolioAddress, amountWei: string): Promise<boolean> {
     const { rowCount } = await this.sql.query(
       `select 1 from v2_challenges
-        where secondary_addr = $1 and primary_addr = $2 and amount_wei = $3
+        where primary_addr = $1 and amount_wei = $2
           and status in ('pending','verified') limit 1`,
-      [lc(secondary), lc(primary), amountWei],
+      [lc(primary), amountWei],
     );
     return rowCount > 0;
   }
@@ -126,20 +137,46 @@ export class PostgresChallengeStore implements ChallengeStore {
   }
 
   async update(c: Challenge): Promise<void> {
+    try {
+      await this.sql.query(
+        `update v2_challenges set
+           status = $2, tx_hash = $3, tx_block = $4, verified_at = $5,
+           approval_deadline = $6, linked_at = $7
+         where id = $1`,
+        [
+          c.id,
+          c.status,
+          c.txHash ? lc(c.txHash) : null,
+          c.txBlock !== undefined ? c.txBlock.toString() : null,
+          c.verifiedAt ?? null,
+          c.approvalDeadline ?? null,
+          c.linkedAt ?? null,
+        ],
+      );
+    } catch (err) {
+      rethrowUnique(err);
+    }
+  }
+
+  async cancel(id: string): Promise<void> {
     await this.sql.query(
-      `update v2_challenges set
-         status = $2, tx_hash = $3, tx_block = $4, verified_at = $5,
-         approval_deadline = $6, linked_at = $7
-       where id = $1`,
-      [
-        c.id,
-        c.status,
-        c.txHash ? lc(c.txHash) : null,
-        c.txBlock !== undefined ? c.txBlock.toString() : null,
-        c.verifiedAt ?? null,
-        c.approvalDeadline ?? null,
-        c.linkedAt ?? null,
-      ],
+      `update v2_challenges set status = 'cancelled'
+        where id = $1 and status in ('pending','verified')`,
+      [id],
+    );
+  }
+
+  async expireStaleForPair(
+    secondary: PortfolioAddress,
+    primary: PortfolioAddress,
+    now: number,
+  ): Promise<void> {
+    await this.sql.query(
+      `update v2_challenges set status = 'expired'
+        where secondary_addr = $1 and primary_addr = $2
+          and ( (status = 'pending'  and expires_at <= $3)
+             or (status = 'verified' and approval_deadline <= $3) )`,
+      [lc(secondary), lc(primary), now],
     );
   }
 

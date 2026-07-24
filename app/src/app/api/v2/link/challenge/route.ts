@@ -3,7 +3,8 @@ import { getAddress, isAddress } from "viem";
 import { getChallengeStore } from "@/lib/v2link/storeFactory";
 import { createChallenge } from "@/lib/v2link/challenge";
 import { walletIsFree, ONE_REGISTRY_V2_ADDRESS } from "@/lib/v2link/registry";
-import { rateLimit, clientKey } from "@/lib/v2link/rateLimit";
+import { getRateLimiter, clientIp } from "@/lib/v2link/rateLimit";
+import { tooManyRequests } from "@/lib/v2link/http";
 import { withRpcFallback } from "@/lib/rpc";
 import type { PortfolioAddress } from "@/lib/types";
 
@@ -14,10 +15,12 @@ export async function POST(req: Request) {
   if (!ONE_REGISTRY_V2_ADDRESS) {
     return NextResponse.json({ error: "V2 is not configured on this deployment." }, { status: 503 });
   }
-  // Challenge creation touches the chain; throttle harder than status polling.
-  if (!rateLimit(clientKey(req, "v2challenge"), { capacity: 5, refillPerSec: 0.2 })) {
-    return NextResponse.json({ error: "Too many requests. Try again shortly." }, { status: 429 });
-  }
+  const limiter = getRateLimiter();
+
+  // Throttle by IP before doing any work (creation touches the chain).
+  const byIp = await limiter.check(`challenge:ip:${clientIp(req)}`, { capacity: 5, refillPerSec: 0.2 });
+  if (!byIp.allowed) return tooManyRequests(byIp.retryAfterSeconds);
+
   let body: { primary?: string; secondary?: string };
   try {
     body = (await req.json()) as typeof body;
@@ -38,6 +41,14 @@ export async function POST(req: Request) {
     );
   }
 
+  // Also throttle by primary address, so one identity cannot spam challenges
+  // across many IPs.
+  const byPrimary = await limiter.check(`challenge:primary:${getAddress(primary).toLowerCase()}`, {
+    capacity: 5,
+    refillPerSec: 0.2,
+  });
+  if (!byPrimary.allowed) return tooManyRequests(byPrimary.retryAfterSeconds);
+
   // Reject wallets already active in V1 or V2 before issuing a challenge.
   try {
     const [pFree, sFree] = await Promise.all([
@@ -56,7 +67,10 @@ export async function POST(req: Request) {
     { primary, secondary },
     { now: () => Math.floor(Date.now() / 1000), currentBlock: () => currentBlock() },
   );
-  if (!result.ok) return NextResponse.json({ error: result.error }, { status: 400 });
+  if (!result.ok) {
+    // A concurrent request already created the one allowed challenge for this pair.
+    return NextResponse.json({ error: result.error }, { status: result.conflict ? 409 : 400 });
+  }
 
   const c = result.challenge;
   return NextResponse.json({

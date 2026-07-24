@@ -92,8 +92,9 @@ describe("runIndexerTick", () => {
     client.put(110n, [{ hash: "0xtx1", from: SECONDARY, to: PRIMARY, value: BigInt(AMOUNT) }]);
     await runIndexerTick(store, client, { now, confirmations: 8 }); // verifies c1
 
-    // A second pending challenge for the same pair/amount cannot reuse tx1.
-    await store.create(pending("c2", { secondary: OTHER })); // different pair to allow creation
+    // A second pending challenge (distinct pair + amount, so it is creatable)
+    // must not be able to reuse tx1.
+    await store.create(pending("c2", { secondary: OTHER, amountWei: "16000000000000000" }));
     client.head = 140n;
     client.put(110n, [{ hash: "0xtx1", from: SECONDARY, to: PRIMARY, value: BigInt(AMOUNT) }]);
     // Re-scan won't revisit block 110 (cursor is past it), and tx1 is used anyway.

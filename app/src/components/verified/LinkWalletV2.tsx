@@ -5,6 +5,7 @@ import { getAddress, isAddress } from "viem";
 import { useWallet } from "@/lib/wallet/useWallet";
 import { monad } from "@/lib/chain";
 import { ONE_REGISTRY_V2_ADDRESS, ONE_REGISTRY_V2_WRITE_ABI } from "@/lib/v2link/registry";
+import { AMOUNT_DECIMALS } from "@/lib/v2link/challenge";
 import { V2_LINK_COPY, formatCountdown, type LinkFlowState } from "@/lib/v2link/copy";
 import { formatAmount, shortenAddress } from "@/lib/format";
 
@@ -182,14 +183,20 @@ export function LinkWalletV2({ onLinked }: { onLinked?: (one: string) => void } 
   }, [verified, wallet, challenge, onLinked]);
 
   const reset = useCallback(() => {
+    // Best-effort cancel so the pair is free immediately (don't wait out expiry).
+    if (challenge && (state === "awaitingTransfer" || state === "checking" || state === "verified")) {
+      void fetch(`/api/v2/link/challenge/${challenge.id}`, { method: "DELETE" }).catch(() => {});
+    }
     setChallenge(null);
     setVerified(null);
     setError(null);
     setState("idle");
-  }, []);
+  }, [challenge, state]);
 
+  // The generated amount is aligned to AMOUNT_DECIMALS, so this display is exact
+  // (no rounding) and the string the user reads matches the wei to be sent.
   const amountLabel = useMemo(
-    () => (challenge ? formatAmount(BigInt(challenge.amountWei), 18, 6) : ""),
+    () => (challenge ? formatAmount(BigInt(challenge.amountWei), 18, AMOUNT_DECIMALS) : ""),
     [challenge],
   );
   const transferLeft = challenge ? formatCountdown(challenge.expiresAt - nowSec) : "";

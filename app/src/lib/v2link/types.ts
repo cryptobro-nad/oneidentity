@@ -9,7 +9,7 @@
 
 import type { PortfolioAddress } from "@/lib/types";
 
-export type ChallengeStatus = "pending" | "verified" | "linked" | "expired";
+export type ChallengeStatus = "pending" | "verified" | "linked" | "expired" | "cancelled";
 
 export type Challenge = {
   id: string;

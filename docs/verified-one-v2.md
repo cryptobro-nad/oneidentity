@@ -147,17 +147,34 @@ persist across devices → a database, not browser storage.
    `approveLink(secondary)` on-chain. The indexer also watches `MemberLinked` to
    mark `linked` (or `approval_deadline` passes → `expired`).
 
-### 3.2 Amount uniqueness (no memo channel)
+### 3.2 Amount generation & uniqueness (audited)
 
-The amount is the only per-challenge discriminator, so:
-- Human-readable base + random low-order digits, e.g. `0.01` + 6 random digits
-  (`0.01XXXXXX`), ~10⁶ space, displayed exactly.
-- A **DB unique index** on `(secondary, primary, amount)` over active challenges
-  guarantees no two live challenges for a pair collide (regenerate on the rare
-  clash). Combined with `from/to/time/tx-unused`, an unrelated transfer cannot be
-  mistaken for a proof.
-- The amount is **not** a security proof — it is a matching key. (This is why the
-  contract ignores it entirely.)
+The amount is the transfer-matching key, not a security proof (the contract
+ignores it — the single-use challengeId/txHash and the verifier attestation are
+the proof). It must be **displayed and typed exactly**, so it is generated as an
+exact integer in wei with bounded decimal precision — no floating point anywhere:
+
+- `AMOUNT_STEP_WEI = 1e12` (0.000001 MON → exactly **6 decimal places**).
+- `AMOUNT_MIN_WEI = 1e16` (0.01 MON), `AMOUNT_MAX_WEI = 1e17` (0.1 MON, exclusive).
+- `amount = AMOUNT_MIN_WEI + (rand mod 90_000) * AMOUNT_STEP_WEI` — one of
+  **90,000** distinct, small, refundable values, each an exact multiple of the
+  step. The UI renders it at `AMOUNT_DECIMALS = 6`; the string round-trips back to
+  the exact wei (`parseUnits(shown,18) === amount`), so wallets preserve it.
+  *(Before this audit the amount carried full 18-decimal entropy but the UI showed
+  only 6 — a rounding bug that would have made transfers un-matchable.)*
+
+Uniqueness is enforced by **two partial unique indexes** over active
+(`pending`/`verified`) challenges — see 3.4:
+- `v2_uniq_active_pair (secondary, primary)` — **one active challenge per pair,
+  regardless of amount** (each retry mints a new amount, so an amount-scoped rule
+  would wrongly allow several simultaneous active challenges for one pair).
+- `v2_uniq_active_recipient_amount (primary, amount)` — the amount is unique per
+  recipient, keeping the `(recipient, amount)` transfer match unambiguous.
+
+Two concurrent creates for one pair → one insert wins, the other hits
+`v2_uniq_active_pair` and the API returns **409**. A lapsed challenge still reads
+`pending` until flipped, so `createChallenge` first calls `expireStaleForPair`
+(status → `expired`) to free the index before inserting a fresh attempt.
 
 ### 3.3 Reorg / RPC safety
 
@@ -171,34 +188,66 @@ The amount is the only per-challenge discriminator, so:
 
 ### 3.4 Database schema (Postgres)
 
-```sql
-create table challenges (
-  id                uuid primary key default gen_random_uuid(),
-  primary_addr      text        not null,
-  secondary_addr    text        not null,
-  amount_wei        numeric(78,0) not null,      -- exact wei
-  created_at        timestamptz not null default now(),
-  created_at_block  bigint      not null,
-  expires_at        timestamptz not null,        -- created_at + 5 min
-  status            text        not null default 'pending', -- pending|verified|linked|expired
-  tx_hash           text,
-  tx_block          bigint,
-  verified_at       timestamptz,
-  approval_deadline timestamptz,                 -- verified_at + 10 min
-  linked_at         timestamptz
-);
--- No two live challenges for a pair may share an amount.
-create unique index uniq_active_amount on challenges (secondary_addr, primary_addr, amount_wei)
-  where status in ('pending','verified');
--- A transfer backs at most one verification.
-create unique index uniq_tx on challenges (tx_hash) where tx_hash is not null;
+The canonical artifacts are `app/migrations/v2link_001_init.sql` (base schema)
+and `app/migrations/v2link_002_uniqueness_and_ratelimit.sql` (uniqueness fix +
+rate-limit table). Both are idempotent and mirrored by the strings in
+`src/lib/v2link/migrations.ts` (`migrate()` runs them in order). Migration **002
+is a new, forward-only migration — 001 is not edited** — so an environment that
+already applied 001 upgrades cleanly.
 
-create table indexer_cursor (
-  id                 int  primary key default 1,
-  last_scanned_block bigint not null,
-  last_scanned_hash  text
+Key objects after both migrations:
+
+```sql
+-- v2_challenges: id (text PK), primary_addr, secondary_addr (lowercased),
+--   amount_wei numeric(78,0), created_at/created_at_block/expires_at,
+--   status (pending|verified|linked|expired|cancelled), tx_hash, tx_block,
+--   verified_at, approval_deadline, linked_at, verifier_nonce numeric(78,0).
+
+-- One active challenge per pair (amount-independent).
+create unique index v2_uniq_active_pair
+  on v2_challenges (secondary_addr, primary_addr) where status in ('pending','verified');
+-- Amount unique per recipient while active (unambiguous transfer match).
+create unique index v2_uniq_active_recipient_amount
+  on v2_challenges (primary_addr, amount_wei) where status in ('pending','verified');
+-- Verifier nonce globally unique; a transfer backs at most one verification.
+create unique index v2_uniq_verifier_nonce on v2_challenges (verifier_nonce);
+create unique index v2_uniq_tx_hash on v2_challenges (tx_hash) where tx_hash is not null;
+
+create table v2_indexer_cursor (id int primary key, last_scanned_block bigint not null, last_scanned_hash text);
+create table v2_scan_lease   (id int primary key, locked_until bigint not null default 0, holder text);
+
+-- DB-backed rate limiting, shared across serverless instances (migration 002).
+create table v2_rate_limits (
+  bucket     text primary key,          -- e.g. "challenge:ip:1.2.3.4", "challenge:primary:0x…"
+  tokens     double precision not null,
+  updated_at double precision not null  -- unix seconds (fractional allowed)
 );
+create index v2_rate_limits_updated_idx on v2_rate_limits (updated_at);
 ```
+
+#### 3.4.1 Rate limiting (production-safe)
+
+Vercel serverless instances do not share process memory, so production routes use
+the **Postgres** limiter (`getRateLimiter()` picks it whenever `DATABASE_URL` is
+set — the in-memory limiter is a local-dev convenience only). It is an atomic
+token bucket: a single `INSERT … ON CONFLICT DO UPDATE … WHERE refilled >= 1
+RETURNING tokens` refills and decrements under a row lock (concurrent requests to
+one bucket serialise; no row returned ⇒ denied). Limits applied:
+
+| Route | Buckets | Capacity / refill |
+|---|---|---|
+| `POST /challenge` | `challenge:ip:<ip>` **and** `challenge:primary:<addr>` | 5 / 0.2 s⁻¹ |
+| `GET /challenge/[id]` | `status:ip:<ip>` **and** `status:challenge:<id>` | 30 / 1 s⁻¹ |
+| `DELETE /challenge/[id]` | `cancel:ip:<ip>` | 20 / 1 s⁻¹ |
+| `GET /cron` (indexer) | `indexer:global` (independent of public limits) | 3 / 0.05 s⁻¹ |
+
+- **429** responses carry a `Retry-After` header and `retryAfterSeconds` in the body.
+- **Cleanup:** the cron tick deletes rows idle > 1 h (fully refilled ⇒ deletion == reset).
+- **Client IP:** `clientIp()` trusts the platform-set `x-real-ip` (Vercel), never a
+  client-supplied `x-forwarded-for` on its own; the primary-address bucket is
+  IP-independent. Behind a non-Vercel proxy this must be reconfigured.
+- **Fail-open:** a limiter DB error allows the request — correctness is guaranteed
+  by the unique indexes and the contract, so the throttle must never self-DoS.
 
 ### 3.5 Environment variables
 
@@ -253,15 +302,16 @@ saved addresses, or token/NFT features.
    Safe); Sourcify-verify; regenerate the app ABI
    (`node script/generate-app-abi.mjs`) to add the V2 ABI.
 3. Provision Neon Postgres (Vercel Marketplace); set env vars (3.5). Run the
-   migration once:
+   migrations once, in order:
 
    ```sh
    psql "$DATABASE_URL" -f app/migrations/v2link_001_init.sql
+   psql "$DATABASE_URL" -f app/migrations/v2link_002_uniqueness_and_ratelimit.sql
    ```
 
-   The file is idempotent (`IF NOT EXISTS`); rollback SQL is at its foot. The app
-   does **not** auto-migrate, and with `DATABASE_URL` set it never falls back to
-   in-memory storage.
+   Both are idempotent; each has rollback SQL at its foot. The app does **not**
+   auto-migrate, and with `DATABASE_URL` set it never falls back to in-memory
+   storage.
 4. Add the Cron entry for `/api/v2/link/cron` (1/min) with `CRON_SECRET`. The
    cron route **fails closed** (503) if `CRON_SECRET` is unset.
 5. Ship the frontend flow behind the V2 address env.
