@@ -1,9 +1,9 @@
 import { NextResponse } from "next/server";
 import { getChallengeStore } from "@/lib/v2link/storeFactory";
-import { runIndexerTick, type IndexerClient } from "@/lib/v2link/indexer";
+import { runIndexerTick } from "@/lib/v2link/indexer";
+import { makeMonadIndexerClient } from "@/lib/v2link/indexerClient";
 import { DEFAULT_CONFIRMATIONS } from "@/lib/v2link/types";
-import { createClientFor } from "@/lib/rpc";
-import { PRIMARY_RPC } from "@/lib/chain";
+import { safeErrorMessage } from "@/lib/v2link/errors";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
@@ -11,40 +11,23 @@ export const maxDuration = 60;
 /**
  * Indexer tick — scan confirmed blocks and mark matching challenges verified.
  * Scheduled via Vercel Cron (1/min). Authorised by CRON_SECRET. No user input.
+ * The scan holds a DB-backed lease, so a cron run overlapping a polling-triggered
+ * scan never double-processes a block.
  */
 export async function GET(req: Request) {
   const secret = process.env.CRON_SECRET;
-  const auth = req.headers.get("authorization");
-  if (secret && auth !== `Bearer ${secret}`) {
+  if (!secret) {
+    // Fail closed: an unauthenticated indexer must never run in production.
+    return NextResponse.json({ error: "Indexer is not configured." }, { status: 503 });
+  }
+  if (req.headers.get("authorization") !== `Bearer ${secret}`) {
     return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
   }
-
-  const vc = createClientFor(PRIMARY_RPC);
-  const client: IndexerClient = {
-    getBlockNumber: () => vc.getBlockNumber(),
-    getBlock: async (n) => {
-      const b = await vc.getBlock({ blockNumber: n, includeTransactions: true });
-      return {
-        number: b.number ?? n,
-        hash: b.hash ?? `0x${n.toString(16)}`,
-        transactions: b.transactions.map((t) => ({
-          hash: t.hash,
-          from: t.from,
-          to: t.to,
-          value: t.value,
-        })),
-      };
-    },
-    getReceiptStatus: async (h) => {
-      const r = await vc.getTransactionReceipt({ hash: h });
-      return r.status === "success" ? "success" : "reverted";
-    },
-  };
 
   const confirmations = Number(process.env.INDEXER_CONFIRMATIONS ?? DEFAULT_CONFIRMATIONS);
   try {
     const store = getChallengeStore();
-    const res = await runIndexerTick(store, client, {
+    const res = await runIndexerTick(store, makeMonadIndexerClient(), {
       now: () => Math.floor(Date.now() / 1000),
       confirmations,
     });
@@ -52,11 +35,9 @@ export async function GET(req: Request) {
       head: res.head.toString(),
       scannedTo: res.scannedTo.toString(),
       matched: res.matched,
+      skipped: res.skipped,
     });
   } catch (err) {
-    return NextResponse.json(
-      { error: err instanceof Error ? err.message.split("\n")[0] : String(err) },
-      { status: 500 },
-    );
+    return NextResponse.json({ error: safeErrorMessage(err) }, { status: 500 });
   }
 }

@@ -20,8 +20,17 @@ export type ChallengeDeps = {
   now: () => number; // unix seconds
   currentBlock: () => Promise<bigint>;
   randomWei?: () => bigint; // injectable for tests
+  randomNonce?: () => bigint; // injectable for tests
   uuid?: () => string;
 };
+
+function randomBig(bytesLen: number): bigint {
+  const bytes = new Uint8Array(bytesLen);
+  crypto.getRandomValues(bytes);
+  let v = 0n;
+  for (const b of bytes) v = (v << 8n) | BigInt(b);
+  return v;
+}
 
 /** A random exact amount in [0.01, 0.1) MON, in wei. */
 export function generateAmountWei(rand: () => bigint = defaultRandomWei): bigint {
@@ -29,11 +38,7 @@ export function generateAmountWei(rand: () => bigint = defaultRandomWei): bigint
 }
 
 function defaultRandomWei(): bigint {
-  const bytes = new Uint8Array(8);
-  crypto.getRandomValues(bytes);
-  let v = 0n;
-  for (const b of bytes) v = (v << 8n) | BigInt(b);
-  return v;
+  return randomBig(8);
 }
 
 /** The bytes32 challenge id bound into the on-chain attestation. */
@@ -61,8 +66,15 @@ export async function createChallenge(
   }
 
   const now = deps.now();
+
+  // One active challenge per pair: if one is already live, return it (idempotent).
+  // After it expires, a fresh call generates a completely new amount + challenge.
+  const active = await store.findActiveForPair(secondary, primary, now);
+  if (active) return { ok: true, challenge: active };
+
   const createdAtBlock = await deps.currentBlock();
   const rand = deps.randomWei ?? defaultRandomWei;
+  const nonce = deps.randomNonce ?? (() => randomBig(12));
   const uuid = deps.uuid ?? (() => crypto.randomUUID());
 
   // Find an amount not currently active for this pair; retry on the rare clash.
@@ -79,12 +91,13 @@ export async function createChallenge(
       createdAtBlock,
       expiresAt: now + CHALLENGE_TTL_SECONDS,
       status: "pending",
+      verifierNonce: nonce(),
     };
     try {
       await store.create(challenge);
       return { ok: true, challenge };
     } catch {
-      // Unique-index race: another request took this amount. Try again.
+      // Unique-index race: another request took this amount/nonce. Try again.
     }
   }
   return { ok: false, error: "Could not allocate a unique amount, please retry." };

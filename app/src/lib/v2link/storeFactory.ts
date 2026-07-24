@@ -1,28 +1,26 @@
 /**
  * Store selection.
  *
- * Dev/preview use the in-memory store (fine for a single process). PRODUCTION on
- * serverless MUST use a persistent, shared store — wire a Postgres adapter that
- * implements {ChallengeStore} against the schema in docs/verified-one-v2.md §3.4
- * and return it here when `DATABASE_URL` is set. The in-memory store does not
- * survive across serverless invocations, so leaving it in production means
- * challenges vanish between requests — hence the explicit guard.
+ * Production (Vercel + Neon): when DATABASE_URL is set, the Postgres store is
+ * used — there is NO silent fallback to in-memory (the in-memory store does not
+ * survive serverless invocations). Dev/preview without DATABASE_URL use the
+ * in-memory store. Run the migration (docs/verified-one-v2.md §5) before first
+ * use; the store construction does not migrate.
  */
 
 import { InMemoryChallengeStore, type ChallengeStore } from "./store";
+import { PostgresChallengeStore } from "./postgresStore";
+import { neonSql } from "./sql";
 
-let singleton: ChallengeStore | null = null;
+let pgStore: ChallengeStore | null = null;
+let memStore: ChallengeStore | null = null;
 
 export function getChallengeStore(): ChallengeStore {
-  if (process.env.DATABASE_URL) {
-    // Provisioning seam: construct and return your Postgres-backed ChallengeStore
-    // here (e.g. new PostgresChallengeStore(process.env.DATABASE_URL)). Until that
-    // adapter is added, fail loudly rather than silently losing state.
-    throw new Error(
-      "DATABASE_URL is set but no persistent ChallengeStore adapter is wired. " +
-        "Add the Postgres adapter (docs/verified-one-v2.md §3.4) in storeFactory.ts.",
-    );
+  const url = process.env.DATABASE_URL;
+  if (url) {
+    if (!pgStore) pgStore = new PostgresChallengeStore(neonSql(url));
+    return pgStore;
   }
-  if (!singleton) singleton = new InMemoryChallengeStore();
-  return singleton;
+  if (!memStore) memStore = new InMemoryChallengeStore();
+  return memStore;
 }

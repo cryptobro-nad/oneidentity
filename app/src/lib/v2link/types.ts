@@ -27,6 +27,8 @@ export type Challenge = {
   verifiedAt?: number;
   approvalDeadline?: number; // verifiedAt + 10 min
   linkedAt?: number;
+  /** Unique per challenge; bound into the attestation. */
+  verifierNonce: bigint;
 };
 
 /** The EIP-712 message the verifier signs; mirrors `ONERegistryV2.LinkAttestation`. */

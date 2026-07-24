@@ -1,8 +1,9 @@
 import { NextResponse } from "next/server";
-import { getAddress } from "viem";
+import { getAddress, isAddress } from "viem";
 import { getChallengeStore } from "@/lib/v2link/storeFactory";
 import { createChallenge } from "@/lib/v2link/challenge";
 import { walletIsFree, ONE_REGISTRY_V2_ADDRESS } from "@/lib/v2link/registry";
+import { rateLimit, clientKey } from "@/lib/v2link/rateLimit";
 import { withRpcFallback } from "@/lib/rpc";
 import type { PortfolioAddress } from "@/lib/types";
 
@@ -13,6 +14,10 @@ export async function POST(req: Request) {
   if (!ONE_REGISTRY_V2_ADDRESS) {
     return NextResponse.json({ error: "V2 is not configured on this deployment." }, { status: 503 });
   }
+  // Challenge creation touches the chain; throttle harder than status polling.
+  if (!rateLimit(clientKey(req, "v2challenge"), { capacity: 5, refillPerSec: 0.2 })) {
+    return NextResponse.json({ error: "Too many requests. Try again shortly." }, { status: 429 });
+  }
   let body: { primary?: string; secondary?: string };
   try {
     body = (await req.json()) as typeof body;
@@ -22,6 +27,15 @@ export async function POST(req: Request) {
   const { primary, secondary } = body;
   if (!primary || !secondary) {
     return NextResponse.json({ error: "primary and secondary are required." }, { status: 400 });
+  }
+  if (!isAddress(primary) || !isAddress(secondary)) {
+    return NextResponse.json({ error: "Enter a valid wallet address." }, { status: 400 });
+  }
+  if (getAddress(primary) === getAddress(secondary)) {
+    return NextResponse.json(
+      { error: "The secondary wallet must be different from the primary wallet." },
+      { status: 400 },
+    );
   }
 
   // Reject wallets already active in V1 or V2 before issuing a challenge.

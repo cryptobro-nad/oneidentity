@@ -58,15 +58,23 @@ describe("createChallenge", () => {
     expect(res.ok).toBe(false);
   });
 
-  it("never reuses an amount already active for the same pair", async () => {
+  it("returns the same active challenge for a pair (one active per pair, idempotent)", async () => {
     const store = new InMemoryChallengeStore();
-    // randomWei returns the same value twice, then a fresh one → must retry.
-    const seq = [42n, 42n, 99n];
-    let i = 0;
-    const deps = { ...baseDeps, randomWei: () => seq[Math.min(i++, seq.length - 1)]! };
-    const a = await createChallenge(store, { primary: PRIMARY, secondary: SECONDARY }, deps);
-    const b = await createChallenge(store, { primary: PRIMARY, secondary: SECONDARY }, deps);
+    const a = await createChallenge(store, { primary: PRIMARY, secondary: SECONDARY }, baseDeps);
+    const b = await createChallenge(store, { primary: PRIMARY, secondary: SECONDARY }, baseDeps);
     expect(a.ok && b.ok).toBe(true);
-    if (a.ok && b.ok) expect(a.challenge.amountWei).not.toBe(b.challenge.amountWei);
+    if (a.ok && b.ok) expect(a.challenge.id).toBe(b.challenge.id);
+  });
+
+  it("generates a completely new challenge after the previous one expires", async () => {
+    const store = new InMemoryChallengeStore();
+    const a = await createChallenge(store, { primary: PRIMARY, secondary: SECONDARY }, { ...baseDeps, now: () => 1000 });
+    // Advance past the 5-minute window.
+    const b = await createChallenge(store, { primary: PRIMARY, secondary: SECONDARY }, { ...baseDeps, now: () => 1000 + 301 });
+    expect(a.ok && b.ok).toBe(true);
+    if (a.ok && b.ok) {
+      expect(a.challenge.id).not.toBe(b.challenge.id);
+      expect(a.challenge.amountWei).not.toBe(b.challenge.amountWei);
+    }
   });
 });

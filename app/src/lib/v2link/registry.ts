@@ -30,6 +30,41 @@ export const ONE_REGISTRY_V2_READ_ABI = [
     inputs: [{ name: "primary", type: "address" }],
     outputs: [{ name: "", type: "address" }],
   },
+  {
+    type: "function",
+    name: "exists",
+    stateMutability: "view",
+    inputs: [{ name: "one", type: "address" }],
+    outputs: [{ name: "", type: "bool" }],
+  },
+  {
+    type: "function",
+    name: "primaryOf",
+    stateMutability: "view",
+    inputs: [{ name: "one", type: "address" }],
+    outputs: [{ name: "", type: "address" }],
+  },
+  {
+    type: "function",
+    name: "membersOf",
+    stateMutability: "view",
+    inputs: [{ name: "one", type: "address" }],
+    outputs: [{ name: "", type: "address[]" }],
+  },
+  {
+    type: "function",
+    name: "memberCountOf",
+    stateMutability: "view",
+    inputs: [{ name: "one", type: "address" }],
+    outputs: [{ name: "", type: "uint256" }],
+  },
+  {
+    type: "function",
+    name: "isActive",
+    stateMutability: "view",
+    inputs: [{ name: "one", type: "address" }],
+    outputs: [{ name: "", type: "bool" }],
+  },
 ] as const;
 
 /** The writes the launch UI needs: `approveLink` (link) and `removeMember`. */

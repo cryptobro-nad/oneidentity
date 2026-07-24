@@ -36,6 +36,7 @@ function pending(id: string, over: Partial<Challenge> = {}): Challenge {
     createdAtBlock: 100n,
     expiresAt: 9_999_999_999,
     status: "pending",
+    verifierNonce: BigInt(id.replace(/\D/g, "") || "0"),
     ...over,
   };
 }
@@ -98,6 +99,21 @@ describe("runIndexerTick", () => {
     // Re-scan won't revisit block 110 (cursor is past it), and tx1 is used anyway.
     const res = await runIndexerTick(store, client, { now, confirmations: 8 });
     expect(res.matched).toBe(0);
+  });
+
+  it("skips (does nothing) when the scan lease is already held", async () => {
+    const store = new InMemoryChallengeStore();
+    await store.setCursor(108n, "0x108");
+    await store.create(pending("c1"));
+    // Someone else holds the lease for the whole tick window.
+    expect(await store.tryAcquireScanLease(1100, 60)).toBe(true);
+    const client = new MockClient();
+    client.put(110n, [{ hash: "0xtx1", from: SECONDARY, to: PRIMARY, value: BigInt(AMOUNT) }]);
+
+    const res = await runIndexerTick(store, client, { now, confirmations: 8 });
+    expect(res.skipped).toBe(true);
+    expect(res.matched).toBe(0);
+    expect((await store.get("c1"))?.status).toBe("pending"); // untouched
   });
 
   it("resumes from the persisted cursor after a restart", async () => {

@@ -45,10 +45,10 @@ cryptographically verifies that attestation before touching membership, so:
 
 | Layer | State |
 |---|---|
-| **V2 contracts** (`ONERegistryV2`, `ONEIdentityV2`) | **Implemented + tested** — verifier-attestation gated. 31 Foundry tests incl. `test_Bypass_*` proving direct linking is impossible; full suite 94/94 (V1's 63 untouched). Gas validated at the 20-member cap. |
-| **V1 contracts / app** | **Untouched** — V1 87→63 contract tests pass, app 696 tests + production build pass. |
-| **Backend indexer + database** | **Specified below** — requires provisioned Postgres + a scheduled runner; not yet implemented (cannot be run/tested in this environment). |
-| **Frontend V2 linking flow** | **Specified below** — depends on the backend. |
+| **V2 contracts** (`ONERegistryV2`, `ONEIdentityV2`) | **Implemented + tested** — verifier-attestation gated. Foundry `test_Bypass_*` prove direct linking is impossible; contract suite 102/102 (V1 untouched). Gas validated at the 20-member cap. |
+| **V1 contracts / app** | **Untouched** — full app suite 750 tests + production build pass. |
+| **Backend indexer + database** | **Implemented + tested.** Neon Postgres adapter behind a driver-agnostic `Sql` interface; PGlite integration tests exercise the real schema/constraints. Cron + polling-triggered scan share a DB-backed lease. Cannot be run **end-to-end** here (no provisioned Neon DB, no deployed V2 contract, no live Monad transfer). |
+| **Frontend V2 linking flow** | **Implemented.** Mounted at `/verified` (mode switch), removal UI, cross-device profile at `/one-v2/[address]`. Full end-to-end needs a deployed V2 contract + live transfer. |
 
 ---
 
@@ -252,9 +252,36 @@ saved addresses, or token/NFT features.
    ERC-1271 multisig; verifierAdmin = the rotation multisig, a hardware-backed
    Safe); Sourcify-verify; regenerate the app ABI
    (`node script/generate-app-abi.mjs`) to add the V2 ABI.
-3. Provision Postgres; run the schema (3.4); set env vars (3.5).
-4. Add the Cron entry for `/api/v2/link/cron` (1/min).
+3. Provision Neon Postgres (Vercel Marketplace); set env vars (3.5). Run the
+   migration once:
+
+   ```sh
+   psql "$DATABASE_URL" -f app/migrations/v2link_001_init.sql
+   ```
+
+   The file is idempotent (`IF NOT EXISTS`); rollback SQL is at its foot. The app
+   does **not** auto-migrate, and with `DATABASE_URL` set it never falls back to
+   in-memory storage.
+4. Add the Cron entry for `/api/v2/link/cron` (1/min) with `CRON_SECRET`. The
+   cron route **fails closed** (503) if `CRON_SECRET` is unset.
 5. Ship the frontend flow behind the V2 address env.
+
+### 5.1 Execution model (implemented)
+
+- **Cron** (`GET /api/v2/link/cron`, `Bearer $CRON_SECRET`) runs the indexer tick
+  every minute.
+- **Polling also drives detection:** the status route (`GET
+  /api/v2/link/challenge/[id]`) triggers an idempotent scan while a challenge is
+  still `pending`, so detection latency is far below the 1-minute cron cadence.
+- **DB-backed scan lease** (`v2_scan_lease`, atomic `update … where locked_until
+  < now`) serialises cron and polling scans — a range is never processed twice
+  and the verifier never double-signs. A skipped scan returns `{ skipped: true }`.
+- **Rate limiting** (in-memory token bucket, per instance): challenge creation
+  (5 burst / 0.2 rps) and status polling (30 burst / 1 rps). Defense-in-depth
+  only; the hard guarantees are the DB unique indexes + the contract.
+- **Error redaction:** all API error bodies pass through `safeErrorMessage`,
+  which strips `DATABASE_URL` / `VERIFIER_PRIVATE_KEY` / `CRON_SECRET` values plus
+  any connection-string or 32-byte-hex pattern.
 
 ---
 

@@ -5,7 +5,7 @@ import { getAddress, isAddress } from "viem";
 import { useWallet } from "@/lib/wallet/useWallet";
 import { monad } from "@/lib/chain";
 import { ONE_REGISTRY_V2_ADDRESS, ONE_REGISTRY_V2_WRITE_ABI } from "@/lib/v2link/registry";
-import { V2_LINK_COPY, type LinkFlowState } from "@/lib/v2link/copy";
+import { V2_LINK_COPY, formatCountdown, type LinkFlowState } from "@/lib/v2link/copy";
 import { formatAmount, shortenAddress } from "@/lib/format";
 
 type ChallengeResp = { id: string; primary: string; secondary: string; amountWei: string; expiresAt: number };
@@ -20,14 +20,26 @@ type Attestation = {
   deadline: string;
   verifierNonce: string;
 };
-type StatusResp = { status: string; attestation?: Attestation; signature?: `0x${string}` };
+type StatusResp = {
+  status: string;
+  attestation?: Attestation;
+  signature?: `0x${string}`;
+  approvalDeadline?: number;
+  error?: string;
+};
+
+/** True if the wallet rejected the request (rather than the tx reverting). */
+function isUserRejection(e: unknown): boolean {
+  const msg = e instanceof Error ? e.message.toLowerCase() : String(e).toLowerCase();
+  return msg.includes("rejected") || msg.includes("denied") || msg.includes("4001");
+}
 
 /**
  * The single visible V2 linking method. The secondary never connects to ONE:
- * the user sends MON from it to their own primary, the backend detects the
- * transfer, and the connected primary submits the on-chain approval.
+ * the user sends MON from it to their own primary, ONE detects the transfer,
+ * and the connected primary submits the on-chain approval.
  */
-export function LinkWalletV2() {
+export function LinkWalletV2({ onLinked }: { onLinked?: (one: string) => void } = {}) {
   const wallet = useWallet();
   const [secondary, setSecondary] = useState("");
   const [state, setState] = useState<LinkFlowState>("idle");
@@ -35,14 +47,43 @@ export function LinkWalletV2() {
   const [verified, setVerified] = useState<StatusResp | null>(null);
   const [linkedOne, setLinkedOne] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [nowMs, setNowMs] = useState(() => Date.now());
 
   const configured = Boolean(ONE_REGISTRY_V2_ADDRESS);
+  const nowSec = Math.floor(nowMs / 1000);
+
+  // A once-per-second clock drives the countdowns and also expires the open
+  // window (the server expires independently too). Only runs while a window is
+  // open; the setState calls live in the timer callback, not the effect body.
+  useEffect(() => {
+    const windowOpen =
+      state === "awaitingTransfer" || state === "checking" || state === "verified" || state === "approving";
+    if (!windowOpen) return;
+    const iv = setInterval(() => {
+      const sec = Math.floor(Date.now() / 1000);
+      setNowMs(Date.now());
+      if ((state === "awaitingTransfer" || state === "checking") && challenge && sec >= challenge.expiresAt) {
+        setState("expired");
+      } else if (
+        (state === "verified" || state === "approving") &&
+        verified?.approvalDeadline !== undefined &&
+        sec >= verified.approvalDeadline
+      ) {
+        setState("approvalExpired");
+      }
+    }, 1000);
+    return () => clearInterval(iv);
+  }, [state, challenge, verified]);
 
   const startLink = useCallback(async () => {
     setError(null);
     if (!wallet.address) return setError("Connect your primary wallet first.");
-    if (!isAddress(secondary, { strict: false })) return setError("Enter a valid secondary wallet address.");
+    if (!isAddress(secondary, { strict: false })) return setError("Enter a valid wallet address to link.");
     if (getAddress(secondary) === wallet.address) return setError("Use a wallet other than the primary.");
+    // Each fresh attempt clears any previous verified/expired state so the amount
+    // and window are always new (never a stale amount from an expired attempt).
+    setChallenge(null);
+    setVerified(null);
     setState("creatingChallenge");
     try {
       const res = await fetch("/api/v2/link/challenge", {
@@ -56,14 +97,15 @@ export function LinkWalletV2() {
         return setState("error");
       }
       setChallenge(data);
+      setNowMs(Date.now());
       setState("awaitingTransfer");
     } catch {
-      setError("Network error, please try again.");
+      setError("Network problem. Please try again.");
       setState("error");
     }
   }, [wallet.address, secondary]);
 
-  // Poll for the detected transfer while awaiting.
+  // Poll for the detected transfer while awaiting / checking.
   useEffect(() => {
     if (!challenge || (state !== "awaitingTransfer" && state !== "checking")) return;
     let cancelled = false;
@@ -74,6 +116,7 @@ export function LinkWalletV2() {
         if (cancelled) return;
         if (data.status === "verified" && data.attestation && data.signature) {
           setVerified(data);
+          setNowMs(Date.now());
           setState("verified");
         } else if (data.status === "expired") {
           setState("expired");
@@ -91,11 +134,22 @@ export function LinkWalletV2() {
   }, [challenge, state]);
 
   const approve = useCallback(async () => {
-    if (!verified?.attestation || !verified.signature || !ONE_REGISTRY_V2_ADDRESS) return;
+    if (!verified?.attestation || !verified.signature || !ONE_REGISTRY_V2_ADDRESS || !challenge) return;
     setError(null);
+
+    // The connected wallet must still be the primary that started the attempt.
+    const live = await wallet.refreshAccount();
+    if (!live || getAddress(live) !== getAddress(challenge.primary)) {
+      setError(V2_LINK_COPY.wrongPrimary);
+      return;
+    }
+    if (!(await wallet.ensureOnMonad())) {
+      setError(V2_LINK_COPY.wrongNetwork);
+      return;
+    }
+
     setState("approving");
     try {
-      await wallet.ensureOnMonad();
       const wc = wallet.getWalletClient();
       if (!wc || !wallet.address) throw new Error("Connect your primary wallet.");
       const a = verified.attestation;
@@ -120,11 +174,12 @@ export function LinkWalletV2() {
       });
       setLinkedOne(a.one);
       setState("linked");
+      onLinked?.(a.one);
     } catch (e) {
-      setError(e instanceof Error ? e.message.split("\n")[0] : "Approval failed.");
+      setError(isUserRejection(e) ? V2_LINK_COPY.approvalRejected : V2_LINK_COPY.approvalReverted);
       setState("verified");
     }
-  }, [verified, wallet]);
+  }, [verified, wallet, challenge, onLinked]);
 
   const reset = useCallback(() => {
     setChallenge(null);
@@ -137,6 +192,9 @@ export function LinkWalletV2() {
     () => (challenge ? formatAmount(BigInt(challenge.amountWei), 18, 6) : ""),
     [challenge],
   );
+  const transferLeft = challenge ? formatCountdown(challenge.expiresAt - nowSec) : "";
+  const approvalLeft =
+    verified?.approvalDeadline !== undefined ? formatCountdown(verified.approvalDeadline - nowSec) : "";
 
   return (
     <section className="space-y-5 rounded-[16px] border border-line bg-surface p-5 sm:p-6">
@@ -169,10 +227,14 @@ export function LinkWalletV2() {
             />
           </label>
 
-          {state === "idle" || state === "error" || state === "expired" ? (
+          {state === "idle" || state === "error" || state === "expired" || state === "approvalExpired" ? (
             <button type="button" onClick={startLink} className="btn btn-primary" disabled={!wallet.address}>
               {V2_LINK_COPY.linkWallet}
             </button>
+          ) : null}
+
+          {state === "creatingChallenge" ? (
+            <p className="text-sm text-ink-3">Preparing your linking amount…</p>
           ) : null}
 
           {(state === "awaitingTransfer" || state === "checking") && challenge ? (
@@ -184,12 +246,14 @@ export function LinkWalletV2() {
                 <span className="font-mono">{shortenAddress(challenge.primary)}</span>.
               </p>
               <p className="mt-1 text-[0.78rem] text-ink-3">{V2_LINK_COPY.checking}</p>
+              <p className="mt-2 tnum text-[0.78rem] text-ink-3">{V2_LINK_COPY.timeLeft(transferLeft)}</p>
             </div>
           ) : null}
 
           {state === "verified" ? (
             <div className="rounded-[12px] border border-accent/40 bg-surface-2/40 px-4 py-3">
               <p className="text-sm text-ink">{V2_LINK_COPY.transferConfirmed}</p>
+              <p className="mt-1 tnum text-[0.78rem] text-ink-3">{V2_LINK_COPY.timeLeft(approvalLeft)}</p>
               <button type="button" onClick={approve} className="mt-3 btn btn-primary">
                 {V2_LINK_COPY.approveWithPrimary}
               </button>
@@ -198,6 +262,7 @@ export function LinkWalletV2() {
 
           {state === "approving" ? <p className="text-sm text-ink-3">Confirm the approval in your wallet…</p> : null}
           {state === "expired" ? <p className="text-sm text-warn">{V2_LINK_COPY.expired}</p> : null}
+          {state === "approvalExpired" ? <p className="text-sm text-warn">{V2_LINK_COPY.approvalExpired}</p> : null}
           {error ? <p className="text-sm text-danger">{error}</p> : null}
         </>
       )}

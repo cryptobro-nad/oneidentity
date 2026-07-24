@@ -15,6 +15,7 @@ const challenge = (over: Partial<Challenge> = {}): Challenge => ({
   createdAtBlock: 100n,
   expiresAt: 1300,
   status: "pending",
+  verifierNonce: 1n,
   ...over,
 });
 

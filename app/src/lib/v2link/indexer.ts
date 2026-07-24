@@ -30,10 +30,16 @@ export type IndexerOptions = {
   now: () => number;
   confirmations?: number;
   batchSize?: number;
+  leaseTtlSeconds?: number;
 };
 
-export type IndexerTickResult = { head: bigint; scannedTo: bigint; matched: number };
+export type IndexerTickResult = { head: bigint; scannedTo: bigint; matched: number; skipped: boolean };
 
+/**
+ * One scan pass. Holds a DB-backed lease for its duration so concurrent cron and
+ * polling requests can never process the same range twice or double-sign. Safe to
+ * call from either; if the lease is held it returns `skipped` and does nothing.
+ */
 export async function runIndexerTick(
   store: ChallengeStore,
   client: IndexerClient,
@@ -41,8 +47,24 @@ export async function runIndexerTick(
 ): Promise<IndexerTickResult> {
   const confirmations = opts.confirmations ?? DEFAULT_CONFIRMATIONS;
   const batchSize = BigInt(opts.batchSize ?? 200);
+  const leaseTtl = opts.leaseTtlSeconds ?? 45;
   const now = opts.now();
 
+  if (!(await store.tryAcquireScanLease(now, leaseTtl))) {
+    return { head: 0n, scannedTo: 0n, matched: 0, skipped: true };
+  }
+  try {
+    return await scan(store, client, { confirmations, batchSize, now });
+  } finally {
+    await store.releaseScanLease();
+  }
+}
+
+async function scan(
+  store: ChallengeStore,
+  client: IndexerClient,
+  { confirmations, batchSize, now }: { confirmations: number; batchSize: bigint; now: number },
+): Promise<IndexerTickResult> {
   const head = await client.getBlockNumber();
   const safe = head - BigInt(confirmations);
 
@@ -50,7 +72,7 @@ export async function runIndexerTick(
   // First run with no cursor: start at the confirmed head so we don't rescan all
   // history — challenges are always created at/after the current block.
   const from = cursor ? cursor.block + 1n : safe;
-  if (from > safe) return { head, scannedTo: cursor?.block ?? safe, matched: 0 };
+  if (from > safe) return { head, scannedTo: cursor?.block ?? safe, matched: 0, skipped: false };
 
   const to = from + batchSize - 1n < safe ? from + batchSize - 1n : safe;
   let matched = 0;
@@ -85,7 +107,7 @@ export async function runIndexerTick(
     await store.setCursor(block.number, block.hash);
   }
 
-  return { head, scannedTo: to, matched };
+  return { head, scannedTo: to, matched, skipped: false };
 }
 
 /** Marks a pending challenge expired once its 5-minute window has passed. */
