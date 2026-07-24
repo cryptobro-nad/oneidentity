@@ -1,7 +1,6 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it } from "vitest";
 import { cleanup, render, screen, within } from "@testing-library/react";
-import userEvent from "@testing-library/user-event";
 import { PortfolioResult } from "./PortfolioResult";
 import type { AggregatedPortfolio, AssetReadResult } from "@/lib/types";
 
@@ -50,9 +49,9 @@ function portfolio(
 
 const ONE_TOKEN = 10n ** 18n;
 
-/** The totals grid, so assertions don't accidentally match the table headers. */
+/** The ownership matrix table (token rows × wallet columns). */
 function totalsGrid(): HTMLElement {
-  return screen.getByRole("group", { name: /combined totals/i });
+  return screen.getByRole("table");
 }
 
 describe("hiding zero balances", () => {
@@ -89,44 +88,15 @@ describe("hiding zero balances", () => {
     expect(screen.getAllByText("5").length).toBeGreaterThan(0);
   });
 
-  it("reports how many assets are hidden", () => {
+  it("offers no control to reveal zero-balance assets", () => {
     render(
       <PortfolioResult
         portfolio={portfolio([{ address: A, mon: ok(0n), tokens: { CHOG: ok(ONE_TOKEN) } }])}
       />,
     );
-    // 3 stablecoins + 9 memes = 12 configured; CHOG is held, so 11 hidden.
-    expect(screen.getByText(/11 assets with a zero balance hidden/i)).toBeTruthy();
-  });
-
-  it("reveals them when Show zero balances is pressed", async () => {
-    const user = userEvent.setup();
-    render(
-      <PortfolioResult
-        portfolio={portfolio([{ address: A, mon: ok(ONE_TOKEN), tokens: { USDC: ok(0n) } }])}
-      />,
-    );
-
-    expect(within(totalsGrid()).queryByText("USDC")).toBeNull();
-    await user.click(screen.getByRole("button", { name: /show zero balances/i }));
-
-    expect(within(totalsGrid()).getByText("USDC")).toBeTruthy();
-    expect(within(totalsGrid()).getByText("CHOG")).toBeTruthy();
-  });
-
-  it("toggles back", async () => {
-    const user = userEvent.setup();
-    render(<PortfolioResult portfolio={portfolio([{ address: A, mon: ok(0n), tokens: {} }])} />);
-
-    const button = screen.getByRole("button", { name: /show zero balances/i });
-    expect(button.getAttribute("aria-pressed")).toBe("false");
-
-    await user.click(button);
-    const pressed = screen.getByRole("button", { name: /hide zero balances/i });
-    expect(pressed.getAttribute("aria-pressed")).toBe("true");
-
-    await user.click(pressed);
-    expect(screen.getByRole("button", { name: /show zero balances/i })).toBeTruthy();
+    // The Show/Hide zero-balances toggle and the hidden-count message are gone.
+    expect(screen.queryByRole("button", { name: /zero balances/i })).toBeNull();
+    expect(screen.queryByText(/zero balance hidden/i)).toBeNull();
   });
 });
 
@@ -199,8 +169,10 @@ describe("amounts", () => {
         portfolio={portfolio([{ address: A, mon: ok(0n), tokens: { CHOG: ok(42n * ONE_TOKEN) } }])}
       />,
     );
-    expect(within(totalsGrid()).getByText("42")).toBeTruthy();
-    expect(screen.getByText(/per-wallet breakdown/i)).toBeTruthy();
+    // Combined column and the single wallet column both read 42.
+    expect(within(totalsGrid()).getAllByText("42").length).toBeGreaterThanOrEqual(2);
+    expect(screen.getByRole("columnheader", { name: /combined/i })).toBeTruthy();
+    expect(screen.getByRole("columnheader", { name: /wallet a/i })).toBeTruthy();
   });
 
   it("never renders a tiny non-zero balance as 0", () => {
@@ -231,14 +203,17 @@ describe("amounts", () => {
   });
 });
 
-describe("community-token disclaimer", () => {
-  it("appears when a meme token is shown", () => {
+describe("token explanation", () => {
+  it("shows only the subtle verified-onchain / held-only line", () => {
     render(
       <PortfolioResult
         portfolio={portfolio([{ address: A, mon: ok(0n), tokens: { CHOG: ok(ONE_TOKEN) } }])}
       />,
     );
-    expect(screen.getByText(/inclusion is not an endorsement/i)).toBeTruthy();
+    expect(screen.getByText(/balances are verified onchain\. only held assets are shown\./i)).toBeTruthy();
+    // No extra token-list or endorsement explanations in this section.
+    expect(screen.queryByText(/inclusion is not an endorsement/i)).toBeNull();
+    expect(screen.queryByText(/maintained monad token list/i)).toBeNull();
   });
 
   it("makes no price or market claim anywhere", () => {

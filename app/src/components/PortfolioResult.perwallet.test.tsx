@@ -33,38 +33,37 @@ function portfolio(
   };
 }
 
-// The redesign replaces the wide per-wallet table (which forced horizontal
-// scrolling on phones) with one card per wallet. These tests pin the contract
-// that matters to users: each wallet remains an individually readable unit, and
-// the combined view stays distinct from the per-wallet view.
-describe("per-wallet breakdown as individual cards", () => {
+// The portfolio uses a token × wallet ownership matrix: one row per token, a
+// Combined column, and one column per wallet. These tests pin the contract that
+// matters to users — every wallet has its own visible column and the combined
+// value equals the sum of those columns, all in one scannable table.
+describe("per-wallet ownership matrix", () => {
   const p = portfolio([
     { address: A, mon: ok(0n), tokens: { CHOG: ok(3n * ONE_TOKEN) } },
     { address: B, mon: ok(0n), tokens: { CHOG: ok(4n * ONE_TOKEN) } },
   ]);
 
-  it("renders one labelled group per wallet", () => {
+  it("renders a Combined column and one column per wallet", () => {
     render(<PortfolioResult portfolio={p} />);
-    expect(screen.getByRole("group", { name: /wallet a balances/i })).toBeTruthy();
-    expect(screen.getByRole("group", { name: /wallet b balances/i })).toBeTruthy();
+    expect(screen.getByRole("columnheader", { name: /combined/i })).toBeTruthy();
+    expect(screen.getByRole("columnheader", { name: /wallet a/i })).toBeTruthy();
+    expect(screen.getByRole("columnheader", { name: /wallet b/i })).toBeTruthy();
   });
 
-  it("shows each wallet's own address inside its card", () => {
+  it("shows each wallet's own address in its column header", () => {
     render(<PortfolioResult portfolio={p} />);
-    const cardA = screen.getByRole("group", { name: /wallet a balances/i });
-    const cardB = screen.getByRole("group", { name: /wallet b balances/i });
-    expect(within(cardA).getByText(shortenAddress(A))).toBeTruthy();
-    expect(within(cardB).getByText(shortenAddress(B))).toBeTruthy();
+    const headerA = screen.getByRole("columnheader", { name: /wallet a/i });
+    const headerB = screen.getByRole("columnheader", { name: /wallet b/i });
+    expect(within(headerA).getByText(shortenAddress(A))).toBeTruthy();
+    expect(within(headerB).getByText(shortenAddress(B))).toBeTruthy();
   });
 
-  it("keeps the combined view distinct from the per-wallet cards", () => {
+  it("makes the combined value equal the sum of the wallet columns", () => {
     render(<PortfolioResult portfolio={p} />);
-    // The combined total (3 + 4 = 7) lives only in the combined group...
-    const combined = screen.getByRole("group", { name: /combined totals/i });
-    expect(within(combined).getByText("7")).toBeTruthy();
-    // ...while the individual amounts live in their own wallet cards.
-    const cardA = screen.getByRole("group", { name: /wallet a balances/i });
-    expect(within(cardA).getByText("3")).toBeTruthy();
-    expect(within(combined).queryByText("3")).toBeNull();
+    const table = screen.getByRole("table");
+    // Combined 7, with 3 and 4 each visible in their wallet columns.
+    expect(within(table).getByText("7")).toBeTruthy();
+    expect(within(table).getByText("3")).toBeTruthy();
+    expect(within(table).getByText("4")).toBeTruthy();
   });
 });

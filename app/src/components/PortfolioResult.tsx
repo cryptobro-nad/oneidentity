@@ -8,23 +8,26 @@ import {
   shortenAddress,
   walletLabel,
 } from "@/lib/format";
-import { ALL_BALANCE_TOKENS, NATIVE_DECIMALS, NATIVE_SYMBOL, isMemeSymbol } from "@/lib/tokens";
+import {
+  ALL_BALANCE_TOKENS,
+  NATIVE_DECIMALS,
+  NATIVE_SYMBOL,
+  type BalanceToken,
+} from "@/lib/tokens";
 import { collectFailedReads, type AggregatedPortfolio, type AssetReadResult } from "@/lib/types";
-import { AddressChip } from "./AddressChip";
 import { PartialNotice } from "./Notices";
+import { useHorizontalOverflow } from "./useHorizontalOverflow";
 
 /**
- * Renders one balance value.
- *
- * Three visually distinct states, never collapsed into each other:
+ * One balance value. Three distinct states, never collapsed:
  *   success non-zero → the value
  *   success zero     → a muted "0"
- *   failure          → "Failed", in the danger colour, with the reason on hover
+ *   failure          → "Failed", in the danger colour, reason on hover
  */
 function BalanceCell({
   result,
   decimals,
-  maxFractionDigits = 4,
+  maxFractionDigits = 2,
 }: {
   result: AssetReadResult | undefined;
   decimals: number;
@@ -38,89 +41,69 @@ function BalanceCell({
     );
   }
   const value = result.rawValue ?? 0n;
+  const isZero = value === 0n;
+  // A zero wallet balance still shows (ownership distribution matters) but is
+  // clearly de-emphasised — smaller and muted, so the cue is not colour alone.
   return (
-    <span className={`tnum text-sm ${value === 0n ? "text-ink-3" : "text-ink"}`}>
+    <span
+      className={`tnum ${isZero ? "text-[0.72rem] font-normal text-faint" : "text-sm text-ink"}`}
+    >
       {formatAmount(value, decimals, maxFractionDigits)}
     </span>
   );
 }
 
-function TotalCard({
-  symbol,
-  raw,
-  decimals,
-  incomplete,
-  emphasis = false,
-}: {
-  symbol: string;
-  raw: bigint;
-  decimals: number;
-  incomplete: boolean;
-  emphasis?: boolean;
-}) {
+/** Token logo from the on-list metadata, degrading to a monogram tile. */
+function TokenLogo({ token }: { token: BalanceToken }) {
+  const [broken, setBroken] = useState(false);
+  if (token.logoURI && !broken) {
+    return (
+      // eslint-disable-next-line @next/next/no-img-element
+      <img
+        src={token.logoURI}
+        alt=""
+        width={20}
+        height={20}
+        loading="lazy"
+        onError={() => setBroken(true)}
+        className="h-5 w-5 shrink-0 rounded-full border border-line bg-surface object-contain"
+      />
+    );
+  }
   return (
-    <div
-      className={`relative rounded-[14px] border p-4 sm:p-5 ${
-        emphasis ? "border-accent/40" : "border-line"
-      }`}
-      style={
-        emphasis
-          ? { background: "linear-gradient(160deg, var(--surface-2), var(--surface))" }
-          : { background: "var(--surface)" }
-      }
+    <span
+      aria-hidden
+      className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full border border-line bg-surface-2 font-mono text-[0.55rem] text-ink-3"
     >
-      <div className="flex items-center gap-2">
-        <p className="font-mono text-[0.7rem] tracking-[0.1em] text-ink-3 uppercase">{symbol}</p>
-        {incomplete ? (
-          <span className="font-mono text-[0.6rem] text-warn" title="Some wallets could not be read">
-            incomplete
-          </span>
-        ) : null}
-      </div>
-      <p
-        className={`tnum mt-2 font-semibold tracking-[-0.03em] text-ink ${
-          emphasis ? "text-3xl sm:text-4xl" : "text-2xl sm:text-3xl"
-        }`}
-      >
-        {formatAmount(raw, decimals, emphasis ? 4 : 2)}
-      </p>
-    </div>
+      {token.symbol.slice(0, 2)}
+    </span>
   );
 }
 
 export function PortfolioResult({ portfolio }: { portfolio: AggregatedPortfolio }) {
-  const [showZero, setShowZero] = useState(false);
   const failures = collectFailedReads(portfolio);
+  const wallets = portfolio.wallets;
+  const { ref: scrollRef, overflows } = useHorizontalOverflow<HTMLDivElement>();
 
-  // A token is "incomplete" when at least one wallet's read for it failed.
   const symbolFailed = (symbol: string) => failures.some((f) => f.symbol === symbol);
 
   /**
-   * Which ERC-20 columns to render.
-   *
-   * MON is handled separately and always shows. Everything else — stablecoins
-   * and community tokens alike — is hidden at zero, because a wallet holding
-   * none of thirteen assets would otherwise be a wall of zeroes that also
-   * overflows a phone.
-   *
-   * A token whose read FAILED is never hidden. Hiding it would present an RPC
-   * failure as "you don't hold this", which is the one confusion this whole
-   * codebase is built to avoid.
+   * Only HELD tokens appear. MON always shows. A token is included when its
+   * combined balance is non-zero OR a read failed — a failed read is never
+   * hidden, because presenting an RPC failure as "you hold none" is the one
+   * confusion this codebase avoids.
    */
-  const visibleTokens = useMemo(() => {
-    if (showZero) return ALL_BALANCE_TOKENS;
-    return ALL_BALANCE_TOKENS.filter(
-      (t) => (portfolio.totals[t.symbol] ?? 0n) > 0n || symbolFailed(t.symbol),
-    );
-    // symbolFailed derives from `failures`, which derives from `portfolio`.
+  const visibleTokens = useMemo(
+    () =>
+      ALL_BALANCE_TOKENS.filter(
+        (t) => (portfolio.totals[t.symbol] ?? 0n) > 0n || symbolFailed(t.symbol),
+      ),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [portfolio, showZero]);
-
-  const hiddenCount = ALL_BALANCE_TOKENS.length - visibleTokens.length;
-  const heldMemes = visibleTokens.filter((t) => isMemeSymbol(t.symbol));
+    [portfolio],
+  );
 
   return (
-    <section aria-labelledby="combined-heading" className="space-y-7">
+    <section aria-labelledby="combined-heading" className="space-y-6">
       <div className="flex flex-wrap items-baseline justify-between gap-x-6 gap-y-3">
         <h2 id="combined-heading" className="font-serif text-[1.6rem] leading-tight text-ink">
           Combined balances
@@ -128,7 +111,7 @@ export function PortfolioResult({ portfolio }: { portfolio: AggregatedPortfolio 
         <dl className="flex flex-wrap items-baseline gap-x-5 gap-y-1 font-mono text-[0.72rem] text-ink-3">
           <div className="flex gap-1.5">
             <dt>Addresses</dt>
-            <dd className="tnum text-ink-2">{portfolio.wallets.length}</dd>
+            <dd className="tnum text-ink-2">{wallets.length}</dd>
           </div>
           <div className="flex gap-1.5">
             <dt>Block</dt>
@@ -157,97 +140,115 @@ export function PortfolioResult({ portfolio }: { portfolio: AggregatedPortfolio 
         </p>
       ) : null}
 
-      <div
-        role="group"
-        aria-label="Combined totals"
-        className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4"
-      >
-        <TotalCard
-          symbol={NATIVE_SYMBOL}
-          raw={portfolio.totals[NATIVE_SYMBOL] ?? 0n}
-          decimals={NATIVE_DECIMALS}
-          incomplete={symbolFailed(NATIVE_SYMBOL)}
-          emphasis
-        />
-        {visibleTokens.map((token) => (
-          <TotalCard
-            key={token.symbol}
-            symbol={token.symbol}
-            raw={portfolio.totals[token.symbol] ?? 0n}
-            decimals={token.decimals}
-            incomplete={symbolFailed(token.symbol)}
-          />
-        ))}
-      </div>
-
-      <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
-        <button
-          type="button"
-          onClick={() => setShowZero((v) => !v)}
-          aria-pressed={showZero}
-          className="rounded-[9px] border border-line-strong bg-surface px-3.5 py-2 font-mono text-[0.78rem] text-ink-2 transition-colors hover:border-accent hover:text-ink"
-        >
-          {showZero ? "Hide zero balances" : "Show zero balances"}
-        </button>
-        {!showZero && hiddenCount > 0 ? (
-          <p className="text-[0.78rem] text-ink-3">
-            {hiddenCount} asset{hiddenCount === 1 ? "" : "s"} with a zero balance hidden.
-          </p>
-        ) : null}
-      </div>
-
-      {heldMemes.length > 0 || showZero ? (
-        <p className="text-[0.78rem] leading-relaxed text-ink-3">
-          These supported memecoins use verified contract addresses. Inclusion is not an
-          endorsement.
+      {/* Token × wallet ownership matrix. One row per token contract; the
+          Combined column equals the sum of the wallet columns. The Token column
+          is sticky and the table scrolls horizontally so every wallet balance
+          stays reachable on a narrow screen. */}
+      {overflows ? (
+        <p className="text-right font-mono text-[0.68rem] text-ink-3" aria-hidden>
+          Scroll to see wallets →
         </p>
       ) : null}
-
-      <div>
-        <h3 className="mb-4 font-serif text-[1.2rem] leading-tight text-ink">Per-wallet breakdown</h3>
-
-        <div className="grid gap-3 lg:grid-cols-2">
-          {portfolio.wallets.map((wallet, index) => (
-            <div
-              key={wallet.address}
-              role="group"
-              aria-label={`${walletLabel(index)} balances`}
-              className="rounded-[14px] border border-line bg-surface p-4 sm:p-5"
-            >
-              <div className="flex flex-wrap items-center justify-between gap-2 border-b border-line pb-3">
-                <span className="font-mono text-[0.66rem] tracking-[0.08em] text-ink-3 uppercase">
-                  {walletLabel(index)}
+      <div ref={scrollRef} className="overflow-x-auto rounded-[14px] border border-line">
+        <table className="w-full min-w-[34rem] border-collapse text-sm">
+          <caption className="sr-only">
+            Combined and per-wallet token balances. Each row is one token; each wallet has its own
+            column.
+          </caption>
+          <thead>
+            <tr className="border-b border-line bg-surface-2/40 text-left">
+              <th
+                scope="col"
+                className="sticky left-0 z-10 bg-surface-2 px-3.5 py-2.5 font-mono text-[0.66rem] tracking-[0.08em] text-ink-3 uppercase"
+              >
+                Token
+              </th>
+              <th scope="col" className="px-3.5 py-2.5 text-right font-mono text-[0.66rem] tracking-[0.08em] text-ink-3 uppercase">
+                Combined
+              </th>
+              {wallets.map((w, i) => (
+                <th
+                  key={w.address}
+                  scope="col"
+                  className="px-3.5 py-2.5 text-right font-mono text-[0.66rem] tracking-[0.08em] text-ink-3 uppercase"
+                >
+                  <span className="block">{walletLabel(i)}</span>
+                  <span className="block font-normal normal-case text-ink-3" title={w.address}>
+                    {shortenAddress(w.address)}
+                  </span>
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-line">
+            {/* Native MON — always shown, once. */}
+            <tr className="bg-surface">
+              <th scope="row" className="sticky left-0 z-10 bg-surface px-3.5 py-3 text-left font-normal">
+                <span className="flex items-center gap-2">
+                  <span
+                    aria-hidden
+                    className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full border border-accent/40 bg-surface-2 font-mono text-[0.55rem] text-accent-deep"
+                  >
+                    M
+                  </span>
+                  <span className="font-medium text-ink">MON</span>
+                  <span className="text-[0.72rem] text-ink-3">Monad</span>
+                  {symbolFailed(NATIVE_SYMBOL) ? (
+                    <span className="font-mono text-[0.6rem] text-warn" title="Some wallets could not be read">
+                      incomplete
+                    </span>
+                  ) : null}
                 </span>
-                <AddressChip address={wallet.address} />
-              </div>
-              <dl className="mt-3.5 grid grid-cols-2 gap-x-5 gap-y-3 sm:grid-cols-3">
-                <div className="flex flex-col gap-1">
-                  <dt className="font-mono text-[0.64rem] tracking-[0.08em] text-ink-3 uppercase">
-                    {NATIVE_SYMBOL}
-                  </dt>
-                  <dd>
-                    <BalanceCell result={wallet.mon} decimals={NATIVE_DECIMALS} />
-                  </dd>
-                </div>
-                {visibleTokens.map((t) => (
-                  <div key={t.symbol} className="flex flex-col gap-1">
-                    <dt className="font-mono text-[0.64rem] tracking-[0.08em] text-ink-3 uppercase">
-                      {t.symbol}
-                    </dt>
-                    <dd>
-                      <BalanceCell
-                        result={wallet.tokens[t.symbol]}
-                        decimals={t.decimals}
-                        maxFractionDigits={2}
-                      />
-                    </dd>
-                  </div>
+              </th>
+              <td className="px-3.5 py-3 text-right">
+                <span className="tnum text-sm font-semibold text-ink">
+                  {formatAmount(portfolio.totals[NATIVE_SYMBOL] ?? 0n, NATIVE_DECIMALS, 4)}
+                </span>
+              </td>
+              {wallets.map((w) => (
+                <td key={w.address} className="px-3.5 py-3 text-right">
+                  <BalanceCell result={w.mon} decimals={NATIVE_DECIMALS} maxFractionDigits={4} />
+                </td>
+              ))}
+            </tr>
+
+            {visibleTokens.map((token) => (
+              <tr key={token.address} className="bg-surface">
+                <th scope="row" className="sticky left-0 z-10 bg-surface px-3.5 py-3 text-left font-normal">
+                  <span className="flex items-center gap-2">
+                    <TokenLogo token={token} />
+                    <span className="font-medium text-ink">{token.symbol}</span>
+                    {token.name && token.name !== token.symbol ? (
+                      <span className="max-w-[10rem] truncate text-[0.72rem] text-ink-3">
+                        {token.name}
+                      </span>
+                    ) : null}
+                    {symbolFailed(token.symbol) ? (
+                      <span className="font-mono text-[0.6rem] text-warn" title="Some wallets could not be read">
+                        incomplete
+                      </span>
+                    ) : null}
+                  </span>
+                </th>
+                <td className="px-3.5 py-3 text-right">
+                  <span className="tnum text-sm font-semibold text-ink">
+                    {formatAmount(portfolio.totals[token.symbol] ?? 0n, token.decimals, 4)}
+                  </span>
+                </td>
+                {wallets.map((w) => (
+                  <td key={w.address} className="px-3.5 py-3 text-right">
+                    <BalanceCell result={w.tokens[token.symbol]} decimals={token.decimals} />
+                  </td>
                 ))}
-              </dl>
-            </div>
-          ))}
-        </div>
+              </tr>
+            ))}
+          </tbody>
+        </table>
       </div>
+
+      <p className="text-[0.78rem] leading-relaxed text-ink-3">
+        Balances are verified onchain. Only held assets are shown.
+      </p>
     </section>
   );
 }

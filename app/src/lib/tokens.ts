@@ -11,6 +11,7 @@
 
 import { MONAD_CHAIN_ID } from "./chain";
 import { CURATED_MEME_TOKENS } from "./memeTokens";
+import { MONAD_LIST_TOKENS } from "./monadTokenList";
 
 export type SupportedStablecoin = {
   chainId: typeof MONAD_CHAIN_ID;
@@ -31,6 +32,9 @@ export type BalanceToken = {
   address: `0x${string}`;
   symbol: string;
   decimals: number;
+  /** Optional display metadata (present for token-list entries). */
+  name?: string;
+  logoURI?: string;
 };
 
 export const SUPPORTED_STABLECOINS: readonly SupportedStablecoin[] = [
@@ -62,16 +66,45 @@ export const NATIVE_SYMBOL = "MON" as const;
 export const NATIVE_DECIMALS = 18 as const;
 
 /**
- * Every ERC-20 read on an explicit portfolio load, in display order:
- * stablecoins first, then curated community tokens.
+ * De-duplicates a token list by CONTRACT ADDRESS (the stable identity), keeping
+ * the first occurrence. This is why the same address appearing in both the
+ * curated stablecoins and the broad Monad list collapses to one row, and why
+ * two contracts that happen to share a symbol are always kept separate.
+ */
+function dedupeByAddress(tokens: readonly BalanceToken[]): BalanceToken[] {
+  const byAddress = new Map<string, BalanceToken>();
+  const order: string[] = [];
+  for (const t of tokens) {
+    const key = t.address.toLowerCase();
+    const existing = byAddress.get(key);
+    if (!existing) {
+      byAddress.set(key, { ...t });
+      order.push(key);
+    } else {
+      // Same contract from a later source (e.g. the token list): keep the first
+      // entry's position/decimals but backfill any missing name or logo.
+      if (!existing.name && t.name) existing.name = t.name;
+      if (!existing.logoURI && t.logoURI) existing.logoURI = t.logoURI;
+    }
+  }
+  return order.map((k) => byAddress.get(k)!);
+}
+
+/**
+ * Every ERC-20 read on an explicit portfolio load, in display order: curated
+ * stablecoins first, then the broad Monad Mainnet token-list majors, then the
+ * curated community tokens. Keyed by contract address (deduped), so the same
+ * contract is never read twice and same-symbol/different-contract entries stay
+ * separate.
  *
  * One list means one multicall and one pinned block, so a single wallet gets
- * exactly the same coverage as five.
+ * exactly the same coverage as five. Non-zero filtering happens at display time.
  */
-export const ALL_BALANCE_TOKENS: readonly BalanceToken[] = [
+export const ALL_BALANCE_TOKENS: readonly BalanceToken[] = dedupeByAddress([
   ...SUPPORTED_STABLECOINS,
+  ...MONAD_LIST_TOKENS,
   ...CURATED_MEME_TOKENS,
-];
+]);
 
 const MEME_SYMBOLS: ReadonlySet<string> = new Set(CURATED_MEME_TOKENS.map((t) => t.symbol));
 

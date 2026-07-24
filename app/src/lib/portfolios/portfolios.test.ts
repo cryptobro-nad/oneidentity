@@ -301,6 +301,34 @@ describe("addresses within a portfolio", () => {
       ok: false,
     });
   });
+
+  it("allows two portfolios whose combined wallet count exceeds five", () => {
+    installStorage();
+    // Portfolio A (Personal): 4 wallets.
+    const four = [A, B, C, "0xcD6b980029E6E6e0733ac8eC3E02be9410D09799"];
+    for (const a of four) expect(addAddressTo(PERSONAL_ID, a).ok).toBe(true);
+
+    // Portfolio B: 3 wallets. Combined 7 > 5 must be valid — the limit is per
+    // portfolio, never across the whole store.
+    const created = createPortfolio("Second");
+    expect(created.ok).toBe(true);
+    const secondId = created.ok ? created.id : "";
+    const three = [
+      "0xd651346d7c789536ebf06dc72aE3C8502cd695CC",
+      "0xb2A44ce122FAB07Fc514ea7830623201b152D99D",
+      "0xF15c2b7e88B257D1F2Fe35240DC9553Dc21e4946",
+    ];
+    for (const a of three) expect(addAddressTo(secondId, a).ok).toBe(true);
+
+    const state = getSnapshot();
+    expect(state.portfolios.find((p) => p.id === PERSONAL_ID)!.addresses).toHaveLength(4);
+    expect(state.portfolios.find((p) => p.id === secondId)!.addresses).toHaveLength(3);
+
+    // The five-wallet restriction still holds inside each portfolio.
+    expect(addAddressTo(secondId, "0xe7cd86e13AC4309349F30B3435a9d337750fC82D").ok).toBe(true);
+    expect(addAddressTo(secondId, "0x754704Bc059F8C67012fEd69BC8A327a5aafb603").ok).toBe(true);
+    expect(addAddressTo(secondId, "0x00000000eFE302BEAA2b3e6e1b18d08D69a9012a").ok).toBe(false); // 6th
+  });
 });
 
 describe("renaming", () => {
