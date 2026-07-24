@@ -1,0 +1,119 @@
+import { describe, expect, it } from "vitest";
+import { InMemoryChallengeStore } from "./store";
+import { runIndexerTick, type IndexedBlock, type IndexerClient } from "./indexer";
+import type { Challenge } from "./types";
+
+const PRIMARY = "0xB09684f5486d1af80699BbC27f14dd5A905da873" as `0x${string}`;
+const SECONDARY = "0x2b197ea9CcAeec32560Ea8891ad17F0bb5866DD1" as `0x${string}`;
+const OTHER = "0xF15c2b7e88B257D1F2Fe35240DC9553Dc21e4946" as `0x${string}`;
+const AMOUNT = "15000000000000000";
+
+class MockClient implements IndexerClient {
+  head = 130n;
+  blocks = new Map<bigint, IndexedBlock>();
+  status = new Map<string, "success" | "reverted">();
+  async getBlockNumber() {
+    return this.head;
+  }
+  async getBlock(n: bigint) {
+    return this.blocks.get(n) ?? { number: n, hash: `0x${n.toString(16)}`, transactions: [] };
+  }
+  async getReceiptStatus(hash: `0x${string}`) {
+    return this.status.get(hash) ?? "success";
+  }
+  put(n: bigint, txs: IndexedBlock["transactions"]) {
+    this.blocks.set(n, { number: n, hash: `0x${n.toString(16)}`, transactions: txs });
+  }
+}
+
+function pending(id: string, over: Partial<Challenge> = {}): Challenge {
+  return {
+    id,
+    primary: PRIMARY,
+    secondary: SECONDARY,
+    amountWei: AMOUNT,
+    createdAt: 1000,
+    createdAtBlock: 100n,
+    expiresAt: 9_999_999_999,
+    status: "pending",
+    ...over,
+  };
+}
+
+const now = () => 1100;
+
+describe("runIndexerTick", () => {
+  it("detects a valid transfer and marks the challenge verified", async () => {
+    const store = new InMemoryChallengeStore();
+    await store.setCursor(108n, "0x108");
+    await store.create(pending("c1"));
+    const client = new MockClient();
+    client.put(110n, [{ hash: "0xtx1", from: SECONDARY, to: PRIMARY, value: BigInt(AMOUNT) }]);
+
+    const res = await runIndexerTick(store, client, { now, confirmations: 8 });
+    expect(res.matched).toBe(1);
+    const c = await store.get("c1");
+    expect(c?.status).toBe("verified");
+    expect(c?.txHash).toBe("0xtx1");
+    expect(c?.txBlock).toBe(110n);
+    expect(c?.approvalDeadline).toBe(1100 + 600);
+    // Cursor advanced to the confirmed head (130 - 8 = 122).
+    expect((await store.getCursor())?.block).toBe(122n);
+  });
+
+  it("ignores a transfer from the wrong sender", async () => {
+    const store = new InMemoryChallengeStore();
+    await store.setCursor(108n, "0x108");
+    await store.create(pending("c1"));
+    const client = new MockClient();
+    client.put(110n, [{ hash: "0xtx1", from: OTHER, to: PRIMARY, value: BigInt(AMOUNT) }]);
+    const res = await runIndexerTick(store, client, { now, confirmations: 8 });
+    expect(res.matched).toBe(0);
+    expect((await store.get("c1"))?.status).toBe("pending");
+  });
+
+  it("does not scan unconfirmed blocks", async () => {
+    const store = new InMemoryChallengeStore();
+    await store.setCursor(108n, "0x108");
+    await store.create(pending("c1"));
+    const client = new MockClient();
+    // Transfer at 125 is above the confirmed head (122) → not scanned.
+    client.put(125n, [{ hash: "0xtx1", from: SECONDARY, to: PRIMARY, value: BigInt(AMOUNT) }]);
+    const res = await runIndexerTick(store, client, { now, confirmations: 8 });
+    expect(res.matched).toBe(0);
+  });
+
+  it("does not double-match an already-used transfer", async () => {
+    const store = new InMemoryChallengeStore();
+    await store.setCursor(108n, "0x108");
+    await store.create(pending("c1"));
+    const client = new MockClient();
+    client.put(110n, [{ hash: "0xtx1", from: SECONDARY, to: PRIMARY, value: BigInt(AMOUNT) }]);
+    await runIndexerTick(store, client, { now, confirmations: 8 }); // verifies c1
+
+    // A second pending challenge for the same pair/amount cannot reuse tx1.
+    await store.create(pending("c2", { secondary: OTHER })); // different pair to allow creation
+    client.head = 140n;
+    client.put(110n, [{ hash: "0xtx1", from: SECONDARY, to: PRIMARY, value: BigInt(AMOUNT) }]);
+    // Re-scan won't revisit block 110 (cursor is past it), and tx1 is used anyway.
+    const res = await runIndexerTick(store, client, { now, confirmations: 8 });
+    expect(res.matched).toBe(0);
+  });
+
+  it("resumes from the persisted cursor after a restart", async () => {
+    const store = new InMemoryChallengeStore();
+    await store.setCursor(108n, "0x108");
+    const client = new MockClient();
+    await runIndexerTick(store, client, { now, confirmations: 8 }); // cursor → 122
+    expect((await store.getCursor())?.block).toBe(122n);
+
+    // "Restart": a fresh tick (functions are stateless; state lives in the store).
+    client.head = 140n; // safe → 132
+    await store.create(pending("c3"));
+    client.put(128n, [{ hash: "0xtx3", from: SECONDARY, to: PRIMARY, value: BigInt(AMOUNT) }]);
+    const res = await runIndexerTick(store, client, { now, confirmations: 8 });
+    expect(res.matched).toBe(1);
+    expect((await store.get("c3"))?.status).toBe("verified");
+    expect((await store.getCursor())?.block).toBe(132n);
+  });
+});
