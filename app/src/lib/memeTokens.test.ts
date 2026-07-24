@@ -183,12 +183,16 @@ describe("unverified tokens are excluded, not guessed", () => {
 });
 
 describe("the combined balance list", () => {
-  it("contains every stablecoin and every meme token, with no duplicates", () => {
-    expect(ALL_BALANCE_TOKENS).toHaveLength(
-      SUPPORTED_STABLECOINS.length + CURATED_MEME_TOKENS.length,
-    );
-    const symbols = ALL_BALANCE_TOKENS.map((t) => t.symbol);
-    expect(new Set(symbols).size).toBe(symbols.length);
+  it("contains the curated stablecoins and meme tokens plus the broad list, deduped by contract", () => {
+    const symbols = new Set(ALL_BALANCE_TOKENS.map((t) => t.symbol));
+    for (const t of SUPPORTED_STABLECOINS) expect(symbols.has(t.symbol)).toBe(true);
+    for (const t of CURATED_MEME_TOKENS) expect(symbols.has(t.symbol)).toBe(true);
+    // No duplicate contract addresses, and no duplicate symbols (the totals map
+    // is symbol-keyed, so a collision would merge two different tokens).
+    const addrs = ALL_BALANCE_TOKENS.map((t) => t.address.toLowerCase());
+    expect(new Set(addrs).size).toBe(addrs.length);
+    const symbolArr = ALL_BALANCE_TOKENS.map((t) => t.symbol);
+    expect(new Set(symbolArr).size).toBe(symbolArr.length);
   });
 
   it("puts stablecoins before community tokens", () => {
