@@ -116,7 +116,21 @@ export function NetworkDiagram({ className = "" }: { className?: string }) {
       <text x="368" y="224" style={SANS} fontSize="12.5" fill="var(--ink-2)">
         NFTs
       </text>
-      <text x="368" y="250" style={MONO} fontSize="10.5" letterSpacing="0.1em" fill="var(--accent-live)">
+      {/* Tagline constrained to the card's inner content box (x 368 → the
+          dashed line at 532). A smaller size + tighter tracking bring it under
+          width, and textLength/lengthAdjust hard-cap it at 158px so it can never
+          reach the card border (552) — at every screen width, since the SVG
+          scales uniformly. Wording unchanged. */}
+      <text
+        x="368"
+        y="250"
+        style={MONO}
+        fontSize="9.5"
+        letterSpacing="0.04em"
+        textLength="158"
+        lengthAdjust="spacingAndGlyphs"
+        fill="var(--accent-live)"
+      >
         MULTIPLE WALLETS, ONE VIEW
       </text>
     </svg>

@@ -115,7 +115,7 @@ export default function LandingPage() {
             </Reveal>
           </div>
 
-          <Reveal delay={120} className="lg:pl-4">
+          <Reveal delay={120} className="min-w-0 lg:pl-4">
             <NetworkDiagram />
           </Reveal>
         </div>
