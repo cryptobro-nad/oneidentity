@@ -3,140 +3,15 @@
 /**
  * Read-only server actions for the Verified ONE flow.
  *
- * Chain reads run server-side for the same reason as Phase 1: no CORS, one
- * place to control endpoint choice and failover. Signing and transaction
- * submission stay in the browser, because only the user's wallet can do those.
- * Nothing here can write to the chain.
+ * Chain reads run server-side: no CORS, one place to control endpoint choice and
+ * failover. Nothing here can write to the chain. (V2 linking has its own actions
+ * in v2actions.ts; identity creation is V2-only now.)
  */
 
-import { getAddress } from "viem";
-import { ONE_REGISTRY_ADDRESS } from "@/lib/chain";
 import { withRpcFallback } from "@/lib/rpc";
-import { ONE_REGISTRY_ABI } from "@/lib/registry/abi";
 import { loadOneProfile } from "@/lib/registry/profile";
 import { LOOKUP_MESSAGES, resolveOneLookup, type LookupResult } from "@/lib/registry/lookup";
-import { loadWalletMembership } from "@/lib/registry/membership";
 import type { PortfolioAddress } from "@/lib/types";
-
-export type MemberChainState = {
-  address: PortfolioAddress;
-  activeOne: string;
-  nonce: string;
-};
-
-export type SetupStateResult =
-  | { ok: true; members: MemberChainState[]; blockNumber: string }
-  | { ok: false; error: string };
-
-/** Reads binding + nonce for every candidate member. */
-export async function readMemberStates(addresses: string[]): Promise<SetupStateResult> {
-  const clean: PortfolioAddress[] = [];
-  for (const raw of addresses) {
-    try {
-      clean.push(getAddress(raw) as PortfolioAddress);
-    } catch {
-      return { ok: false, error: `Invalid address: ${raw}` };
-    }
-  }
-  if (clean.length === 0) return { ok: false, error: "No addresses provided." };
-
-  try {
-    const outcome = await withRpcFallback(async (client) => {
-      const [bindings, nonces, blockNumber] = await Promise.all([
-        Promise.all(
-          clean.map((a) =>
-            client.readContract({
-              address: ONE_REGISTRY_ADDRESS,
-              abi: ONE_REGISTRY_ABI,
-              functionName: "activeOneOf",
-              args: [a],
-            }),
-          ),
-        ),
-        Promise.all(
-          clean.map((a) =>
-            client.readContract({
-              address: ONE_REGISTRY_ADDRESS,
-              abi: ONE_REGISTRY_ABI,
-              functionName: "nonces",
-              args: [a],
-            }),
-          ),
-        ),
-        client.getBlockNumber(),
-      ]);
-
-      return {
-        members: clean.map((address, i) => ({
-          address,
-          activeOne: bindings[i] as string,
-          nonce: (nonces[i] as bigint).toString(),
-        })),
-        blockNumber: blockNumber.toString(),
-      };
-    });
-
-    return { ok: true, ...outcome.value };
-  } catch (error) {
-    return {
-      ok: false,
-      error: error instanceof Error ? error.message.split("\n")[0]! : String(error),
-    };
-  }
-}
-
-export type PredictionResult =
-  | { ok: true; predicted: PortfolioAddress; occupied: boolean; membersHash: string }
-  | { ok: false; error: string };
-
-/** Asks the registry itself for the CREATE2 address, then checks it is free. */
-export async function predictOneAddressAction(
-  primary: string,
-  sortedMembers: string[],
-  salt: string,
-): Promise<PredictionResult> {
-  try {
-    const outcome = await withRpcFallback(async (client) => {
-      const [predicted, membersHash] = await Promise.all([
-        client.readContract({
-          address: ONE_REGISTRY_ADDRESS,
-          abi: ONE_REGISTRY_ABI,
-          functionName: "predictOneAddress",
-          args: [
-            getAddress(primary),
-            sortedMembers.map((m) => getAddress(m)),
-            salt as `0x${string}`,
-          ],
-        }),
-        client.readContract({
-          address: ONE_REGISTRY_ADDRESS,
-          abi: ONE_REGISTRY_ABI,
-          functionName: "membersHashOf",
-          args: [sortedMembers.map((m) => getAddress(m))],
-        }),
-      ]);
-
-      const address = getAddress(predicted as string) as PortfolioAddress;
-      const code = await client.getCode({ address });
-      return {
-        predicted: address,
-        occupied: Boolean(code && code !== "0x"),
-        membersHash: membersHash as string,
-      };
-    });
-
-    return { ok: true, ...outcome.value };
-  } catch (error) {
-    return {
-      ok: false,
-      error: error instanceof Error ? error.message.split("\n")[0]! : String(error),
-    };
-  }
-}
-
-// ---------------------------------------------------------------------------
-// Lookup and membership
-// ---------------------------------------------------------------------------
 
 export type LookupActionResult = LookupResult;
 
@@ -156,28 +31,6 @@ export async function resolveOneLookupAction(input: string): Promise<LookupActio
       message:
         LOOKUP_MESSAGES.RPC_ERROR +
         (error instanceof Error ? ` (${error.message.split("\n")[0]})` : ""),
-    };
-  }
-}
-
-export type MembershipActionResult =
-  | { state: "linked"; oneAddress: PortfolioAddress; role: "primary" | "secondary"; isActive: boolean; memberCount: number }
-  | { state: "unlinked" }
-  | { state: "error"; message: string };
-
-/** Reads the ONE a connected wallet already belongs to, and its role in it. */
-export async function loadWalletMembershipAction(
-  wallet: string,
-): Promise<MembershipActionResult> {
-  try {
-    const outcome = await withRpcFallback((client) => loadWalletMembership(client, wallet));
-    return outcome.value;
-  } catch (error) {
-    return {
-      state: "error",
-      message:
-        "Monad could not be reached to check this wallet. " +
-        (error instanceof Error ? error.message.split("\n")[0]! : String(error)),
     };
   }
 }

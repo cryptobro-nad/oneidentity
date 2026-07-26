@@ -3,12 +3,6 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { renderHook, act, waitFor } from "@testing-library/react";
 import { useWallet } from "./useWallet";
 import type { DiscoveredWallet } from "./provider";
-import {
-  getSnapshot as getDraft,
-  resetDraftStoreCache,
-  setDraft,
-} from "@/lib/registry/draftStore";
-import { configFingerprint, emptyDraft, type OneDraft } from "@/lib/registry/draft";
 
 const ADDRESS = "0x017F9358AFcC7018dd683001FD33fD7D68230D8B";
 const OTHER = "0xe3A0795381521C177fc8c7723213df7B56A10a31";
@@ -242,51 +236,3 @@ describe("resync when returning to the tab", () => {
   });
 });
 
-describe("Verified ONE draft survives a wallet disconnect", () => {
-  it("keeps the draft and a collected signature after disconnect", async () => {
-    // A secondary (OTHER) has signed under primary ADDRESS.
-    resetDraftStoreCache();
-    const deadline = String(Math.floor(Date.now() / 1000) + 3600);
-    const base: OneDraft = {
-      ...emptyDraft(),
-      members: [ADDRESS as `0x${string}`, OTHER as `0x${string}`],
-      primary: ADDRESS as `0x${string}`,
-      salt: `0x${"0".repeat(63)}1` as `0x${string}`,
-      deadline,
-      signatures: [],
-    };
-    // The fingerprint must match the current config, or load-time pruning would
-    // (correctly) discard it — which would defeat what this test is checking.
-    const fp = configFingerprint(base);
-    setDraft({
-      ...base,
-      signatures: [
-        {
-          wallet: OTHER as `0x${string}`,
-          signature: `0x${"ab".repeat(65)}` as `0x${string}`,
-          nonce: "0",
-          deadline,
-          configFingerprint: fp,
-          signedAt: Date.now(),
-        },
-      ],
-    });
-
-    const { wallet } = makeWallet(143);
-    const { result } = renderHook(() => useWallet());
-    await act(async () => {
-      await result.current.connect(wallet);
-    });
-    await act(async () => {
-      result.current.disconnect();
-    });
-
-    // Force a reload from storage so this proves persistence, not a live cache.
-    resetDraftStoreCache();
-    const after = getDraft();
-    expect(after.members).toHaveLength(2);
-    expect(after.primary?.toLowerCase()).toBe(ADDRESS.toLowerCase());
-    expect(after.signatures).toHaveLength(1);
-    expect(after.signatures[0]!.wallet.toLowerCase()).toBe(OTHER.toLowerCase());
-  });
-});

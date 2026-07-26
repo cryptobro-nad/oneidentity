@@ -11,7 +11,7 @@ import { NftCollectionChecker } from "@/components/NftCollectionChecker";
 import { NftHoldings } from "@/components/NftHoldings";
 import { OneLookup } from "@/components/OneLookup";
 import { PortfolioResult } from "@/components/PortfolioResult";
-import { ErrorPanel } from "@/components/verified/ReviewStep";
+import { ErrorPanel } from "@/components/verified/ErrorPanel";
 import { WalletConnect } from "@/components/verified/WalletConnect";
 import { EXPLORER_URL, monad, ONE_REGISTRY_ADDRESS, PRIMARY_RPC } from "@/lib/chain";
 import { formatBlockNumber, walletLabel } from "@/lib/format";
