@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { PublicClient } from "viem";
-import { discoverAndVerifyFungibles } from "./discover";
+import { discoverAndVerifyAssets } from "./discover";
 import type { AssetDiscoveryProvider } from "./provider";
 import type { DiscoveryStatus } from "./types";
 import type { PortfolioAddress } from "@/lib/types";
@@ -34,9 +34,9 @@ function provider(
   };
 }
 
-describe("discoverAndVerifyFungibles — provider selection & fallback", () => {
+describe("discoverAndVerifyAssets — provider selection & fallback", () => {
   it("uses curated by default (flag off)", async () => {
-    const res = await discoverAndVerifyFungibles(client, [W], {
+    const res = await discoverAndVerifyAssets(client, [W], {
       flag: "curated",
       envio: provider("envio", "complete"),
       curated: provider("curated", "complete"),
@@ -46,7 +46,7 @@ describe("discoverAndVerifyFungibles — provider selection & fallback", () => {
   });
 
   it("uses envio when the flag is on and it is configured", async () => {
-    const res = await discoverAndVerifyFungibles(client, [W], {
+    const res = await discoverAndVerifyAssets(client, [W], {
       flag: "envio",
       envio: provider("envio", "complete"),
       curated: provider("curated", "complete"),
@@ -56,7 +56,7 @@ describe("discoverAndVerifyFungibles — provider selection & fallback", () => {
   });
 
   it("falls back to curated (partial + honest note) when envio is unavailable", async () => {
-    const res = await discoverAndVerifyFungibles(client, [W], {
+    const res = await discoverAndVerifyAssets(client, [W], {
       flag: "envio",
       envio: provider("envio", "unavailable"),
       curated: provider("curated", "complete"),
@@ -69,7 +69,7 @@ describe("discoverAndVerifyFungibles — provider selection & fallback", () => {
   });
 
   it("uses curated when envio is selected but unconfigured (no token)", async () => {
-    const res = await discoverAndVerifyFungibles(client, [W], {
+    const res = await discoverAndVerifyAssets(client, [W], {
       flag: "envio",
       envio: provider("envio", "complete", false),
       curated: provider("curated", "complete"),

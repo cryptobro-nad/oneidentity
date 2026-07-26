@@ -15,7 +15,7 @@
 import { sanitizeAddressList } from "@/lib/addresses";
 import { withRpcFallback } from "@/lib/rpc";
 import { resolveDiscoveryProvider } from "@/lib/assets/config";
-import { discoverAndVerifyFungibles } from "@/lib/assets/discover";
+import { discoverAndVerifyAssets } from "@/lib/assets/discover";
 import { createEnvioLogSource } from "@/lib/assets/envioClient";
 import { CuratedAssetProvider } from "@/lib/assets/providers/curated";
 import { EnvioHyperSyncProvider } from "@/lib/assets/providers/envioHyperSync";
@@ -37,10 +37,26 @@ export type WireFungibleHolding = {
   incomplete: boolean;
 };
 
+/** NFT holdings, serialised with bigints as decimal strings for the wire. */
+export type WireNftCollection = {
+  chainId: number;
+  contractAddress: string;
+  standard: "erc721" | "erc1155";
+  name: string | null;
+  metadataQuality: string;
+  classification: Classification;
+  discoverySource: string;
+  total: string;
+  perWallet: { wallet: string; count: string | null; error?: string }[];
+  items?: { wallet: string; contractAddress: string; standard: "erc721" | "erc1155"; tokenId: string; quantity: string }[];
+  partial: boolean;
+};
+
 export type DiscoverAssetsResult =
   | {
       ok: true;
       holdings: WireFungibleHolding[];
+      nftCollections: WireNftCollection[];
       status: DiscoveryStatus;
       failures: PartialFailure[];
       source: string;
@@ -60,12 +76,35 @@ export async function discoverAssetsAction(addresses: string[]): Promise<Discove
 
   try {
     const outcome = await withRpcFallback((client) =>
-      discoverAndVerifyFungibles(client, clean, { flag, envio, curated }),
+      discoverAndVerifyAssets(client, clean, { flag, envio, curated }),
     );
     const d = outcome.value;
     return {
       ok: true,
       holdings: d.holdings.map((h) => ({ ...h, raw: h.raw.toString() })),
+      nftCollections: d.nftCollections.map((c) => ({
+        chainId: c.chainId,
+        contractAddress: c.contractAddress,
+        standard: c.standard,
+        name: c.name,
+        metadataQuality: c.metadataQuality,
+        classification: c.classification,
+        discoverySource: c.discoverySource,
+        total: c.total.toString(),
+        perWallet: c.perWallet.map((p) => ({
+          wallet: p.wallet,
+          count: p.count === null ? null : p.count.toString(),
+          ...(p.error ? { error: p.error } : {}),
+        })),
+        items: c.items?.map((i) => ({
+          wallet: i.wallet,
+          contractAddress: i.contractAddress,
+          standard: i.standard,
+          tokenId: i.tokenId,
+          quantity: i.quantity.toString(),
+        })),
+        partial: c.partial,
+      })),
       status: d.status,
       failures: d.failures,
       source: d.source,

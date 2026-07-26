@@ -1,11 +1,15 @@
 /**
- * Fungible asset discovery orchestration.
+ * Asset discovery orchestration (fungibles + NFTs).
  *
  * Chooses the provider by the server flag, discovers candidates, verifies them
  * on-chain, and — crucially — falls back to the curated provider when the
  * dynamic one is unavailable, without ever hiding the whole result. A provider
  * failure downgrades the status to `partial`/`unavailable` and is surfaced as a
  * truthful failure, never as an empty or zeroed portfolio.
+ *
+ * The provider returns fungible AND NFT candidates in a single pass; both are
+ * verified on-chain here (`verifyFungibles` / `verifyNfts`), so enabling Envio
+ * never doubles its request budget.
  */
 
 import type { PublicClient } from "viem";
@@ -13,10 +17,17 @@ import type { PortfolioAddress } from "@/lib/types";
 import type { DiscoveryProviderName } from "./config";
 import type { AssetDiscoveryProvider } from "./provider";
 import { verifyFungibles } from "./verify";
-import type { DiscoveryStatus, FungibleHolding, PartialFailure } from "./types";
+import { verifyNfts } from "./verifyNfts";
+import type {
+  DiscoveryStatus,
+  FungibleHolding,
+  NftCollectionHolding,
+  PartialFailure,
+} from "./types";
 
-export type FungibleDiscovery = {
+export type AssetDiscovery = {
   holdings: FungibleHolding[];
+  nftCollections: NftCollectionHolding[];
   status: DiscoveryStatus;
   failures: PartialFailure[];
   /** The provider whose candidates were actually used. */
@@ -24,7 +35,7 @@ export type FungibleDiscovery = {
   block: bigint;
 };
 
-export async function discoverAndVerifyFungibles(
+export async function discoverAndVerifyAssets(
   client: PublicClient,
   wallets: readonly PortfolioAddress[],
   deps: {
@@ -32,7 +43,7 @@ export async function discoverAndVerifyFungibles(
     envio: AssetDiscoveryProvider;
     curated: AssetDiscoveryProvider;
   },
-): Promise<FungibleDiscovery> {
+): Promise<AssetDiscovery> {
   const extraFailures: PartialFailure[] = [];
   let provider =
     deps.flag === "envio" && deps.envio.configured ? deps.envio : deps.curated;
@@ -54,18 +65,27 @@ export async function discoverAndVerifyFungibles(
     result = await deps.curated.discover(wallets);
   }
 
-  const verified = await verifyFungibles(client, result.fungibles, wallets);
-  const failures = [...extraFailures, ...result.failures, ...verified.failures];
+  const [verified, verifiedNfts] = await Promise.all([
+    verifyFungibles(client, result.fungibles, wallets),
+    verifyNfts(client, result.nfts, wallets),
+  ]);
+  const failures = [
+    ...extraFailures,
+    ...result.failures,
+    ...verified.failures,
+    ...verifiedNfts.failures,
+  ];
 
   const status: DiscoveryStatus =
     result.status === "unavailable"
       ? "unavailable"
-      : result.status === "partial" || verified.partial || failures.length > 0
+      : result.status === "partial" || verified.partial || verifiedNfts.partial || failures.length > 0
         ? "partial"
         : "complete";
 
   return {
     holdings: verified.holdings,
+    nftCollections: verifiedNfts.collections,
     status,
     failures,
     source: provider.name,
