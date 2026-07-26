@@ -53,10 +53,11 @@ export function SiteHeader() {
             ))}
           </nav>
           <div className="ml-auto flex items-center gap-2.5">
-            {/* Network pill is decorative; hide it on mobile to make room for the
-                wallet control, whose dot already reflects the network. */}
+            {/* Quiet, borderless network label so the accent Connect button is
+                the one that pops. Hidden on mobile — the wallet chip's dot
+                already reflects the network. */}
             <span className="hidden sm:inline-flex">
-              <StatusPill />
+              <StatusPill compact />
             </span>
             <HeaderWallet />
             <ThemeToggle />
