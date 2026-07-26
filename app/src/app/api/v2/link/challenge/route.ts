@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { getAddress, isAddress } from "viem";
 import { getChallengeStore } from "@/lib/v2link/storeFactory";
 import { createChallenge } from "@/lib/v2link/challenge";
-import { walletIsFree, ONE_REGISTRY_V2_ADDRESS } from "@/lib/v2link/registry";
+import { walletIsFree, primaryLinkState, ONE_REGISTRY_V2_ADDRESS } from "@/lib/v2link/registry";
 import { getRateLimiter, clientIp } from "@/lib/v2link/rateLimit";
 import { tooManyRequests } from "@/lib/v2link/http";
 import { withRpcFallback } from "@/lib/rpc";
@@ -49,14 +49,17 @@ export async function POST(req: Request) {
   });
   if (!byPrimary.allowed) return tooManyRequests(byPrimary.retryAfterSeconds);
 
-  // Reject wallets already active in V1 or V2 before issuing a challenge.
+  // The primary may already own a V2 identity (that's how more wallets are
+  // added); the wallet being linked must be entirely free.
   try {
-    const [pFree, sFree] = await Promise.all([
-      walletIsFree(getAddress(primary) as PortfolioAddress),
+    const [pState, sFree] = await Promise.all([
+      primaryLinkState(getAddress(primary) as PortfolioAddress),
       walletIsFree(getAddress(secondary) as PortfolioAddress),
     ]);
-    if (!pFree) return NextResponse.json({ error: "The primary wallet already belongs to a ONE." }, { status: 409 });
-    if (!sFree) return NextResponse.json({ error: "The secondary wallet already belongs to a ONE." }, { status: 409 });
+    if (!pState.ok) return NextResponse.json({ error: pState.error }, { status: 409 });
+    if (!sFree) {
+      return NextResponse.json({ error: "The wallet you're linking already belongs to a ONE." }, { status: 409 });
+    }
   } catch {
     return NextResponse.json({ error: "Could not check wallet state on Monad." }, { status: 502 });
   }

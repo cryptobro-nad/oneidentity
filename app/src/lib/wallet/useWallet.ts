@@ -9,7 +9,7 @@
  * wrong account would produce a signature attributed to the wrong wallet.
  */
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { getAddress, type EIP1193Provider } from "viem";
 import { MONAD_CHAIN_ID } from "@/lib/chain";
 import type { PortfolioAddress } from "@/lib/types";
@@ -55,6 +55,34 @@ export type WalletState = {
    */
   disconnectNotice: string | null;
 };
+
+/**
+ * Remembers the last-connected injected wallet so a page refresh restores it
+ * silently (WalletConnect has its own persistence). Only the wallet's rdns is
+ * stored — never an address or key — and it is cleared on an explicit disconnect.
+ */
+const INJECTED_RDNS_KEY = "one.wallet.injected.rdns";
+function saveInjectedRdns(rdns: string) {
+  try {
+    localStorage.setItem(INJECTED_RDNS_KEY, rdns);
+  } catch {
+    /* storage unavailable */
+  }
+}
+function clearInjectedRdns() {
+  try {
+    localStorage.removeItem(INJECTED_RDNS_KEY);
+  } catch {
+    /* ignore */
+  }
+}
+function getSavedInjectedRdns(): string | null {
+  try {
+    return localStorage.getItem(INJECTED_RDNS_KEY);
+  } catch {
+    return null;
+  }
+}
 
 export function useWallet() {
   const [wallets, setWallets] = useState<DiscoveredWallet[]>([]);
@@ -107,6 +135,42 @@ export function useWallet() {
       cancelled = true;
     };
   }, []);
+
+  /**
+   * Restores a previously-connected INJECTED wallet on mount/refresh.
+   *
+   * The connection is not "logged out" on refresh — only an explicit Disconnect
+   * clears it. If the saved wallet is still authorised (eth_accounts returns an
+   * account) we re-select it silently: eth_accounts is a plain read, so this
+   * never opens the wallet or prompts. Runs once, when the wallet is discovered.
+   */
+  const injectedRestored = useRef(false);
+  useEffect(() => {
+    if (injectedRestored.current || selected) return;
+    const rdns = getSavedInjectedRdns();
+    if (!rdns) return;
+    const match = wallets.find((w) => w.info.rdns === rdns);
+    if (!match) return; // not discovered yet — retry when `wallets` updates
+    injectedRestored.current = true;
+
+    let cancelled = false;
+    void (async () => {
+      try {
+        const accounts = (await match.provider.request({ method: "eth_accounts" })) as string[];
+        if (cancelled || !Array.isArray(accounts) || accounts.length === 0) return; // deauthorised → stay logged out
+        const id = await getChainId(match.provider);
+        if (cancelled) return;
+        setSelected(match);
+        setAddress(getAddress(accounts[0]!) as PortfolioAddress);
+        setChainId(id);
+      } catch {
+        // A restore that can't read accounts just leaves the user disconnected.
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [wallets, selected]);
 
   // Track account and chain changes for the connected provider.
   useEffect(() => {
@@ -184,6 +248,8 @@ export function useWallet() {
       setSelected(wallet);
       setAddress(getAddress(accounts[0]!) as PortfolioAddress);
       setChainId(id);
+      // Remember injected wallets so a refresh restores them (WC persists itself).
+      if (wallet.info.uuid !== WALLETCONNECT_UUID) saveInjectedRdns(wallet.info.rdns);
     } catch (err) {
       setError(err instanceof Error ? err.message.split("\n")[0]! : String(err));
     } finally {
@@ -241,6 +307,10 @@ export function useWallet() {
       void disconnectWalletConnect();
       return;
     }
+
+    // Explicit disconnect: forget the saved injected session so a later refresh
+    // does not silently reconnect it.
+    clearInjectedRdns();
 
     // Injected: try to de-authorise the site so the next connect prompts fresh.
     // Some wallets (Backpack) keep the site connected regardless; detect that

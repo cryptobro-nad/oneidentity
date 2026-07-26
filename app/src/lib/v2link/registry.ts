@@ -130,6 +130,52 @@ export async function walletIsFree(wallet: PortfolioAddress): Promise<boolean> {
   return outcome.value;
 }
 
+/**
+ * Whether a wallet may act as the PRIMARY for a link. Unlike a secondary (which
+ * must be entirely free), a primary may already own a V2 identity — that's how
+ * more wallets get added to it. Rejected only if it is in V1, is a *linked*
+ * wallet in some V2 identity (not its primary), or its identity is already full.
+ */
+export async function primaryLinkState(
+  primary: PortfolioAddress,
+): Promise<{ ok: true; existingOne: `0x${string}` | null } | { ok: false; error: string }> {
+  if (!ONE_REGISTRY_V2_ADDRESS) throw new Error("V2 registry address not configured");
+  const registry = ONE_REGISTRY_V2_ADDRESS;
+  const outcome = await withRpcFallback(async (client) => {
+    const p = getAddress(primary);
+    const v1One = (await client.readContract({
+      address: ONE_REGISTRY_ADDRESS,
+      abi: ONE_REGISTRY_ABI,
+      functionName: "activeOneOf",
+      args: [p],
+    })) as string;
+    if (v1One !== ZERO) {
+      return { ok: false as const, error: "This wallet already belongs to a Verified ONE." };
+    }
+    const v2One = (await client.readContract({
+      address: registry,
+      abi: ONE_REGISTRY_V2_READ_ABI,
+      functionName: "activeOneOf",
+      args: [p],
+    })) as string;
+    if (v2One === ZERO) return { ok: true as const, existingOne: null }; // free → first link creates it
+
+    const one = getAddress(v2One);
+    const [primaryOf, count] = await Promise.all([
+      client.readContract({ address: registry, abi: ONE_REGISTRY_V2_READ_ABI, functionName: "primaryOf", args: [one] }) as Promise<string>,
+      client.readContract({ address: registry, abi: ONE_REGISTRY_V2_READ_ABI, functionName: "memberCountOf", args: [one] }) as Promise<bigint>,
+    ]);
+    if (getAddress(primaryOf) !== p) {
+      return { ok: false as const, error: "This wallet is a linked wallet in a ONE, so it can't be a primary." };
+    }
+    if (count >= 20n) {
+      return { ok: false as const, error: "This identity already has the maximum of 20 wallets." };
+    }
+    return { ok: true as const, existingOne: one as `0x${string}` }; // primary of an existing ONE → add more
+  });
+  return outcome.value;
+}
+
 /** The ONE identity address a link will land in: existing, or predicted for a first link. */
 export async function resolveOneAddress(primary: PortfolioAddress): Promise<PortfolioAddress> {
   if (!ONE_REGISTRY_V2_ADDRESS) throw new Error("V2 registry address not configured");
