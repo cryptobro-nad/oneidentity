@@ -2,38 +2,34 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { cleanup, render, screen } from "@testing-library/react";
 
-// The heavy client (wallet, viem, registry) is not under test here; the page's
-// trust framing is. Stub it so the header renders in isolation.
-vi.mock("./VerifiedClient", () => ({ VerifiedClient: () => null }));
+// The interactive panel (wallet, viem, server actions) is not under test here;
+// the page's transfer-method framing is. Stub it so the header renders alone.
+vi.mock("@/components/verified/VerifiedV2Panel", () => ({ VerifiedV2Panel: () => null }));
 
 import VerifiedPage, { metadata } from "./page";
 
 afterEach(cleanup);
 
-describe("Verified ONE page — trust framing", () => {
+describe("Verified ONE page — transfer-method framing", () => {
   it("is titled and headed as creating a Verified ONE", () => {
     render(<VerifiedPage />);
     expect(metadata.title).toMatch(/verified one/i);
     expect(screen.getByRole("heading", { level: 1 }).textContent).toMatch(/create a verified one/i);
   });
 
-  it("states secondary wallets sign only and the primary submits one transaction", () => {
+  it("frames linking as sending MON from the wallet being linked (transfer method)", () => {
     const { container } = render(<VerifiedPage />);
     const text = container.textContent ?? "";
-    expect(text).toMatch(/secondary wallets sign only/i);
-    expect(text).toMatch(/primary submits one transaction/i);
-  });
-
-  it("states no funds move, no token approvals, and no custody", () => {
-    const { container } = render(<VerifiedPage />);
-    const text = container.textContent ?? "";
-    expect(text).toMatch(/no funds move/i);
-    expect(text).toMatch(/no token approvals/i);
+    expect(text).toMatch(/sending a small amount of MON/i);
+    expect(text).toMatch(/never connects here/i);
     expect(text).toMatch(/never takes custody/i);
   });
 
-  it("describes the secondary authorization as gasless", () => {
+  it("does not use the wallet-signing (V1) framing", () => {
     const { container } = render(<VerifiedPage />);
-    expect(container.textContent ?? "").toMatch(/gasless authorization/i);
+    const text = (container.textContent ?? "").toLowerCase();
+    expect(text).not.toContain("gasless authorization");
+    expect(text).not.toContain("no funds move");
+    expect(text).not.toContain("each secondary wallet signs");
   });
 });

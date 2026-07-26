@@ -51,8 +51,8 @@ export function VerifiedV2Panel() {
   return (
     <div className="space-y-8">
       <WalletConnect wallet={wallet} elevated />
-      {current ? <V2ManageWallets key={current.address} initial={current} /> : null}
-      <LinkWalletV2 onLinked={refresh} />
+      {current ? <V2ManageWallets key={current.address} wallet={wallet} initial={current} /> : null}
+      <LinkWalletV2 wallet={wallet} onLinked={refresh} />
     </div>
   );
 }

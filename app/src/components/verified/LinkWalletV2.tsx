@@ -39,9 +39,18 @@ function isUserRejection(e: unknown): boolean {
  * The single visible V2 linking method. The secondary never connects to ONE:
  * the user sends MON from it to their own primary, ONE detects the transfer,
  * and the connected primary submits the on-chain approval.
+ *
+ * `wallet` is the SHARED wallet instance from the parent — never call useWallet()
+ * here, or this component gets its own disconnected copy and its button stays
+ * disabled even after the user connects in the panel.
  */
-export function LinkWalletV2({ onLinked }: { onLinked?: (one: string) => void } = {}) {
-  const wallet = useWallet();
+export function LinkWalletV2({
+  wallet,
+  onLinked,
+}: {
+  wallet: ReturnType<typeof useWallet>;
+  onLinked?: (one: string) => void;
+}) {
   const [secondary, setSecondary] = useState("");
   const [state, setState] = useState<LinkFlowState>("idle");
   const [challenge, setChallenge] = useState<ChallengeResp | null>(null);

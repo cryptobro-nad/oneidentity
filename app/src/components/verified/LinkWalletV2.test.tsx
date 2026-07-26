@@ -12,16 +12,16 @@ vi.mock("@/lib/v2link/registry", async (orig) => {
   return { ...mod, ONE_REGISTRY_V2_ADDRESS: PRIMARY };
 });
 
-vi.mock("@/lib/wallet/useWallet", () => ({
-  useWallet: () => ({
-    address: PRIMARY,
-    refreshAccount: async () => PRIMARY,
-    ensureOnMonad: async () => true,
-    getWalletClient: () => null,
-  }),
-}));
-
 import { LinkWalletV2 } from "./LinkWalletV2";
+import type { useWallet } from "@/lib/wallet/useWallet";
+
+// Shared wallet instance is now passed in as a prop (no internal useWallet).
+const wallet = {
+  address: PRIMARY,
+  refreshAccount: async () => PRIMARY,
+  ensureOnMonad: async () => true,
+  getWalletClient: () => null,
+} as unknown as ReturnType<typeof useWallet>;
 
 afterEach(() => {
   cleanup();
@@ -38,7 +38,7 @@ beforeEach(() => {
 
 describe("LinkWalletV2", () => {
   it("shows the approved funds note and hides technical terms", () => {
-    render(<LinkWalletV2 />);
+    render(<LinkWalletV2 wallet={wallet} />);
     const text = document.body.textContent?.toLowerCase() ?? "";
     expect(text).toContain("one never receives, holds, forwards, or controls it");
     for (const term of ["attestation", "verifier", "indexer", "eip-712", "challenge"]) {
@@ -47,7 +47,7 @@ describe("LinkWalletV2", () => {
   });
 
   it("moves to the waiting state and shows the exact amount after starting a link", async () => {
-    render(<LinkWalletV2 />);
+    render(<LinkWalletV2 wallet={wallet} />);
     fireEvent.change(screen.getByPlaceholderText("0x…"), { target: { value: SECONDARY } });
     fireEvent.click(screen.getByRole("button", { name: /link wallet/i }));
 
@@ -57,7 +57,7 @@ describe("LinkWalletV2", () => {
   });
 
   it("rejects linking a wallet equal to the primary", async () => {
-    render(<LinkWalletV2 />);
+    render(<LinkWalletV2 wallet={wallet} />);
     fireEvent.change(screen.getByPlaceholderText("0x…"), { target: { value: PRIMARY } });
     fireEvent.click(screen.getByRole("button", { name: /link wallet/i }));
     await waitFor(() => expect(screen.getByText(/other than the primary/i)).toBeTruthy());

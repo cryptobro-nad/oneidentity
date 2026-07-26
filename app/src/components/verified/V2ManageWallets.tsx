@@ -21,8 +21,13 @@ const publicClient = createPublicClient({ chain: monad, transport: http(PRIMARY_
  * Secondary self-removal is supported at the contract level but intentionally
  * not surfaced here for launch.
  */
-export function V2ManageWallets({ initial }: { initial: V2Profile }) {
-  const wallet = useWallet();
+export function V2ManageWallets({
+  wallet,
+  initial,
+}: {
+  wallet: ReturnType<typeof useWallet>;
+  initial: V2Profile;
+}) {
   const [profile, setProfile] = useState<V2Profile>(initial);
   const [confirming, setConfirming] = useState<PortfolioAddress | null>(null);
   const [removing, setRemoving] = useState<PortfolioAddress | null>(null);

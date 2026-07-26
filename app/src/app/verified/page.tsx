@@ -1,12 +1,12 @@
 import type { Metadata } from "next";
 import { PageEyebrow } from "@/components/ui/PageEyebrow";
 import { Reveal } from "@/components/motion/Reveal";
-import { VerifiedModeSwitch } from "./VerifiedModeSwitch";
+import { VerifiedV2Panel } from "@/components/verified/VerifiedV2Panel";
 
 export const metadata: Metadata = {
   title: "Create a Verified ONE",
   description:
-    "Link Monad wallets you control and create one public identity that other apps can look up. ONE never takes custody.",
+    "Link Monad wallets you control into one public identity that other apps can look up. You link a wallet by transfer; it never connects here, and ONE never takes custody.",
 };
 
 export default function VerifiedPage() {
@@ -19,13 +19,14 @@ export default function VerifiedPage() {
             Create a <em>Verified ONE</em>
           </h1>
           <p className="mt-5 text-[1.02rem] leading-relaxed text-ink-2">
-            Bring together wallets you control into one public identity that other apps can look up.
-            Choose how to link them below.
+            Link wallets you control into one public identity that other apps can look up. You link a
+            wallet by sending a small amount of MON from it to your primary wallet — the wallet you
+            link never connects here, and ONE never takes custody.
           </p>
         </Reveal>
       </header>
 
-      <VerifiedModeSwitch />
+      <VerifiedV2Panel />
     </div>
   );
 }

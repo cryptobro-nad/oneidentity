@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { cleanup, render, screen } from "@testing-library/react";
 
 const { PRIMARY, SECONDARY } = vi.hoisted(() => ({
@@ -13,20 +13,20 @@ vi.mock("@/lib/v2link/registry", async (orig) => {
   return { ...mod, ONE_REGISTRY_V2_ADDRESS: PRIMARY };
 });
 
-const walletState = { address: PRIMARY as string | null };
-vi.mock("@/lib/wallet/useWallet", () => ({
-  useWallet: () => ({
-    address: walletState.address,
-    refreshAccount: async () => walletState.address,
-    ensureOnMonad: async () => true,
-    getWalletClient: () => null,
-  }),
-}));
-
 vi.mock("@/app/verified/v2actions", () => ({ loadV2ProfileAction: vi.fn() }));
 
 import { V2ManageWallets } from "./V2ManageWallets";
 import type { V2Profile } from "@/app/verified/v2actions";
+import type { useWallet } from "@/lib/wallet/useWallet";
+
+// Shared wallet instance is passed in as a prop now.
+const makeWallet = (address: string) =>
+  ({
+    address,
+    refreshAccount: async () => address,
+    ensureOnMonad: async () => true,
+    getWalletClient: () => null,
+  }) as unknown as ReturnType<typeof useWallet>;
 
 const profile = (over: Partial<V2Profile> = {}): V2Profile => ({
   address: "0x1111111111111111111111111111111111111111",
@@ -38,28 +38,24 @@ const profile = (over: Partial<V2Profile> = {}): V2Profile => ({
   ...over,
 }) as V2Profile;
 
-beforeEach(() => {
-  walletState.address = PRIMARY;
-});
 afterEach(cleanup);
 
 describe("V2ManageWallets", () => {
   it("never offers to remove the primary wallet", () => {
-    render(<V2ManageWallets initial={profile()} />);
+    render(<V2ManageWallets wallet={makeWallet(PRIMARY)} initial={profile()} />);
     // Exactly one Remove control (for the secondary), never for the primary.
     const removeButtons = screen.getAllByRole("button", { name: /remove/i });
     expect(removeButtons).toHaveLength(1);
   });
 
   it("shows no Remove controls when a non-primary wallet is connected", () => {
-    walletState.address = SECONDARY;
-    render(<V2ManageWallets initial={profile()} />);
+    render(<V2ManageWallets wallet={makeWallet(SECONDARY)} initial={profile()} />);
     expect(screen.queryByRole("button", { name: /remove/i })).toBeNull();
     expect(screen.getByText(/only the primary wallet can add or remove/i)).toBeTruthy();
   });
 
   it("warns that removing the last linked wallet deactivates the identity", () => {
-    render(<V2ManageWallets initial={profile({ memberCount: 2 })} />);
+    render(<V2ManageWallets wallet={makeWallet(PRIMARY)} initial={profile({ memberCount: 2 })} />);
     expect(screen.getByRole("button", { name: /remove \(deactivates\)/i })).toBeTruthy();
   });
 });
