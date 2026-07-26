@@ -8,8 +8,7 @@ import { ErrorNotice } from "@/components/Notices";
 import { NftHoldings } from "@/components/NftHoldings";
 import { PortfolioResult } from "@/components/PortfolioResult";
 import { V2ManageWallets } from "@/components/verified/V2ManageWallets";
-import { WalletConnect } from "@/components/verified/WalletConnect";
-import { useWallet } from "@/lib/wallet/useWallet";
+import { useSharedWallet } from "@/lib/wallet/WalletProvider";
 import { loadPortfolioAction } from "@/app/portfolio/actions";
 import { decodePortfolio } from "@/lib/wire";
 import type { AggregatedPortfolio } from "@/lib/types";
@@ -22,9 +21,9 @@ import type { V2Profile } from "@/app/verified/v2actions";
  * the same address renders identically on any device.
  */
 export function OneV2ProfileClient({ initial }: { initial: V2Profile }) {
-  // The primary can connect here to manage from any device (removal). Viewing
-  // needs no wallet — membership and balances are read straight from chain.
-  const wallet = useWallet();
+  // The primary connects from the header to manage from any device (removal).
+  // Viewing needs no wallet — membership and balances are read straight from chain.
+  const wallet = useSharedWallet();
   // Balances aggregate only while the identity is active and has linked wallets.
   const mayAggregate = initial.isActive && initial.memberCount >= 2;
 
@@ -66,7 +65,6 @@ export function OneV2ProfileClient({ initial }: { initial: V2Profile }) {
         </div>
       </div>
 
-      <WalletConnect wallet={wallet} />
       <V2ManageWallets wallet={wallet} initial={initial} />
 
       {mayAggregate ? (

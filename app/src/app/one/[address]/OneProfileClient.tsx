@@ -23,7 +23,7 @@ import type { OneProfile } from "@/lib/registry/profile";
 import { sameAddress } from "@/lib/registry/members";
 import { decodePortfolio } from "@/lib/wire";
 import type { AggregatedPortfolio, PortfolioAddress } from "@/lib/types";
-import { useWallet } from "@/lib/wallet/useWallet";
+import { useSharedWallet } from "@/lib/wallet/WalletProvider";
 import { loadProfileAction } from "@/app/verified/actions";
 
 const publicClient = createPublicClient({ chain: monad, transport: http(PRIMARY_RPC) });
@@ -43,7 +43,7 @@ function toProfile(p: WireProfile): OneProfile {
 }
 
 export function OneProfileClient({ initial }: { initial: WireProfile }) {
-  const wallet = useWallet();
+  const wallet = useSharedWallet();
   const [profile, setProfile] = useState<OneProfile>(() => toProfile(initial));
   const [portfolio, setPortfolio] = useState<AggregatedPortfolio | null>(null);
   // Starts true so an active identity shows "loading" rather than a flash of

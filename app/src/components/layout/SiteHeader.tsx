@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import { OneLogo } from "@/components/brand/OneLogo";
 import { StatusPill } from "@/components/ui/StatusPill";
 import { ThemeToggle } from "@/components/theme/ThemeToggle";
+import { HeaderWallet } from "@/components/layout/HeaderWallet";
 
 const NAV = [
   { href: "/portfolio", label: "Portfolio" },
@@ -52,7 +53,12 @@ export function SiteHeader() {
             ))}
           </nav>
           <div className="ml-auto flex items-center gap-2.5">
-            <StatusPill />
+            {/* Network pill is decorative; hide it on mobile to make room for the
+                wallet control, whose dot already reflects the network. */}
+            <span className="hidden sm:inline-flex">
+              <StatusPill />
+            </span>
+            <HeaderWallet />
             <ThemeToggle />
           </div>
         </div>

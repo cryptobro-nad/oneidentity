@@ -9,6 +9,7 @@ import {
 import "./globals.css";
 import { SiteHeader } from "@/components/layout/SiteHeader";
 import { SiteFooter } from "@/components/layout/SiteFooter";
+import { WalletProvider } from "@/lib/wallet/WalletProvider";
 
 const geistSans = Geist({ variable: "--font-geist-sans", subsets: ["latin"] });
 const geistMono = Geist_Mono({ variable: "--font-geist-mono", subsets: ["latin"] });
@@ -66,9 +67,11 @@ export default function RootLayout({
     >
       <body className="flex min-h-full flex-col font-sans">
         <script dangerouslySetInnerHTML={{ __html: THEME_INIT }} />
-        <SiteHeader />
-        <main className="relative z-[1] flex-1">{children}</main>
-        <SiteFooter />
+        <WalletProvider>
+          <SiteHeader />
+          <main className="relative z-[1] flex-1">{children}</main>
+          <SiteFooter />
+        </WalletProvider>
       </body>
     </html>
   );

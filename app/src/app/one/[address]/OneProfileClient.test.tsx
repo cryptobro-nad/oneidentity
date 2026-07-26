@@ -23,8 +23,8 @@ vi.mock("@/app/nft-actions", () => ({
 vi.mock("@/app/verified/actions", () => ({ loadProfileAction: vi.fn() }));
 
 // A disconnected wallet: the profile is a public, read-only page.
-vi.mock("@/lib/wallet/useWallet", () => ({
-  useWallet: () => ({
+vi.mock("@/lib/wallet/WalletProvider", () => ({
+  useSharedWallet: () => ({
     wallets: [],
     selected: null,
     address: null,
