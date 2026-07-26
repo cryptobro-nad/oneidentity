@@ -5,6 +5,7 @@ import { useWallet } from "@/lib/wallet/useWallet";
 import { WalletConnect } from "@/components/verified/WalletConnect";
 import { LinkWalletV2 } from "@/components/verified/LinkWalletV2";
 import { V2ManageWallets } from "@/components/verified/V2ManageWallets";
+import { V2ActiveOneCard } from "@/components/verified/V2ActiveOneCard";
 import { loadV2ProfileAction, type V2Profile } from "@/app/verified/v2actions";
 
 /**
@@ -51,7 +52,12 @@ export function VerifiedV2Panel() {
   return (
     <div className="space-y-8">
       <WalletConnect wallet={wallet} elevated />
-      {current ? <V2ManageWallets key={current.address} wallet={wallet} initial={current} /> : null}
+      {current && wallet.address ? (
+        <>
+          <V2ActiveOneCard profile={current} connectedAddress={wallet.address} />
+          <V2ManageWallets key={current.address} wallet={wallet} initial={current} />
+        </>
+      ) : null}
       <LinkWalletV2 wallet={wallet} onLinked={refresh} />
     </div>
   );
