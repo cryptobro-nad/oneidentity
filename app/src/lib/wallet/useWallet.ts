@@ -242,7 +242,11 @@ export function useWallet() {
       // injected permission (see `disconnect`), so this prompts fresh rather
       // than returning the previous account silently — no account-management
       // dialog, no need to open the extension first.
-      const accounts = await requestAccounts(wallet.provider);
+      // Force the account picker for injected wallets only; WalletConnect chooses
+      // the account during its own handshake (see requestAccounts).
+      const accounts = await requestAccounts(wallet.provider, {
+        forcePicker: wallet.info.uuid !== WALLETCONNECT_UUID,
+      });
       if (accounts.length === 0) throw new Error("No accounts were returned by the wallet.");
       const id = await getChainId(wallet.provider);
       setSelected(wallet);

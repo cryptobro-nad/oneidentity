@@ -114,6 +114,19 @@ describe("connect forces the wallet's account picker", () => {
     expect(p.calls).toContain("eth_requestAccounts");
     expect(result.current.address?.toLowerCase()).toBe(ADDRESS.toLowerCase());
   });
+
+  it("does NOT force the picker for WalletConnect (its handshake already chose the account)", async () => {
+    const { wallet, p } = makeWallet(143, [ADDRESS], "walletconnect");
+    const { result } = renderHook(() => useWallet());
+    await act(async () => {
+      await result.current.connect(wallet);
+    });
+    // Forcing wallet_requestPermissions over a WC session can double-prompt or
+    // error on mobile wallets, so it must be skipped for WalletConnect.
+    expect(p.calls).not.toContain("wallet_requestPermissions");
+    expect(p.calls).toContain("eth_requestAccounts");
+    expect(result.current.address?.toLowerCase()).toBe(ADDRESS.toLowerCase());
+  });
 });
 
 describe("disconnect de-authorises the wallet (no silent reconnect)", () => {
