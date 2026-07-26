@@ -1,9 +1,9 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { getAddress, isAddress } from "viem";
+import { createPublicClient, getAddress, http, isAddress } from "viem";
 import { useWallet } from "@/lib/wallet/useWallet";
-import { monad } from "@/lib/chain";
+import { monad, PRIMARY_RPC } from "@/lib/chain";
 import { ONE_REGISTRY_V2_ADDRESS, ONE_REGISTRY_V2_WRITE_ABI } from "@/lib/v2link/registry";
 import { AMOUNT_DECIMALS } from "@/lib/v2link/challenge";
 import { V2_LINK_COPY, formatCountdown, type LinkFlowState } from "@/lib/v2link/copy";
@@ -28,6 +28,8 @@ type StatusResp = {
   approvalDeadline?: number;
   error?: string;
 };
+
+const publicClient = createPublicClient({ chain: monad, transport: http(PRIMARY_RPC) });
 
 /** True if the wallet rejected the request (rather than the tx reverting). */
 function isUserRejection(e: unknown): boolean {
@@ -174,7 +176,7 @@ export function LinkWalletV2({
         deadline: BigInt(a.deadline),
         verifierNonce: BigInt(a.verifierNonce),
       };
-      await wc.writeContract({
+      const hash = await wc.writeContract({
         address: ONE_REGISTRY_V2_ADDRESS,
         abi: ONE_REGISTRY_V2_WRITE_ABI,
         functionName: "approveLink",
@@ -182,6 +184,13 @@ export function LinkWalletV2({
         account: wallet.address,
         chain: monad,
       });
+      // Wait for the approval to land so we only report success once it's final.
+      const receipt = await publicClient.waitForTransactionReceipt({ hash });
+      if (receipt.status !== "success") throw new Error("reverted");
+      // Mark the challenge linked so a later link of the SAME pair starts fresh
+      // instead of resuming this now-consumed approval. Best effort — the
+      // on-chain link is the source of truth.
+      void fetch(`/api/v2/link/challenge/${challenge.id}`, { method: "POST" }).catch(() => {});
       setLinkedOne(a.one);
       setState("linked");
       onLinked?.(a.one);

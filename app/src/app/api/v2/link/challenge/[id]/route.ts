@@ -124,3 +124,19 @@ export async function DELETE(req: Request, ctx: { params: Promise<{ id: string }
   await store.cancel(id);
   return NextResponse.json({ status: "cancelled" });
 }
+
+/**
+ * POST → mark a verified challenge `linked` (terminal) once the primary's
+ * approval is on chain. Only transitions verified→linked, so a later link of the
+ * same pair starts fresh instead of resuming the old approval step. Idempotent.
+ */
+export async function POST(req: Request, ctx: { params: Promise<{ id: string }> }) {
+  const { id } = await ctx.params;
+  const limiter = getRateLimiter();
+  const byIp = await limiter.check(`linked:ip:${clientIp(req)}`, { capacity: 20, refillPerSec: 1 });
+  if (!byIp.allowed) return tooManyRequests(byIp.retryAfterSeconds);
+
+  const store = getChallengeStore();
+  await store.markLinked(id);
+  return NextResponse.json({ status: "linked" });
+}

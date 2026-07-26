@@ -166,6 +166,14 @@ export class PostgresChallengeStore implements ChallengeStore {
     );
   }
 
+  async markLinked(id: string): Promise<void> {
+    await this.sql.query(
+      `update v2_challenges set status = 'linked', linked_at = $2
+        where id = $1 and status = 'verified'`,
+      [id, Math.floor(Date.now() / 1000)],
+    );
+  }
+
   async expireStaleForPair(
     secondary: PortfolioAddress,
     primary: PortfolioAddress,

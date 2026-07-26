@@ -39,6 +39,7 @@ function makeWallet(chainId: number, accounts: string[] = [ADDRESS], uuid = "tes
         // Backpack: unsupported / no-op — the site stays connected.
         throw { code: 4200, message: "Unsupported method" };
       }
+      if (method === "wallet_requestPermissions") return [{ parentCapability: "eth_accounts" }];
       if (method === "eth_requestAccounts" || method === "eth_accounts") return p.accounts;
       if (method === "eth_chainId") return `0x${p.chain.toString(16)}`;
       if (method === "wallet_switchEthereumChain") {
@@ -99,17 +100,18 @@ describe("ensureOnMonad (Sign / Create network check)", () => {
   });
 });
 
-describe("connect uses a normal approval (not an account-management dialog)", () => {
-  it("injected connect calls eth_requestAccounts and shows the account", async () => {
+describe("connect forces the wallet's account picker", () => {
+  it("injected connect requests permissions then eth_requestAccounts, and shows the account", async () => {
     const { wallet, p } = makeWallet(143, [ADDRESS], "io.metamask");
     const { result } = renderHook(() => useWallet());
     await act(async () => {
       await result.current.connect(wallet);
     });
-    // A plain approval of the active account — no wallet_requestPermissions,
-    // which is what forced MetaMask's account-management screen before.
+    // The account picker is forced on every explicit connect (EIP-2255), so after
+    // a disconnect or an in-wallet account switch the user lands on the account
+    // they currently have active — not a silently-reauthorised previous one.
+    expect(p.calls).toContain("wallet_requestPermissions");
     expect(p.calls).toContain("eth_requestAccounts");
-    expect(p.calls).not.toContain("wallet_requestPermissions");
     expect(result.current.address?.toLowerCase()).toBe(ADDRESS.toLowerCase());
   });
 });

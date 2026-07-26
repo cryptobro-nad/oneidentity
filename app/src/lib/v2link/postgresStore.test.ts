@@ -175,6 +175,27 @@ describe("active-challenge uniqueness (one per pair)", () => {
     await expect(store.create(chal({ id: "b", verifierNonce: 2n }))).resolves.toBeUndefined();
   });
 
+  it("markLinked frees a verified pair so relinking starts fresh (not 'approve')", async () => {
+    await store.create(chal({ id: "a", verifierNonce: 1n }));
+    // Simulate detection: verified, within a live 10-min approval window.
+    await store.update({
+      ...(await store.get("a"))!,
+      status: "verified",
+      txHash: "0xfeed",
+      txBlock: 120n,
+      verifiedAt: 1200,
+      approvalDeadline: 1800,
+    });
+    // Before markLinked, the verified challenge is still returned as active
+    // (this was the relink bug — the UI resumed the old approval).
+    expect((await store.findActiveForPair(SECONDARY, PRIMARY, 1300))?.id).toBe("a");
+    await store.markLinked("a");
+    expect((await store.get("a"))?.status).toBe("linked");
+    // Now it is terminal → a fresh link of the same pair is allowed.
+    expect(await store.findActiveForPair(SECONDARY, PRIMARY, 1300)).toBeNull();
+    await expect(store.create(chal({ id: "b", verifierNonce: 2n }))).resolves.toBeUndefined();
+  });
+
   it("allows different secondaries under the same primary (distinct amounts)", async () => {
     await store.create(chal({ id: "a", secondary: SECONDARY, amountWei: differentAmount(1), verifierNonce: 1n }));
     await expect(

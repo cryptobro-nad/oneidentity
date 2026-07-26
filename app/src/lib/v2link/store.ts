@@ -56,6 +56,10 @@ export interface ChallengeStore {
   /** Marks a pending/verified challenge cancelled (terminal), freeing the pair
    *  for a fresh attempt immediately. No-op if it is not currently active. */
   cancel(id: string): Promise<void>;
+  /** Marks a verified challenge `linked` (terminal) once its approval is on
+   *  chain, so a later link of the same pair starts fresh instead of resuming
+   *  the old "approve" step. No-op unless the challenge is currently verified. */
+  markLinked(id: string): Promise<void>;
   /** Flips any time-expired pending/verified challenges for a pair to `expired`,
    *  freeing the active-pair unique index so a fresh attempt can be created.
    *  (The partial index is status-based; a lapsed challenge still reads
@@ -155,6 +159,13 @@ export class InMemoryChallengeStore implements ChallengeStore {
   async cancel(id: string): Promise<void> {
     const c = this.byId.get(id);
     if (c && this.active(c)) this.byId.set(id, { ...c, status: "cancelled" });
+  }
+
+  async markLinked(id: string): Promise<void> {
+    const c = this.byId.get(id);
+    if (c && c.status === "verified") {
+      this.byId.set(id, { ...c, status: "linked", linkedAt: Math.floor(Date.now() / 1000) });
+    }
   }
 
   async expireStaleForPair(

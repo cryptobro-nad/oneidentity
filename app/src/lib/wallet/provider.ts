@@ -83,6 +83,21 @@ export function subscribeToWallets(
 }
 
 export async function requestAccounts(provider: EIP1193Provider): Promise<string[]> {
+  // Force the wallet's account picker every time the user explicitly connects,
+  // so after a disconnect (or an account switch in the wallet) they always land
+  // on the account they currently have active — rather than eth_requestAccounts
+  // silently returning a previously-authorised account. Wallets that don't
+  // support EIP-2255 fall through to eth_requestAccounts unchanged.
+  try {
+    await provider.request({
+      method: "wallet_requestPermissions",
+      params: [{ eth_accounts: {} }],
+    } as Parameters<EIP1193Provider["request"]>[0]);
+  } catch (err) {
+    // 4001 = the user dismissed the picker → a cancelled connect, not a fallback.
+    if ((err as { code?: number } | null)?.code === 4001) throw err;
+    // Unsupported / not-implemented → continue to eth_requestAccounts.
+  }
   const accounts = (await provider.request({ method: "eth_requestAccounts" })) as string[];
   return accounts.map((a) => getAddress(a));
 }
