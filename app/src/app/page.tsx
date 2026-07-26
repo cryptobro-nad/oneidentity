@@ -180,15 +180,15 @@ export default function LandingPage() {
               <ul className="mt-4 space-y-2 text-[0.9rem] text-ink-2 sm:mt-5 sm:space-y-2.5">
                 <li className="flex gap-3">
                   <span aria-hidden className="mt-2 h-1 w-1 shrink-0 rounded-full bg-accent-deep" />
-                  Each secondary wallet signs a gasless authorization
+                  Link a wallet by sending a small amount of MON from it to your primary
                 </li>
                 <li className="flex gap-3">
                   <span aria-hidden className="mt-2 h-1 w-1 shrink-0 rounded-full bg-accent-deep" />
-                  The primary wallet completes one Monad Mainnet transaction
+                  The wallet you link never connects, signs, or interacts with ONE
                 </li>
                 <li className="flex gap-3">
                   <span aria-hidden className="mt-2 h-1 w-1 shrink-0 rounded-full bg-accent-deep" />
-                  No funds move and ONE never takes custody
+                  The MON stays in your own wallet, and ONE never takes custody
                 </li>
               </ul>
               <Link href="/verified" className="btn btn-ghost mt-6 self-start sm:mt-7">
@@ -242,8 +242,8 @@ export default function LandingPage() {
             Three <em>hard limits</em>.
           </h2>
           <p className="mt-4 text-[1.02rem] leading-relaxed text-ink-2">
-            Everything ONE does is reading public data or asking for a signature. These limits hold
-            in both modes.
+            Everything ONE does is reading public data or asking your wallet to approve one
+            transaction. These limits hold in both modes.
           </p>
         </Reveal>
 
@@ -253,15 +253,15 @@ export default function LandingPage() {
               index="01"
               label="KEYS"
               title="Never asks for a private key"
-              body="Watch-only reads public Monad Mainnet data and needs no connection. A Verified ONE asks only for a signature, never a private key."
+              body="Watch-only reads public Monad Mainnet data and needs no connection. A Verified ONE asks your primary wallet to approve one transaction, never a private key."
             />
           </Reveal>
           <Reveal delay={90}>
             <Guard
               index="02"
               label="FUNDS"
-              title="Never moves funds"
-              body="Creating a Verified ONE is signatures plus one transaction. No transfers, no token approvals, no custody at any point."
+              title="Never holds your funds"
+              body="Linking sends a small amount of MON between wallets you own, and it stays with you. ONE never receives, holds, or controls funds, and never asks for a token approval."
             />
           </Reveal>
           <Reveal delay={180}>

@@ -86,4 +86,15 @@ describe("Homepage product statement wording", () => {
     expect(text).toMatch(/multiple wallets/i);
     expect(text).not.toMatch(/many wallets/i);
   });
+
+  it("describes Verified ONE with the transfer method, not the retired sign-based claims", () => {
+    const { container } = renderHome();
+    const text = (container.textContent ?? "").toLowerCase();
+    // The transfer method is described...
+    expect(text).toContain("small amount of mon");
+    // ...and the V1 sign-method / now-false claims are gone.
+    expect(text).not.toContain("gasless authorization");
+    expect(text).not.toContain("no funds move");
+    expect(text).not.toContain("never moves funds");
+  });
 });
