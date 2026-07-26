@@ -4,6 +4,7 @@ import { useCallback, useId, useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import { oneProfilePath } from "@/lib/registry/lookup";
 import { resolveOneLookupAction } from "@/app/verified/actions";
+import { loadV2ProfileAction } from "@/app/verified/v2actions";
 
 /**
  * Public ONE lookup.
@@ -36,7 +37,14 @@ export function OneLookup({ compact = false }: { compact?: boolean }) {
           router.push(oneProfilePath(result.oneAddress));
           return;
         }
-        // A failed lookup keeps the user here with a specific reason.
+        // Not a V1 identity/member — it may be a V2 (transfer-linked) one.
+        const v2 = await loadV2ProfileAction(value);
+        if (v2.ok) {
+          setStatus("Verified ONE found. Opening the profile…");
+          router.push(`/one-v2/${v2.profile.address}`);
+          return;
+        }
+        // Neither registry knows it: keep the user here with the V1 reason.
         setError(result.message);
         setStatus("");
       } catch {

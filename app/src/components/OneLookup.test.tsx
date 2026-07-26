@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { cleanup, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
@@ -11,11 +11,21 @@ vi.mock("@/app/verified/actions", () => ({
   resolveOneLookupAction: (...args: unknown[]) => resolveOneLookupAction(...args),
 }));
 
+const loadV2ProfileAction = vi.fn();
+vi.mock("@/app/verified/v2actions", () => ({
+  loadV2ProfileAction: (...args: unknown[]) => loadV2ProfileAction(...args),
+}));
+
 import { OneLookup } from "./OneLookup";
 
 const ONE_ADDR = "0x1139dec3A681C96807D8C277601655A707494AaA";
+const V2_ONE = "0x2df1b222d48859c3E3CD217B78Ac29966901485E";
 const WALLET = "0x017F9358AFcC7018dd683001FD33fD7D68230D8B";
 
+beforeEach(() => {
+  // Default: no V2 identity, so V1 lookups behave exactly as before.
+  loadV2ProfileAction.mockResolvedValue({ ok: false, reason: "not-a-one", message: "no" });
+});
 afterEach(() => {
   cleanup();
   vi.clearAllMocks();
@@ -38,6 +48,18 @@ describe("OneLookup — successful resolution", () => {
     await user.click(submitButton());
 
     await waitFor(() => expect(push).toHaveBeenCalledWith(`/one/${ONE_ADDR}`));
+  });
+
+  it("falls through to the V2 profile when V1 has no match", async () => {
+    resolveOneLookupAction.mockResolvedValue({ ok: false, code: "NOT_FOUND", message: "not found" });
+    loadV2ProfileAction.mockResolvedValue({ ok: true, profile: { address: V2_ONE } });
+    const user = userEvent.setup();
+    render(<OneLookup />);
+
+    await user.type(input(), V2_ONE);
+    await user.click(submitButton());
+
+    await waitFor(() => expect(push).toHaveBeenCalledWith(`/one-v2/${V2_ONE}`));
   });
 
   it("navigates when a linked WALLET resolves to its ONE", async () => {
