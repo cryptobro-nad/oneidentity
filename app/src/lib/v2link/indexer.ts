@@ -68,10 +68,22 @@ async function scan(
   const head = await client.getBlockNumber();
   const safe = head - BigInt(confirmations);
 
+  // Only pending challenges can be matched. If none are live, there is nothing to
+  // detect: advance the cursor to the confirmed head so it never lags into an
+  // un-catchable backlog during idle periods, and stop.
+  const oldestPending = await store.oldestPendingCreatedBlock(now);
   const cursor = await store.getCursor();
-  // First run with no cursor: start at the confirmed head so we don't rescan all
-  // history — challenges are always created at/after the current block.
-  const from = cursor ? cursor.block + 1n : safe;
+  if (oldestPending === null) {
+    if (safe > (cursor?.block ?? 0n)) await store.setCursor(safe, null);
+    return { head, scannedTo: safe, matched: 0, skipped: false };
+  }
+
+  // Start no earlier than the oldest pending challenge. A transfer can only exist
+  // at/after its challenge's block, so blocks below this hold nothing matchable —
+  // skipping them keeps a stale cursor from making detection unreachably slow on
+  // a fast chain (the bug that made a real transfer expire undetected).
+  const cursorNext = cursor ? cursor.block + 1n : 0n;
+  const from = cursorNext > oldestPending ? cursorNext : oldestPending;
   if (from > safe) return { head, scannedTo: cursor?.block ?? safe, matched: 0, skipped: false };
 
   const to = from + batchSize - 1n < safe ? from + batchSize - 1n : safe;

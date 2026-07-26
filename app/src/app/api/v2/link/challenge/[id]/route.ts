@@ -11,6 +11,9 @@ import { tooManyRequests } from "@/lib/v2link/http";
 import { safeErrorMessage } from "@/lib/v2link/errors";
 
 export const dynamic = "force-dynamic";
+// The GET may run a polling-triggered block scan inline; give it room to finish
+// rather than being killed at the default limit.
+export const maxDuration = 60;
 
 /**
  * GET → challenge status. When `verified`, returns the verifier-signed

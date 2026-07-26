@@ -12,6 +12,7 @@ export const V2_LINK_COPY = {
   linkWallet: "Link wallet",
   awaitingTransfer: "Send the exact amount from the secondary wallet using any wallet app.",
   checking: "Checking Monad for your transfer…",
+  checkNow: "I've sent it — check now",
   transferConfirmed: "Transfer confirmed. Approve the link with your primary wallet.",
   approveWithPrimary: "Approve with primary",
   linked: "Wallet linked.",

@@ -12,10 +12,12 @@ class MockClient implements IndexerClient {
   head = 130n;
   blocks = new Map<bigint, IndexedBlock>();
   status = new Map<string, "success" | "reverted">();
+  fetched: bigint[] = [];
   async getBlockNumber() {
     return this.head;
   }
   async getBlock(n: bigint) {
+    this.fetched.push(n);
     return this.blocks.get(n) ?? { number: n, hash: `0x${n.toString(16)}`, transactions: [] };
   }
   async getReceiptStatus(hash: `0x${string}`) {
@@ -100,6 +102,31 @@ describe("runIndexerTick", () => {
     // Re-scan won't revisit block 110 (cursor is past it), and tx1 is used anyway.
     const res = await runIndexerTick(store, client, { now, confirmations: 8 });
     expect(res.matched).toBe(0);
+  });
+
+  it("detects the transfer even when the cursor lags far behind, without scanning old blocks", async () => {
+    const store = new InMemoryChallengeStore();
+    await store.setCursor(3n, "0x3"); // cursor stuck far behind after an idle gap
+    await store.create(pending("c1", { createdAtBlock: 118n }));
+    const client = new MockClient(); // head 130 → safe 122
+    client.put(120n, [{ hash: "0xtx1", from: SECONDARY, to: PRIMARY, value: BigInt(AMOUNT) }]);
+
+    const res = await runIndexerTick(store, client, { now, confirmations: 8 });
+    expect(res.matched).toBe(1);
+    expect((await store.get("c1"))?.status).toBe("verified");
+    // Never fetched a block below the challenge's creation block (no lag work).
+    expect(client.fetched.every((n) => n >= 118n)).toBe(true);
+    expect(client.fetched).toContain(120n);
+  });
+
+  it("advances the cursor to the head and scans nothing when no challenge is pending", async () => {
+    const store = new InMemoryChallengeStore();
+    await store.setCursor(3n, "0x3");
+    const client = new MockClient(); // head 130 → safe 122
+    const res = await runIndexerTick(store, client, { now, confirmations: 8 });
+    expect(res.matched).toBe(0);
+    expect(client.fetched).toHaveLength(0); // no per-block work while idle
+    expect((await store.getCursor())?.block).toBe(122n); // jumped to head, no backlog
   });
 
   it("skips (does nothing) when the scan lease is already held", async () => {

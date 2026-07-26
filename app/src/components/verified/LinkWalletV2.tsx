@@ -60,6 +60,8 @@ export function LinkWalletV2({
   const [linkedOne, setLinkedOne] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [nowMs, setNowMs] = useState(() => Date.now());
+  // Bumping this re-runs the status-poll effect immediately (a manual check).
+  const [checkNonce, setCheckNonce] = useState(0);
 
   const configured = Boolean(ONE_REGISTRY_V2_ADDRESS);
   const nowSec = Math.floor(nowMs / 1000);
@@ -143,7 +145,13 @@ export function LinkWalletV2({
       cancelled = true;
       clearInterval(iv);
     };
-  }, [challenge, state]);
+    // checkNonce is a dependency so the "check now" button fires an immediate tick.
+  }, [challenge, state, checkNonce]);
+
+  const checkNow = useCallback(() => {
+    setState("checking");
+    setCheckNonce((n) => n + 1);
+  }, []);
 
   const approve = useCallback(async () => {
     if (!verified?.attestation || !verified.signature || !ONE_REGISTRY_V2_ADDRESS || !challenge) return;
@@ -272,6 +280,9 @@ export function LinkWalletV2({
               </p>
               <p className="mt-1 text-[0.78rem] text-ink-3">{V2_LINK_COPY.checking}</p>
               <p className="mt-2 tnum text-[0.78rem] text-ink-3">{V2_LINK_COPY.timeLeft(transferLeft)}</p>
+              <button type="button" onClick={checkNow} className="mt-3 btn btn-quiet">
+                {V2_LINK_COPY.checkNow}
+              </button>
             </div>
           ) : null}
 

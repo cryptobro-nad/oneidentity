@@ -48,6 +48,11 @@ export interface ChallengeStore {
   findActiveForPair(secondary: PortfolioAddress, primary: PortfolioAddress, now: number): Promise<Challenge | null>;
   /** Pending, unexpired challenges whose recipient + amount match a transfer. */
   findMatchable(to: PortfolioAddress, amountWei: string): Promise<Challenge[]>;
+  /** The lowest `createdAtBlock` among live pending challenges, or null if none.
+   *  The indexer never needs to scan below this — a transfer can only exist at or
+   *  after the block its challenge was created — so clamping the scan start here
+   *  stops a stale cursor from lagging into an un-catchable backlog. */
+  oldestPendingCreatedBlock(now: number): Promise<bigint | null>;
   /** True if an active challenge already targets this recipient with this exact
    *  amount (keeps the amount → challenge match unambiguous). */
   amountActiveForRecipient(primary: PortfolioAddress, amountWei: string): Promise<boolean>;
@@ -134,6 +139,16 @@ export class InMemoryChallengeStore implements ChallengeStore {
       }
     }
     return out;
+  }
+
+  async oldestPendingCreatedBlock(now: number): Promise<bigint | null> {
+    let min: bigint | null = null;
+    for (const c of this.byId.values()) {
+      if (c.status === "pending" && now < c.expiresAt) {
+        if (min === null || c.createdAtBlock < min) min = c.createdAtBlock;
+      }
+    }
+    return min;
   }
 
   async amountActiveForRecipient(primary: PortfolioAddress, amountWei: string): Promise<boolean> {

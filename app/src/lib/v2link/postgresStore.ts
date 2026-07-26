@@ -118,6 +118,15 @@ export class PostgresChallengeStore implements ChallengeStore {
     return rows.map(toChallenge);
   }
 
+  async oldestPendingCreatedBlock(now: number): Promise<bigint | null> {
+    const { rows } = await this.sql.query<{ min: string | null }>(
+      `select min(created_at_block) as min from v2_challenges
+        where status = 'pending' and expires_at > $1`,
+      [now],
+    );
+    return rows[0]?.min != null ? BigInt(rows[0].min) : null;
+  }
+
   async amountActiveForRecipient(primary: PortfolioAddress, amountWei: string): Promise<boolean> {
     const { rowCount } = await this.sql.query(
       `select 1 from v2_challenges
