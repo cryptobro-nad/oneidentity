@@ -175,6 +175,62 @@ node app/scripts/migrate-staging.mjs
 - `VERIFIER_PRIVATE_KEY` and `DATABASE_URL` are secrets: Production scope only,
   never `NEXT_PUBLIC_`, never logged (errors are redacted by `safeErrorMessage`).
 
+---
+
+## Appendix — C1 exact Remix deployment (copy-paste ready)
+
+Staging was deployed via Remix + MetaMask using the flattened source; production
+uses the same path so no private key is ever handled outside your wallet.
+
+**Source file to paste into Remix:** `contracts/remix/ONERegistryV2.flat.sol`
+(self-contained single file — SPDX `MIT`, `pragma solidity =0.8.28 ^0.8.20`, no
+external imports or libraries to link).
+
+**Compiler settings (must match exactly — set these in the Solidity Compiler tab):**
+- Compiler version: **0.8.28**
+- Optimizer: **Enabled**, **200** runs
+- EVM version: **shanghai**  ← important; do not leave it on the Remix default
+  (cancun/prague), Monad targets shanghai.
+- Contract to deploy (dropdown): **`ONERegistryV2`** (not the interface, not the
+  minimal `ONEIdentityV2` helper the file also contains).
+
+**Constructor arguments — exact order** (`constructor(address v1Registry, address verifier_, address verifierAdmin_)`):
+1. `v1Registry`  = `0xf8E62d8D16acB49eeEeCF13DE48f1f6898c2F915`  (fixed — the immutable V1 registry; must equal production `NEXT_PUBLIC_ONE_REGISTRY_ADDRESS`)
+2. `verifier_`   = `<PRODUCTION_VERIFIER_ADDRESS>`  (public address of the fresh key from B2)
+3. `verifierAdmin_` = `<PRODUCTION_VERIFIER_ADMIN_ADDRESS>`  (Safe/admin from B3)
+
+If Remix shows one inline field instead of three, enter them comma-separated in
+that order:
+`0xf8E62d8D16acB49eeEeCF13DE48f1f6898c2F915,<PRODUCTION_VERIFIER_ADDRESS>,<PRODUCTION_VERIFIER_ADMIN_ADDRESS>`
+
+**Deploy environment / value:**
+- Environment: **Injected Provider – MetaMask**, network **Monad Mainnet (chain 143)**.
+- **Value: 0.** The constructor is **not payable** — sending any value reverts.
+  Leave the Value field at 0; you only pay gas (MON) from the deployer wallet.
+- The constructor rejects a zero address for any of the three args, so a fat-
+  fingered blank arg fails fast rather than deploying a broken registry.
+
+**Immediately after deploy:**
+- Record the **deployed contract address** and the deploy **tx hash**.
+- Read-only verification (Claude runs; see E1) —
+  `forge script contracts/script/VerifyONERegistryV2.s.sol --rpc-url https://rpc.monad.xyz`
+  with `NEXT_PUBLIC_ONE_REGISTRY_V2_ADDRESS` set to the new address (and the
+  verifier/admin as `STAGING_*` cross-check envs). It confirms
+  `v1`/`verifier`/`verifierAdmin`, `MAX_MEMBERS=20`, `MIN_MEMBERS=2`, `VERSION=2`,
+  the EIP-712 domain (`"ONE Link"`/`"1"`/143/verifyingContract = the new address),
+  and **`totalOnes == 0`**.
+- Optional manual spot-checks (anyone can run, read-only):
+  ```sh
+  cast call <ADDR> "verifier()(address)"       --rpc-url https://rpc.monad.xyz
+  cast call <ADDR> "verifierAdmin()(address)"   --rpc-url https://rpc.monad.xyz
+  cast call <ADDR> "v1()(address)"              --rpc-url https://rpc.monad.xyz
+  cast call <ADDR> "VERSION()(uint16)"          --rpc-url https://rpc.monad.xyz
+  cast call <ADDR> "totalOnes()(uint256)"       --rpc-url https://rpc.monad.xyz
+  ```
+- Do **not** compare runtime bytecode against staging: `verifierAdmin` and `v1`
+  are immutables baked into the deployed code, so production's bytecode
+  legitimately differs. The functional verify above is the authoritative check.
+
 ## Follow-ups (post-launch, optional)
 - Repoint the homepage "EXAMPLE" card to a real production V2 identity once one
   exists (synthetic/demo is acceptable meanwhile).
