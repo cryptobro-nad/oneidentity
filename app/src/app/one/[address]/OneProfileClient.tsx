@@ -22,6 +22,7 @@ import { canRemove, removalCausesDeactivation, simulateRemoval } from "@/lib/reg
 import type { OneProfile } from "@/lib/registry/profile";
 import { sameAddress } from "@/lib/registry/members";
 import { decodePortfolio } from "@/lib/wire";
+import type { WireDiscoveredFungibles } from "@/lib/assets/display";
 import type { AggregatedPortfolio, PortfolioAddress } from "@/lib/types";
 import { useWallet } from "@/lib/wallet/useWallet";
 import { loadProfileAction } from "@/app/verified/actions";
@@ -46,6 +47,7 @@ export function OneProfileClient({ initial }: { initial: WireProfile }) {
   const wallet = useWallet();
   const [profile, setProfile] = useState<OneProfile>(() => toProfile(initial));
   const [portfolio, setPortfolio] = useState<AggregatedPortfolio | null>(null);
+  const [discovered, setDiscovered] = useState<WireDiscoveredFungibles | null>(null);
   // Starts true so an active identity shows "loading" rather than a flash of
   // empty state before the first read returns.
   const [loadingBalances, setLoadingBalances] = useState(true);
@@ -115,8 +117,10 @@ export function OneProfileClient({ initial }: { initial: WireProfile }) {
     const run = async () => {
       const res = await loadPortfolioAction(profile.members);
       if (cancelled) return;
-      if (res.ok) setPortfolio(decodePortfolio(res.data));
-      else setBalanceError(res.error);
+      if (res.ok) {
+        setPortfolio(decodePortfolio(res.data));
+        setDiscovered(res.data.discovered ?? null);
+      } else setBalanceError(res.error);
       setLoadingBalances(false);
     };
     void run();
@@ -129,6 +133,7 @@ export function OneProfileClient({ initial }: { initial: WireProfile }) {
   // Derived, not cleared in an effect: if aggregation is not permitted there is
   // simply nothing to show, regardless of what a previous load produced.
   const shownPortfolio = mayAggregateNow ? portfolio : null;
+  const shownDiscovered = mayAggregateNow ? discovered : null;
 
   const remove = useCallback(
     async (target: PortfolioAddress) => {
@@ -386,7 +391,7 @@ export function OneProfileClient({ initial }: { initial: WireProfile }) {
           ) : balanceError ? (
             <ErrorNotice title="Could not load combined balances">{balanceError}</ErrorNotice>
           ) : shownPortfolio ? (
-            <PortfolioResult portfolio={shownPortfolio} />
+            <PortfolioResult portfolio={shownPortfolio} discovered={shownDiscovered} />
           ) : null}
         </section>
       ) : (

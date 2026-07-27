@@ -71,10 +71,10 @@ export async function discoverAssetsAction(addresses: string[]): Promise<Discove
   }
 
   const flag = resolveDiscoveryProvider();
-  const envio = new EnvioHyperSyncProvider(createEnvioLogSource());
   const curated = new CuratedAssetProvider();
 
   try {
+    const envio = new EnvioHyperSyncProvider(await createEnvioLogSource());
     const outcome = await withRpcFallback((client) =>
       discoverAndVerifyAssets(client, clean, { flag, envio, curated }),
     );

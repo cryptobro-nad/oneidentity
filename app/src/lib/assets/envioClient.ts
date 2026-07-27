@@ -9,7 +9,7 @@
  * curated rather than failing.
  */
 
-import { HypersyncClient, type Query } from "@envio-dev/hypersync-client";
+import type { Query } from "@envio-dev/hypersync-client";
 import { ENVIO_MONAD_HYPERSYNC_URL } from "./config";
 import type { EnvioQuery, EnvioQueryResponse, HyperSyncQueryClient } from "./envioQuery";
 import { EnvioHyperSyncLogSource } from "./providers/envioLogSource";
@@ -26,13 +26,18 @@ class UnconfiguredEnvioLogSource implements TransferLogSource {
 /**
  * Builds a live Envio log source, or an unconfigured one when no token is set.
  * `env` is injectable for tests, though tests never exercise the native client.
+ *
+ * The native package is imported dynamically and ONLY when a token is present,
+ * so a deployment (or a test run) that never enables dynamic discovery never
+ * loads the napi binary at all.
  */
-export function createEnvioLogSource(
+export async function createEnvioLogSource(
   env: Record<string, string | undefined> = process.env,
-): TransferLogSource {
+): Promise<TransferLogSource> {
   const apiToken = env.ENVIO_API_TOKEN;
   if (!apiToken) return new UnconfiguredEnvioLogSource();
 
+  const { HypersyncClient } = await import("@envio-dev/hypersync-client");
   const client = new HypersyncClient({ url: ENVIO_MONAD_HYPERSYNC_URL, apiToken });
 
   // The structural shapes here were verified against the client's index.d.ts;

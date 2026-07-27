@@ -83,16 +83,21 @@ export async function loadPortfolioWithClient(
     { status: "success"; result: unknown } | { status: "failure"; error: unknown };
 
   let tokenResults: readonly MulticallEntry[];
-  try {
-    tokenResults = (await client.multicall({
-      contracts,
-      allowFailure: true,
-      blockNumber,
-    })) as readonly MulticallEntry[];
-  } catch (err) {
-    // The multicall itself failed (bad RPC, aggregate reverted). Rethrow so
-    // withRpcFallback can try the next endpoint rather than reporting zeros.
-    throw new Error(`multicall failed: ${errorText(err)}`);
+  if (contracts.length === 0) {
+    // Native-only read (empty token list): no multicall to make.
+    tokenResults = [];
+  } else {
+    try {
+      tokenResults = (await client.multicall({
+        contracts,
+        allowFailure: true,
+        blockNumber,
+      })) as readonly MulticallEntry[];
+    } catch (err) {
+      // The multicall itself failed (bad RPC, aggregate reverted). Rethrow so
+      // withRpcFallback can try the next endpoint rather than reporting zeros.
+      throw new Error(`multicall failed: ${errorText(err)}`);
+    }
   }
 
   const walletPortfolios: WalletPortfolio[] = wallets.map((address, walletIndex) => {

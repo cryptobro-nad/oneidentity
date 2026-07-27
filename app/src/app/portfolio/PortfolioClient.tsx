@@ -22,6 +22,7 @@ import {
   subscribe,
 } from "@/lib/portfolios/store";
 import { activePortfolio, type PortfolioColor } from "@/lib/portfolios/types";
+import type { WireDiscoveredFungibles } from "@/lib/assets/display";
 import type { AggregatedPortfolio, PortfolioAddress } from "@/lib/types";
 import { decodePortfolio } from "@/lib/wire";
 import { loadPortfolioAction } from "./actions";
@@ -35,6 +36,7 @@ export function PortfolioClient() {
   const addresses = active.addresses;
 
   const [result, setResult] = useState<AggregatedPortfolio | null>(null);
+  const [discovered, setDiscovered] = useState<WireDiscoveredFungibles | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -50,10 +52,12 @@ export function PortfolioClient() {
 
   const resultsMatchActive = resultsFor === active.id;
   const shownResult = resultsMatchActive ? result : null;
+  const shownDiscovered = resultsMatchActive ? discovered : null;
   const dataRequested = resultsMatchActive && resultsFor !== null;
 
   const clearResults = useCallback(() => {
     setResult(null);
+    setDiscovered(null);
     setResultsFor(null);
     setError(null);
   }, []);
@@ -143,14 +147,17 @@ export function PortfolioClient() {
 
       if (response.ok) {
         setResult(decodePortfolio(response.data));
+        setDiscovered(response.data.discovered ?? null);
         setResultsFor(portfolioId);
       } else {
         setResult(null);
+        setDiscovered(null);
         setResultsFor(portfolioId);
         setError(response.error);
       }
     } catch {
       setResult(null);
+      setDiscovered(null);
       setResultsFor(portfolioId);
       setError("The portfolio request failed unexpectedly. Please try again.");
     } finally {
@@ -210,7 +217,7 @@ export function PortfolioClient() {
 
       {shownResult ? (
         <div className="border-t border-line pt-8">
-          <PortfolioResult portfolio={shownResult} />
+          <PortfolioResult portfolio={shownResult} discovered={shownDiscovered} />
         </div>
       ) : null}
 
